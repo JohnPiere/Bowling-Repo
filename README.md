@@ -116,6 +116,13 @@ ranking are pure functions with unit tests (`npm test`), so the tricky parts —
 tenth-frame bonus balls, a spare that follows a strike, re-ranking a board —
 are verified without rendering anything.
 
+Alongside the example tests there are property tests that fuzz: the scoring
+engine against a second scorer written from the rules rather than from the
+code, and the mark parser against random noise. The parser's property is the
+one that matters — fed anything, it must either refuse or return a legal game,
+because one that quietly produced a *plausible* wrong game would put a score in
+your history you never bowled.
+
 ### Two details that are load-bearing
 
 **The leaderboard's rows are never sorted.** The board keeps its children in

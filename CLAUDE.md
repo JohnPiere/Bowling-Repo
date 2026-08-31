@@ -95,7 +95,7 @@ same two throws, so a scanner that reads one for the other is still right.
 ## Testing
 
 Two kinds of unit test. The example tests say what should happen in cases
-worth naming. The property tests () fuzz — the scoring
+worth naming. The property tests (`*.property.test.ts`) fuzz — the scoring
 engine against a second scorer written from the rules rather than from the
 code, and the mark parser against random noise. They exist because the cases I
 think to write down are the ones I already handled.
