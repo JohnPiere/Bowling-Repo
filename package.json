@@ -18,7 +18,8 @@
     "predev": "node scripts/vendor-ocr.mjs && node scripts/vendor-font.mjs",
     "verify:scanner": "node scripts/verify-scanner.mjs",
     "verify:app": "node scripts/verify-app.mjs",
-    "vendor:font": "node scripts/vendor-font.mjs"
+    "vendor:font": "node scripts/vendor-font.mjs",
+    "serve:headers": "node scripts/serve-with-headers.mjs"
   },
   "dependencies": {
     "idb": "^8.0.3",

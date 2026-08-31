@@ -30,6 +30,30 @@ pinned indefinitely and users get stale code with no way to escape it. Serve it
 with `Cache-Control: no-cache`. Hashed assets under `/assets/` are the
 opposite: they are immutable and should be cached hard.
 
+### Security headers
+
+`public/_headers` and `vercel.json` also carry a Content-Security-Policy and
+friends. The policy is tight — everything the app needs is same-origin — with
+three allowances that are not obvious and are load-bearing:
+
+- `'wasm-unsafe-eval'` and `blob:` in `script-src`/`worker-src`: the OCR engine
+  is WebAssembly running in a worker. Remove either and scanning stops working.
+- `'unsafe-inline'` in `style-src`: React sets element styles as attributes,
+  which counts as inline.
+- `mediastream:` in `media-src`: the live camera preview.
+
+**If you move the push API to another host, add it to `connect-src`** or the
+browser will block every call to it, silently as far as the app is concerned.
+
+Verify the headers before deploying, since `vite preview` ignores them:
+
+```bash
+npm run build
+npm run serve:headers 4200 &
+npm run verify:app -- http://localhost:4200
+npm run verify:scanner -- http://localhost:4200
+```
+
 Example configs are in this repo:
 
 - `public/_headers` and `public/_redirects` — Netlify and Cloudflare Pages
@@ -62,13 +86,26 @@ production backend. Anything that runs Node will host it.
 npm run push:keys        # generate a VAPID pair, once, and keep the private key secret
 ```
 
-Set three environment variables on the host:
+Set these on the host:
 
 ```
 VAPID_PUBLIC_KEY=…
 VAPID_PRIVATE_KEY=…
 VAPID_SUBJECT=mailto:you@example.com
 PORT=8787
+
+# Required on anything reachable from the internet: without it, whoever can
+# reach the server can notify every subscriber.
+PUSH_AUTH_TOKEN=…
+```
+
+With a token set, sends must carry it:
+
+```bash
+curl -X POST https://push.example.com/api/notify \
+  -H 'authorization: Bearer YOUR_TOKEN' \
+  -H 'content-type: application/json' \
+  -d '{"title":"Lane Log","body":"Deployment works."}'
 ```
 
 Then point the client at it. Either serve the API under the same origin at
@@ -80,14 +117,18 @@ to turn notifications on again — so generate them once and keep them.
 
 ### Before it holds anything real
 
-The reference server keeps subscriptions in a JSON file and lets anyone POST
-to `/api/notify`. That is fine while you are the only user and wrong the
-moment you are not. Three things to add:
+The server refuses subscription endpoints that are not a known push service —
+otherwise it will POST to any URL a client hands it, which makes it a willing
+proxy for probing whatever it can reach — caps how many it will hold, and
+gates `/api/notify` behind `PUSH_AUTH_TOKEN` when one is set.
 
-- Authentication on `/api/notify`, so only your backend can send.
-- A real store, so subscriptions survive a restart and can be looked up by
-  group.
-- Group membership, so a notification goes to a crew rather than to everyone.
+What it still is not:
+
+- A real store. Subscriptions live in a JSON file, so they cannot be looked up
+  by group or shared between instances.
+- Aware of who belongs to what. A notification goes to every subscriber, not
+  to a crew.
+- Rate limited.
 
 ## Verifying a deployment
 

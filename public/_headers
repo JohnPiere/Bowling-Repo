@@ -1,5 +1,14 @@
 # Netlify and Cloudflare Pages read this from the build output.
 
+/*
+  # Everything the app needs is same-origin. If you point VITE_PUSH_API_URL at
+  # another host, add it to connect-src or the browser will block the calls.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  # The app asks for the camera itself; nothing else should be able to.
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), interest-cohort=()
+
 # The service worker must never be cached: a pinned one serves stale code
 # with no way for a user to escape it.
 /sw.js

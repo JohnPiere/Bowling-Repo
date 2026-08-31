@@ -40,6 +40,42 @@ if (!PUBLIC_KEY || !PRIVATE_KEY) {
 
 webpush.setVapidDetails(SUBJECT, PUBLIC_KEY, PRIVATE_KEY);
 
+/**
+ * Push services a subscription may point at.
+ *
+ * Without this the server will POST to any URL a client hands it, which makes
+ * it a willing proxy for probing whatever it can reach. The endpoint always
+ * comes from the browser's own push service, so the set is small and known.
+ */
+const PUSH_HOSTS = [
+  /\.googleapis\.com$/,          // Chrome, Edge (FCM)
+  /\.push\.services\.mozilla\.com$/, // Firefox
+  /\.notify\.windows\.com$/,     // older Edge
+  /\.push\.apple\.com$/,         // Safari
+];
+
+/** Above this the store is being filled rather than used. */
+const MAX_SUBSCRIPTIONS = 10_000;
+
+/**
+ * Set PUSH_AUTH_TOKEN to require a bearer token on /api/notify. Unset, anyone
+ * who can reach the server can send to every subscriber — fine on a laptop,
+ * not fine on the internet.
+ */
+const AUTH_TOKEN = process.env.PUSH_AUTH_TOKEN;
+
+function isAllowedEndpoint(endpoint) {
+  let url;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  // https only: web-push refuses anything else, and http would leak the keys.
+  if (url.protocol !== 'https:') return false;
+  return PUSH_HOSTS.some((host) => host.test(url.hostname));
+}
+
 /** endpoint -> subscription. The endpoint is the push service's own unique id. */
 let subscriptions = new Map();
 
@@ -85,6 +121,16 @@ const routes = {
     const subscription = body.subscription;
     if (!subscription?.endpoint) throw Object.assign(new Error('No subscription.'), { status: 400 });
 
+    if (!isAllowedEndpoint(subscription.endpoint)) {
+      throw Object.assign(new Error('That endpoint is not a known push service.'), { status: 400 });
+    }
+
+    // Re-registering an endpoint we already hold is normal and must not count
+    // against the cap.
+    if (!subscriptions.has(subscription.endpoint) && subscriptions.size >= MAX_SUBSCRIPTIONS) {
+      throw Object.assign(new Error('Too many subscriptions.'), { status: 503 });
+    }
+
     subscriptions.set(subscription.endpoint, subscription);
     await saveStore();
     return { ok: true, count: subscriptions.size };
@@ -98,7 +144,14 @@ const routes = {
     return { ok: true, count: subscriptions.size };
   },
 
-  'POST /api/notify': async (body) => {
+  'POST /api/notify': async (body, req) => {
+    if (AUTH_TOKEN) {
+      const offered = (req.headers.authorization ?? '').replace(/^Bearer /, '');
+      if (offered !== AUTH_TOKEN) {
+        throw Object.assign(new Error('Not authorised.'), { status: 401 });
+      }
+    }
+
     const payload = JSON.stringify({
       title: body.title ?? 'Lane Log',
       body: body.body ?? '',
@@ -142,11 +195,19 @@ const server = createServer(async (req, res) => {
 
   try {
     const body = req.method === 'POST' ? await readJson(req) : {};
-    send(res, 200, await route(body));
+    send(res, 200, await route(body, req));
   } catch (err) {
     send(res, err.status ?? 500, { error: err.message });
   }
 });
 
 await loadStore();
-server.listen(PORT, () => console.log(`Push server on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Push server on http://localhost:${PORT}`);
+  if (!AUTH_TOKEN) {
+    console.warn(
+      'No PUSH_AUTH_TOKEN set: anyone who can reach this server can notify every\n' +
+        'subscriber. Set one before exposing it beyond your own machine.',
+    );
+  }
+});
