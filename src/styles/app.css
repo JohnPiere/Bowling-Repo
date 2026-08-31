@@ -143,6 +143,9 @@ body {
   -webkit-overflow-scrolling: touch;
   padding: 14px var(--gutter) 22px;
 }
+/* Focused by script on navigation, so it should not draw a ring of its own —
+   the screen's own content is what the reader is being sent to. */
+.screen:focus { outline: none; }
 
 /* Screens enter with fadeUp, per the motion spec. */
 .screen > * {

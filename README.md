@@ -55,7 +55,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 18 checks
+npm run verify:app       # 20 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 
@@ -63,7 +63,8 @@ npm run verify:scanner   # 6 generated sheets
 worker serve the app with the network cut, does a push actually reach the
 worker with its click target intact, does a save that fails lose the game, does
 the leaderboard *move* its rows rather than re-sort them, is every control 44px
-to a thumb.
+to a thumb, does navigating take a screen reader with it, does reduced motion
+drop the travel without losing the layout.
 
 `verify:scanner` generates score sheets that imitate what a phone captures — a
 tilt, uneven overhead light, sensor noise, pencil rather than ink, and a league

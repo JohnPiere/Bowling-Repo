@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { findGroup } from './data/groups';
 import { listGames, type Game } from './lib/db';
@@ -60,6 +60,25 @@ export function App() {
 
   const { route } = nav;
   const group = 'groupId' in route ? findGroup(route.groupId) : undefined;
+
+  /**
+   * Move focus to the new screen when navigating.
+   *
+   * Without this, the control that was tapped unmounts and focus falls back
+   * to the document body — so a keyboard user starts again from the top of
+   * the page, and a screen reader says nothing at all about where it went.
+   * The first render is left alone: taking focus on load is its own rudeness.
+   */
+  const mainRef = useRef<HTMLElement | null>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    mainRef.current?.focus();
+  }, [route]);
   const gameInView =
     route.name === 'shareGame' || route.name === 'game'
       ? games.find((g) => g.id === route.gameId)
@@ -103,8 +122,13 @@ export function App() {
       </header>
 
       <main
+        ref={mainRef}
         className="screen"
         key={`${route.name}-${'groupId' in route ? route.groupId : ''}`}
+        // Focusable by script but not in the tab order, so the focus move on
+        // navigation does not add a stop for everyone else.
+        tabIndex={-1}
+        aria-label={title}
         style={isChat ? { display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}
       >
         {route.name === 'home' && (

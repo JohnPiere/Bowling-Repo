@@ -617,6 +617,70 @@ async function main() {
     await context.close();
   }
 
+  // ── Focus and motion ──────────────────────────────────────────────────
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage({ viewport: { width: 412, height: 892 } });
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    await check('navigating moves focus to the new screen', async () => {
+      // Without this the tapped control unmounts and focus falls to the body,
+      // so a keyboard user starts again from the top and a screen reader says
+      // nothing about where it went.
+      const onLoad = await page.evaluate(() => document.activeElement?.tagName);
+      assert(onLoad !== 'MAIN', 'focus was taken on first load, which is its own rudeness');
+
+      await page.getByRole('button', { name: 'Stats', exact: true }).click();
+      await page.waitForTimeout(400);
+      const after = await page.evaluate(() => ({
+        tag: document.activeElement?.tagName,
+        label: document.activeElement?.getAttribute('aria-label'),
+      }));
+      assert(after.tag === 'MAIN', `focus went to ${after.tag}`);
+      assert(after.label === 'Stats', `the screen announced itself as ${after.label}`);
+
+      return `body on load, then <main aria-label="${after.label}">`;
+    });
+
+    await context.close();
+  }
+
+  {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage({ viewport: { width: 412, height: 892 } });
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    await check('reduced motion drops the travel but keeps the final state', async () => {
+      await signIn(page);
+      await page.getByRole('button', { name: /Tuesday Crew/ }).click();
+      await page.waitForSelector('.board__row');
+
+      const styles = await page.evaluate(() => {
+        const row = document.querySelector('.board__row');
+        const orb = document.querySelector('.orb');
+        return {
+          rowTransition: getComputedStyle(row).transitionDuration,
+          orbIterations: getComputedStyle(orb).animationIterationCount,
+        };
+      });
+      assert(
+        parseFloat(styles.rowTransition) * 1000 <= 1,
+        `rows still travel over ${styles.rowTransition}`,
+      );
+      // The hero orb pulses forever by default, which is the sort of thing
+      // reduced motion exists for.
+      assert(styles.orbIterations === '1', `the orb still loops ${styles.orbIterations} times`);
+
+      // The point is to remove the movement, not the layout it moves to.
+      const tops = await page.$$eval('.board__row', (els) => els.map((e) => e.style.top));
+      assert(new Set(tops).size === tops.length, `rows share positions: ${tops.join()}`);
+
+      return `no travel, orb settled, ${tops.length} rows still ranked`;
+    });
+
+    await context.close();
+  }
+
   await browser.close();
 
   const failed = results.filter((r) => !r.ok);
