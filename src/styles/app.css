@@ -1,4 +1,25 @@
 /*
+ * Inter, self-hosted.
+ *
+ * The design system's upstream CSS imports this from Google Fonts. That import
+ * is render-blocking, so first paint waits on a third party — and when the host
+ * is unreachable the page stalls until the request times out rather than
+ * falling back, measured at about twelve seconds to DOMContentLoaded.
+ *
+ * The file is fetched at build time by scripts/vendor-font.mjs and precached by
+ * the service worker. If it is missing, `swap` means text paints immediately in
+ * the system sans from the token stack and nothing waits.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  /* One variable file covering every weight the design uses. */
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2-variations');
+}
+
+/*
  * Lane Log application styles.
  *
  * Tokens come from nocturne.css and are never redefined here — only used. The
@@ -445,8 +466,10 @@ body {
 .chip::after {
   content: '';
   position: absolute;
-  /* 30px tall + 11px either side clears 44 with room for sub-pixel rounding. */
-  inset: -11px 0;
+  /* 11px above and below clears 44 tall with room for sub-pixel rounding; the
+     2px either side covers a chip with a short label, and stays well inside
+     the row's 7px gap so neighbours never steal each other's taps. */
+  inset: -11px -2px;
 }
 
 .chip[aria-pressed='true'] {

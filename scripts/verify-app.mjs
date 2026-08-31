@@ -134,8 +134,10 @@ async function main() {
       await page.getByRole('button', { name: 'Save this game' }).click();
       await page.waitForTimeout(700);
       const totals = await page.evaluate(async () => {
+        // No version: open whatever schema is current, so a migration does
+        // not break the check.
         const db = await new Promise((res) => {
-          const r = indexedDB.open('lane-log', 1);
+          const r = indexedDB.open('lane-log');
           r.onsuccess = () => res(r.result);
         });
         return new Promise((res) => {

@@ -1,5 +1,9 @@
 /* Nocturne — design-system tokens and component classes. This file is the source of truth for the system's look; retune it here and see readme.md. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* The upstream file imports Inter from Google Fonts here. That import is
+   render-blocking, which makes first paint hostage to a third party — and on
+   an unreachable network it stalls rather than falling back, measured at
+   roughly twelve seconds to DOMContentLoaded. Inter is self-hosted instead;
+   see scripts/vendor-font.mjs. The tokens below are otherwise unchanged. */
 
 :root {
   --color-bg: #161826;

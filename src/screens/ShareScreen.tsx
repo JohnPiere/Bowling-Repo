@@ -29,7 +29,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
   const [tellCrew, setTellCrew] = useState(true);
 
   const card = scoreGame(game.rolls);
-  const hasPhoto = Boolean(game.sheetImage);
+  const hasPhoto = Boolean(game.hasSheet);
 
   async function share() {
     if (!groupId) return;

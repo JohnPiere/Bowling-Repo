@@ -168,7 +168,7 @@ export function SettingsScreen({ games }: { games: Game[] }) {
         </div>
         <div className="row row--between" style={{ marginTop: 6 }}>
           <span className="muted">Scanned sheets kept</span>
-          <span className="tnum">{games.filter((g) => g.sheetImage).length}</span>
+          <span className="tnum">{games.filter((g) => g.hasSheet).length}</span>
         </div>
 
         {storage?.usage !== null && storage !== null && (
@@ -259,10 +259,14 @@ function describe(status: PushStatus): string {
   }
 }
 
-/** Download the archive. Photos are dropped — JSON is the wrong place for them. */
+/**
+ * Download the archive.
+ *
+ * Photos are not included: they live in their own store and JSON is the wrong
+ * place for tens of megabytes of base64.
+ */
 function exportGames(games: Game[]): void {
-  const payload = games.map(({ sheetImage: _sheetImage, ...game }) => game);
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(games, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement('a');

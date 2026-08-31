@@ -23,8 +23,14 @@ export interface Game {
   total: number;
   isComplete: boolean;
   source: GameSource;
-  /** Photo the game was imported from, kept for re-checking a scan. */
-  sheetImage?: Blob;
+  /**
+   * Whether a scanned sheet photo is stored for this game.
+   *
+   * The photo itself lives in the `sheets` store, not here: a season of
+   * scans is tens of megabytes, and reading the game list would otherwise
+   * materialise every one of them just to show a column of scores.
+   */
+  hasSheet?: boolean;
   playedAt: number;
   updatedAt: number;
   /** Set once the record has been pushed to a server. */
@@ -43,11 +49,22 @@ export interface PushRecord {
   createdAt: number;
 }
 
+/** A scanned sheet photo, kept apart from the game it belongs to. */
+export interface SheetRecord {
+  gameId: string;
+  image: Blob;
+  storedAt: number;
+}
+
 interface LaneLogDB extends DBSchema {
   games: {
     key: string;
     value: Game;
     indexes: { 'by-playedAt': number; 'by-bowler': string };
+  };
+  sheets: {
+    key: string;
+    value: SheetRecord;
   };
   push: {
     key: string;
@@ -56,18 +73,47 @@ interface LaneLogDB extends DBSchema {
 }
 
 const DB_NAME = 'lane-log';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<LaneLogDB>> | null = null;
 
 function db() {
   if (!dbPromise) {
     dbPromise = openDB<LaneLogDB>(DB_NAME, DB_VERSION, {
-      upgrade(database) {
-        const games = database.createObjectStore('games', { keyPath: 'id' });
-        games.createIndex('by-playedAt', 'playedAt');
-        games.createIndex('by-bowler', 'bowler');
-        database.createObjectStore('push', { keyPath: 'id' });
+      upgrade(database, oldVersion, _newVersion, transaction) {
+        if (oldVersion < 1) {
+          const games = database.createObjectStore('games', { keyPath: 'id' });
+          games.createIndex('by-playedAt', 'playedAt');
+          games.createIndex('by-bowler', 'bowler');
+          database.createObjectStore('push', { keyPath: 'id' });
+        }
+
+        if (oldVersion < 2) {
+          database.createObjectStore('sheets', { keyPath: 'gameId' });
+
+          // Move photos already stored inline out to their own store, so an
+          // existing install gets the benefit without losing its scans.
+          const games = transaction.objectStore('games');
+          const sheets = transaction.objectStore('sheets');
+
+          void games.openCursor().then(async function migrate(cursor) {
+            if (!cursor) return;
+            const legacy = cursor.value as Game & { sheetImage?: Blob };
+
+            if (legacy.sheetImage) {
+              await sheets.put({
+                gameId: legacy.id,
+                image: legacy.sheetImage,
+                storedAt: legacy.updatedAt,
+              });
+              delete legacy.sheetImage;
+              legacy.hasSheet = true;
+              await cursor.update(legacy);
+            }
+
+            return migrate(await cursor.continue());
+          });
+        }
       },
     });
   }
@@ -90,20 +136,48 @@ export async function getGame(id: string): Promise<Game | undefined> {
   return (await db()).get('games', id);
 }
 
+/**
+ * Store a game, and its sheet photo if it has one.
+ *
+ * The photo goes to its own store in the same transaction, so a game never
+ * ends up claiming a photo that was not written.
+ */
 export async function saveGame(
-  game: Omit<Game, 'id' | 'updatedAt'> & { id?: string },
+  game: Omit<Game, 'id' | 'updatedAt' | 'hasSheet'> & { id?: string; sheetImage?: Blob },
 ): Promise<Game> {
+  const { sheetImage, ...rest } = game;
+  const id = game.id ?? newId();
+
   const record: Game = {
-    ...game,
-    id: game.id ?? newId(),
+    ...rest,
+    id,
+    hasSheet: Boolean(sheetImage),
     updatedAt: Date.now(),
   };
-  await (await db()).put('games', record);
+
+  const database = await db();
+  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+  await tx.objectStore('games').put(record);
+  if (sheetImage) {
+    await tx.objectStore('sheets').put({ gameId: id, image: sheetImage, storedAt: record.updatedAt });
+  }
+  await tx.done;
+
   return record;
 }
 
+/** The scanned photo a game came from, loaded only when something needs it. */
+export async function getSheetImage(gameId: string): Promise<Blob | undefined> {
+  return (await (await db()).get('sheets', gameId))?.image;
+}
+
 export async function deleteGame(id: string): Promise<void> {
-  await (await db()).delete('games', id);
+  const database = await db();
+  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+  await tx.objectStore('games').delete(id);
+  // Deleting the game must not leave its photo occupying storage forever.
+  await tx.objectStore('sheets').delete(id);
+  await tx.done;
 }
 
 /** Games that have never been pushed to a server, oldest first. */

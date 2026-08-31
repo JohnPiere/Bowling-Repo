@@ -10,3 +10,4 @@ public/tesseract/
 *.local
 .DS_Store
 scanner-check/
+public/fonts/

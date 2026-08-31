@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GameRow } from './HomeScreen';
 import type { Game } from '../lib/db';
+// The same ranges the analytics screen offers, so the two agree on both the
+// labels and what each one means.
+import { applyRange, RANGES, type RangeKey } from '../lib/stats';
 
-const RANGES = [
-  { key: 'g5', label: 'Last 5', games: 5 },
-  { key: 'd30', label: '30 days', days: 30 },
-  { key: 'd90', label: '90 days', days: 90 },
-  { key: 'd180', label: '180 days', days: 180 },
-  { key: 'all', label: 'All' },
-] as const;
-
-type RangeKey = (typeof RANGES)[number]['key'];
+/**
+ * How many games to render at once.
+ *
+ * A long season is hundreds of games, and each row draws a ten-bar spark from
+ * a rescored card. Rendering them all costs a second of blank screen for rows
+ * nobody has scrolled to yet.
+ */
+const PAGE = 40;
 
 /** Every game, newest first, grouped by the day it was bowled. */
 export function HistoryScreen({
@@ -21,9 +23,17 @@ export function HistoryScreen({
   onShareGame: (gameId: string) => void;
 }) {
   const [range, setRange] = useState<RangeKey>('all');
+  const [shown, setShown] = useState(PAGE);
 
   const filtered = useMemo(() => applyRange(games, range), [games, range]);
-  const sessions = useMemo(() => groupByDay(filtered), [filtered]);
+
+  // Changing the range starts the list again rather than keeping a scroll
+  // position into a different set of games.
+  useEffect(() => setShown(PAGE), [range, games.length]);
+
+  const page = useMemo(() => filtered.slice(0, shown), [filtered, shown]);
+  const sessions = useMemo(() => groupByDay(page), [page]);
+  const remaining = filtered.length - page.length;
 
   return (
     <>
@@ -44,31 +54,33 @@ export function HistoryScreen({
       {filtered.length === 0 ? (
         <p className="empty">No games in this range.</p>
       ) : (
-        sessions.map(([day, dayGames]) => (
-          <section key={day}>
-            <h2 className="section-title">
-              {day} · {dayGames.length} game{dayGames.length === 1 ? '' : 's'} · avg{' '}
-              {Math.round(dayGames.reduce((sum, g) => sum + g.total, 0) / dayGames.length)}
-            </h2>
-            {dayGames.map((game) => (
-              <GameRow key={game.id} game={game} onOpen={() => onShareGame(game.id)} />
-            ))}
-          </section>
-        ))
+        <>
+          {sessions.map(([day, dayGames]) => (
+            <section key={day}>
+              <h2 className="section-title">
+                {day} · {dayGames.length} game{dayGames.length === 1 ? '' : 's'} · avg{' '}
+                {Math.round(dayGames.reduce((sum, g) => sum + g.total, 0) / dayGames.length)}
+              </h2>
+              {dayGames.map((game) => (
+                <GameRow key={game.id} game={game} onOpen={() => onShareGame(game.id)} />
+              ))}
+            </section>
+          ))}
+
+          {remaining > 0 && (
+            <button
+              type="button"
+              className="btn-lg"
+              style={{ marginTop: 11 }}
+              onClick={() => setShown((current) => current + PAGE)}
+            >
+              Show {Math.min(PAGE, remaining)} more · {remaining} older
+            </button>
+          )}
+        </>
       )}
     </>
   );
-}
-
-function applyRange(games: Game[], range: RangeKey): Game[] {
-  const spec = RANGES.find((r) => r.key === range);
-  if (!spec || spec.key === 'all') return games;
-  if ('games' in spec && spec.games) return games.slice(0, spec.games);
-  if ('days' in spec && spec.days) {
-    const cutoff = Date.now() - spec.days * 24 * 60 * 60 * 1000;
-    return games.filter((game) => game.playedAt >= cutoff);
-  }
-  return games;
 }
 
 /** Games arrive newest-first, so insertion order preserves that per day. */

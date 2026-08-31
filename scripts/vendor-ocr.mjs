@@ -1,5 +1,5 @@
 /**
- * Put the OCR engine on our own origin.
+ * Put third-party runtime assets on our own origin.
  *
  * Tesseract.js otherwise pulls its wasm core and language data from a public
  * CDN on the first scan. Same-origin copies mean scanning works behind a
