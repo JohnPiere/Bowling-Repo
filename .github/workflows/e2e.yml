@@ -1,6 +1,6 @@
-# The scanner check drives a real browser and takes a couple of minutes, so it
-# runs on demand and on a schedule rather than on every push.
-name: Scanner
+# The browser checks take a couple of minutes, so they run on demand and on a
+# schedule rather than on every push.
+name: End-to-end
 
 on:
   workflow_dispatch:
@@ -23,11 +23,16 @@ jobs:
       - run: npm i -D playwright && npx playwright install --with-deps chromium
       - run: npm run build
 
-      - name: Serve and verify
+      - name: Serve
         run: |
           npm run preview -- --port 4173 &
           npx wait-on http://localhost:4173 --timeout 60000
-          npm run verify:scanner -- http://localhost:4173
+
+      - name: App checks
+        run: npm run verify:app -- http://localhost:4173
+
+      - name: Scanner checks
+        run: npm run verify:scanner -- http://localhost:4173
 
       - uses: actions/upload-artifact@v4
         if: always()

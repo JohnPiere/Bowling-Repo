@@ -48,19 +48,26 @@ npm run typecheck
 npm run build        # production build into dist/
 ```
 
-The scanner has an end-to-end check of its own, opt-in because it drives a real
-browser:
+Two browser-driven checks cover what unit tests cannot. Opt-in, since they need
+a browser:
 
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:scanner
+npm run verify:app       # 14 checks
+npm run verify:scanner   # 5 generated sheets
 ```
 
-It generates score sheets that imitate what a phone captures — a tilt, uneven
-overhead light, sensor noise, pencil rather than ink — pushes each through the
-real scan flow, and fails if a readable sheet is misread or an unreadable one
-produces a game anyway.
+`verify:app` answers the questions only a real browser can: does the service
+worker serve the app with the network cut, does a push actually reach the
+worker with its click target intact, does a save that fails lose the game, does
+the leaderboard *move* its rows rather than re-sort them, is every control 44px
+to a thumb.
+
+`verify:scanner` generates score sheets that imitate what a phone captures — a
+tilt, uneven overhead light, sensor noise, pencil rather than ink — pushes each
+through the real scan flow, and fails if a readable sheet is misread or an
+unreadable one produces a game anyway.
 
 ### Testing on a phone
 

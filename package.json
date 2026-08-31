@@ -16,7 +16,8 @@
     "vendor:ocr": "node scripts/vendor-ocr.mjs",
     "prebuild": "node scripts/vendor-ocr.mjs",
     "predev": "node scripts/vendor-ocr.mjs",
-    "verify:scanner": "node scripts/verify-scanner.mjs"
+    "verify:scanner": "node scripts/verify-scanner.mjs",
+    "verify:app": "node scripts/verify-app.mjs"
   },
   "dependencies": {
     "idb": "^8.0.3",
