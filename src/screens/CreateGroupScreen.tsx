@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
-import { QrCode } from '../components/QrCode';
+import { QrCode, joinUrl } from '../components/QrCode';
 
 interface Props {
   onOpenGroup: (groupId: string) => void;
@@ -63,7 +63,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
 
           {showQr && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-              <QrCode value={code} />
+              <QrCode value={joinUrl(code)} />
             </div>
           )}
 

@@ -1,17 +1,83 @@
-import { useState } from 'react';
-import { QrCode } from '../components/QrCode';
+import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../components/Icon';
+import { QrCode, joinUrl } from '../components/QrCode';
 import { GROUPS } from '../data/groups';
+import { startRearCamera, stopStream, supportsLiveCamera } from '../lib/camera';
+import { inviteCodeFrom, scanFrames } from '../lib/qr';
 
 interface Props {
   onJoined: (groupId: string) => void;
+  /** A code carried in by a ?join= link, so the field starts filled. */
+  initialCode?: string;
 }
 
 const CODE_LENGTH = 6;
 
 /** Join with a code somebody sent, or by scanning their QR. */
-export function JoinGroupScreen({ onJoined }: Props) {
+export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
   const [tab, setTab] = useState<'code' | 'qr'>('code');
-  const [raw, setRaw] = useState('');
+  const [raw, setRaw] = useState(initialCode);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [ignored, setIgnored] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const stopScanRef = useRef<(() => void) | null>(null);
+
+  function stopScanning() {
+    stopScanRef.current?.();
+    stopScanRef.current = null;
+    stopStream(streamRef.current);
+    streamRef.current = null;
+    setScanning(false);
+  }
+
+  // The camera must be released however the screen is left, not only when the
+  // scan succeeds.
+  useEffect(() => stopScanning, []);
+
+  async function startScanning() {
+    setScanError(null);
+    setIgnored(false);
+    try {
+      const stream = await startRearCamera();
+      streamRef.current = stream;
+      setScanning(true);
+
+      queueMicrotask(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        void video.play();
+
+        // scanFrames stops at the first code it reads. A QR that is not one of
+        // ours is not a reason to give up, so the handler starts it again —
+        // pointing a camera at a table of codes should keep looking.
+        const watch = () => {
+          stopScanRef.current = scanFrames(
+            video,
+            (text) => {
+              const code = inviteCodeFrom(text);
+              if (!code) {
+                setIgnored(true);
+                watch();
+                return;
+              }
+              setRaw(code);
+              stopScanning();
+              setTab('code');
+            },
+            setScanError,
+          );
+        };
+
+        watch();
+      });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   // Codes are typed off a screen or a scrap of paper, so normalise hard.
   const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
@@ -21,7 +87,15 @@ export function JoinGroupScreen({ onJoined }: Props) {
   return (
     <>
       <div className="chips" role="group" aria-label="How to join">
-        <button type="button" className="chip" aria-pressed={tab === 'code'} onClick={() => setTab('code')}>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={tab === 'code'}
+          onClick={() => {
+            stopScanning();
+            setTab('code');
+          }}
+        >
           Invite code
         </button>
         <button type="button" className="chip" aria-pressed={tab === 'qr'} onClick={() => setTab('qr')}>
@@ -86,13 +160,47 @@ export function JoinGroupScreen({ onJoined }: Props) {
         </>
       ) : (
         <>
-          <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
-            <QrCode value="TCRW31" size={180} />
-          </div>
-          <p className="muted">
-            Point the camera at the QR the group owner shows you. Scanning is not wired up yet —
-            the code tab works today.
-          </p>
+          {scanError && <div className="note note--bad">{scanError}</div>}
+          {ignored && (
+            <div className="note note--warn">
+              That QR is not a Lane Log invite. Still looking.
+            </div>
+          )}
+
+          {scanning ? (
+            <>
+              <div className="viewfinder">
+                <video ref={videoRef} className="viewfinder__video" playsInline muted />
+                <div className="viewfinder__guide" />
+                <div className="viewfinder__hint">Point at the group's QR code</div>
+              </div>
+              <button type="button" className="btn-lg" onClick={stopScanning}>
+                Stop scanning
+              </button>
+            </>
+          ) : (
+            <>
+              {supportsLiveCamera() ? (
+                <button type="button" className="btn-lg btn-lg--primary" onClick={startScanning}>
+                  <Icon name="camera" size={18} />
+                  Scan a QR code
+                </button>
+              ) : (
+                <div className="note note--warn">
+                  This browser will not give the app a camera. Use the invite code instead.
+                </div>
+              )}
+
+              <h2 className="section-title">Or show yours</h2>
+              <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
+                <QrCode value={joinUrl('TCRW31')} size={180} />
+                <p className="muted" style={{ marginTop: 12, marginBottom: 0, textAlign: 'center' }}>
+                  This one opens Tuesday Crew. A phone's own camera app reads it too — it is a
+                  link, not just a code.
+                </p>
+              </div>
+            </>
+          )}
         </>
       )}
 

@@ -1,63 +1,86 @@
+import { useEffect, useState } from 'react';
+
 /**
- * A QR-shaped placeholder.
+ * A real, scannable QR code.
  *
- * Deliberately not a real encoder: it draws the three finder squares and a
- * deterministic field so the screen reads correctly, and it is obviously a
- * placeholder rather than a code that scans to the wrong thing. Swap in a real
- * encoder when joining by QR is wired up.
+ * It encodes a join URL rather than the bare code, so scanning it with the
+ * phone's own camera app opens the group directly — which is what people will
+ * actually do, rather than opening Lane Log first and finding the scanner.
+ *
+ * The encoder is loaded on demand: showing a code is a rare thing to do, and
+ * the library has no business in the bundle everyone downloads.
  */
-
-const GRID = 21;
-
 export function QrCode({ value, size = 168 }: { value: string; size?: number }) {
-  const cell = size / GRID;
+  const [modules, setModules] = useState<boolean[][] | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  // Seeded from the value so the same code always draws the same field.
-  let seed = 0;
-  for (const char of value) seed = (seed * 31 + char.charCodeAt(0)) % 100000;
+  useEffect(() => {
+    let cancelled = false;
 
-  const modules: { x: number; y: number }[] = [];
+    void import('qrcode-generator')
+      .then(({ default: qrcode }) => {
+        // Type 0 picks the smallest version that fits; 'M' tolerates about
+        // 15% damage, which covers a screen photographed at an angle.
+        const qr = qrcode(0, 'M');
+        qr.addData(value);
+        qr.make();
 
-  for (let y = 0; y < GRID; y++) {
-    for (let x = 0; x < GRID; x++) {
-      const finder = finderModule(x, y);
-      if (finder !== null) {
-        if (finder) modules.push({ x, y });
-        continue;
-      }
-      if ((x * 7 + y * 13 + x * y * 3 + seed) % 11 > 5) modules.push({ x, y });
-    }
+        const count = qr.getModuleCount();
+        const grid = Array.from({ length: count }, (_, row) =>
+          Array.from({ length: count }, (_, col) => qr.isDark(row, col)),
+        );
+        if (!cancelled) setModules(grid);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  if (failed) {
+    return (
+      <p className="muted" style={{ textAlign: 'center' }}>
+        The QR code could not be drawn. The code itself still works.
+      </p>
+    );
   }
+
+  if (!modules) {
+    return <div style={{ width: size, height: size }} aria-hidden="true" />;
+  }
+
+  const count = modules.length;
+  // A quiet zone of four modules is part of the spec; without it many
+  // scanners will not see the code at all.
+  const quiet = 4;
+  const span = count + quiet * 2;
 
   return (
     <svg
       width={size}
       height={size}
-      viewBox={`0 0 ${GRID} ${GRID}`}
+      viewBox={`0 0 ${span} ${span}`}
       role="img"
-      aria-label={`QR placeholder for invite code ${value}`}
-      style={{ background: '#e9e9ed', borderRadius: 8, padding: cell / 2, boxSizing: 'content-box' }}
+      aria-label={`QR code for ${value}`}
+      style={{ borderRadius: 8, display: 'block' }}
+      shapeRendering="crispEdges"
     >
-      {modules.map((m) => (
-        <rect key={`${m.x}-${m.y}`} x={m.x} y={m.y} width={1} height={1} fill="#161826" />
-      ))}
+      <rect width={span} height={span} fill="#e9e9ed" />
+      {modules.map((row, y) =>
+        row.map((dark, x) =>
+          dark ? (
+            <rect key={`${x}-${y}`} x={x + quiet} y={y + quiet} width={1} height={1} fill="#161826" />
+          ) : null,
+        ),
+      )}
     </svg>
   );
 }
 
-/** true = dark module, false = light, null = not part of a finder. */
-function finderModule(x: number, y: number): boolean | null {
-  for (const [fx, fy] of [
-    [3, 3],
-    [17, 3],
-    [3, 17],
-  ]) {
-    const dx = Math.abs(x - fx);
-    const dy = Math.abs(y - fy);
-    if (dx > 3 || dy > 3) continue;
-    const ring = Math.max(dx, dy);
-    // Solid centre, a light ring, then the dark border.
-    return ring !== 1 && ring !== 3;
-  }
-  return null;
+/** The URL a group's QR encodes. */
+export function joinUrl(code: string): string {
+  return `${window.location.origin}/?join=${encodeURIComponent(code)}`;
 }

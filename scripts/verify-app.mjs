@@ -472,6 +472,58 @@ async function main() {
       return 'photo loaded on demand; delete confirmed, then removed both records';
     });
 
+    await check('the QR the app draws actually scans', async () => {
+      await page.getByRole('button', { name: 'Crew', exact: true }).click();
+      await page.getByRole('button', { name: 'Join with a code' }).click();
+      await page.getByRole('button', { name: 'QR code' }).click();
+      await page.waitForSelector('svg[aria-label*="QR"]', { timeout: 10000 });
+
+      // Rasterise what the app drew, then decode it with the same library the
+      // scanner uses. A QR that renders but does not scan looks fine and is
+      // useless.
+      const { data, size } = await page.evaluate(async () => {
+        const svg = document.querySelector('svg[aria-label*="QR"]');
+        const xml = new XMLSerializer().serializeToString(svg);
+        const url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+
+        const img = new Image();
+        await new Promise((res, rej) => {
+          img.onload = res;
+          img.onerror = rej;
+          img.src = url;
+        });
+
+        const size = 480;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const g = canvas.getContext('2d');
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, size, size);
+        g.drawImage(img, 0, 0, size, size);
+
+        return { data: Array.from(g.getImageData(0, 0, size, size).data), size };
+      });
+
+      const { default: jsQR } = await import('jsqr');
+      const found = jsQR(Uint8ClampedArray.from(data), size, size, {
+        inversionAttempts: 'attemptBoth',
+      });
+
+      assert(found?.data, 'the QR the app drew could not be decoded');
+      assert(found.data.includes('join=TCRW31'), `decoded to ${found.data}`);
+      return found.data;
+    });
+
+    await check('a scanned join link opens with the code already in', async () => {
+      await page.goto(`${BASE}/?join=TCRW31`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('.code-input');
+      const value = await page.locator('.code-input').inputValue();
+      assert(value === 'TCRW31', `the field held ${JSON.stringify(value)}`);
+      await page.waitForSelector('text=invite valid');
+      return 'field filled and the group matched';
+    });
+
     await check('joining by code validates against the group', async () => {
       await page.getByRole('button', { name: 'Crew', exact: true }).click();
       await page.getByRole('button', { name: 'Join with a code' }).click();

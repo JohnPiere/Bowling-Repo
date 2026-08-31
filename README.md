@@ -18,7 +18,7 @@ scanning, which is not in the handoff.
 | **Analytics** | Score trend, how frames finish, first-ball distribution — one range selector over all three, each with a table view. |
 | **Each game** | Full scorecard, the sheet it was scanned from, which boards it is on, correcting a frame after the fact, and deletion. |
 | **Group dashboard** | The handoff's centrepiece: hero standing, metric switcher, podium, and the six-row board whose rows *slide* between ranks. |
-| **The rest of the crew** | Auth (guest by default), groups list, create and join by code or QR, chat, member detail, group settings, and sharing a game to a board. |
+| **The rest of the crew** | Auth (guest by default), groups list, create a group, join by typed code or by scanning a QR, chat, member detail, group settings, and sharing a game to a board. |
 
 ## Running it
 
@@ -55,7 +55,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 16 checks
+npm run verify:app       # 18 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 

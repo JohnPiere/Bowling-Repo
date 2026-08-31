@@ -109,4 +109,4 @@ same two throws, so a scanner that reads one for the other is still right.
 
 No backend at all. Groups, rosters, chat and shared posts are sample data in
 `src/data/` — obviously fictional, and the one place to replace. Also absent:
-real OAuth, QR *scanning* (showing a code works), and video.
+real Google and Apple OAuth, and video.

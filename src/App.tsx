@@ -31,6 +31,9 @@ const TABS: { key: RouteName; label: string; icon: IconName }[] = [
   { key: 'groups', label: 'Crew', icon: 'users' },
 ];
 
+/** A code from a ?join= link, read once at startup. */
+const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '';
+
 export function App() {
   const nav = useNavigation(initialRoute());
   const { session, signIn } = useSession();
@@ -180,7 +183,10 @@ export function App() {
         )}
 
         {route.name === 'joinGroup' && (
-          <JoinGroupScreen onJoined={(groupId) => nav.replace({ name: 'group', groupId })} />
+          <JoinGroupScreen
+            initialCode={invitedCode}
+            onJoined={(groupId) => nav.replace({ name: 'group', groupId })}
+          />
         )}
 
         {route.name === 'sharedGames' && group && <SharedGamesScreen group={group} />}
@@ -284,9 +290,15 @@ function describe(route: Route, groupName?: string) {
   }
 }
 
-/** Home-screen shortcuts deep-link with ?screen=. */
+/**
+ * Home-screen shortcuts deep-link with ?screen=, and a scanned QR arrives as
+ * ?join=CODE — which should open the join screen with the code already in.
+ */
 function initialRoute(): Route {
-  const requested = new URLSearchParams(window.location.search).get('screen');
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('join')) return { name: 'joinGroup' };
+
+  const requested = params.get('screen');
   if (requested && (TAB_ROUTES as string[]).includes(requested)) {
     return { name: requested as RouteName } as Route;
   }
