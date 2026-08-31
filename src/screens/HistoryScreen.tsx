@@ -13,7 +13,13 @@ const RANGES = [
 type RangeKey = (typeof RANGES)[number]['key'];
 
 /** Every game, newest first, grouped by the day it was bowled. */
-export function HistoryScreen({ games }: { games: Game[] }) {
+export function HistoryScreen({
+  games,
+  onShareGame,
+}: {
+  games: Game[];
+  onShareGame: (gameId: string) => void;
+}) {
   const [range, setRange] = useState<RangeKey>('all');
 
   const filtered = useMemo(() => applyRange(games, range), [games, range]);
@@ -45,7 +51,7 @@ export function HistoryScreen({ games }: { games: Game[] }) {
               {Math.round(dayGames.reduce((sum, g) => sum + g.total, 0) / dayGames.length)}
             </h2>
             {dayGames.map((game) => (
-              <GameRow key={game.id} game={game} />
+              <GameRow key={game.id} game={game} onOpen={() => onShareGame(game.id)} />
             ))}
           </section>
         ))

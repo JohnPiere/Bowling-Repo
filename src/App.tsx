@@ -17,6 +17,8 @@ import { MemberScreen } from './screens/MemberScreen';
 import { PlayScreen } from './screens/PlayScreen';
 import { ScanScreen } from './screens/ScanScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { ShareScreen } from './screens/ShareScreen';
+import { SharedGamesScreen } from './screens/SharedGamesScreen';
 import { StatsScreen } from './screens/StatsScreen';
 
 const TABS: { key: RouteName; label: string; icon: IconName }[] = [
@@ -38,8 +40,22 @@ export function App() {
 
   useEffect(refresh, [refresh]);
 
+  /**
+   * A finished game goes straight to the share screen when there is a crew to
+   * share it with; otherwise the bowler lands back on their season.
+   */
+  const finishGame = useCallback(
+    (gameId: string) => {
+      refresh();
+      if (session.isGuest) nav.selectTab('home');
+      else nav.replace({ name: 'shareGame', gameId });
+    },
+    [refresh, session.isGuest, nav],
+  );
+
   const { route } = nav;
   const group = 'groupId' in route ? findGroup(route.groupId) : undefined;
+  const shareTarget = route.name === 'shareGame' ? games.find((g) => g.id === route.gameId) : undefined;
   const { title, kicker, meta } = describe(route, group?.name);
 
   // The chat pins its composer, so it manages its own scrolling.
@@ -95,29 +111,24 @@ export function App() {
             onStartGame={() => nav.selectTab('play')}
             onOpenHistory={() => nav.selectTab('history')}
             onOpenGroup={() => nav.selectTab('groups')}
+            onShareGame={(gameId) => nav.push({ name: 'shareGame', gameId })}
           />
         )}
 
         {route.name === 'play' && (
-          <PlayScreen
-            onSaved={() => {
-              refresh();
-              nav.selectTab('home');
-            }}
-            onScan={() => nav.push({ name: 'scan' })}
-          />
+          <PlayScreen onSaved={finishGame} onScan={() => nav.push({ name: 'scan' })} />
         )}
 
         {route.name === 'scan' && (
-          <ScanScreen
-            onImported={() => {
-              refresh();
-              nav.selectTab('home');
-            }}
-          />
+          <ScanScreen onImported={finishGame} />
         )}
 
-        {route.name === 'history' && <HistoryScreen games={games} />}
+        {route.name === 'history' && (
+          <HistoryScreen
+            games={games}
+            onShareGame={(gameId) => nav.push({ name: 'shareGame', gameId })}
+          />
+        )}
         {route.name === 'stats' && <StatsScreen games={games} />}
 
         {route.name === 'groups' && (
@@ -148,6 +159,7 @@ export function App() {
             onOpenMember={(memberId) => nav.push({ name: 'member', groupId: group.id, memberId })}
             onOpenChat={() => nav.push({ name: 'chat', groupId: group.id })}
             onOpenSettings={() => nav.push({ name: 'groupSettings', groupId: group.id })}
+            onOpenShared={() => nav.push({ name: 'sharedGames', groupId: group.id })}
           />
         )}
 
@@ -170,6 +182,23 @@ export function App() {
 
         {route.name === 'joinGroup' && (
           <JoinGroupScreen onJoined={(groupId) => nav.replace({ name: 'group', groupId })} />
+        )}
+
+        {route.name === 'sharedGames' && group && <SharedGamesScreen group={group} />}
+
+        {route.name === 'shareGame' && shareTarget && (
+          <ShareScreen
+            game={shareTarget}
+            onCancel={nav.back}
+            onShared={(groupId) => {
+              refresh();
+              nav.replace({ name: 'sharedGames', groupId });
+            }}
+          />
+        )}
+
+        {route.name === 'shareGame' && !shareTarget && (
+          <p className="empty">That game is no longer on this device.</p>
         )}
 
         {route.name === 'settings' && <SettingsScreen games={games} />}
@@ -197,9 +226,15 @@ export function App() {
 function isTabActive(tab: RouteName, route: Route): boolean {
   if (tab === route.name) return true;
   if (tab === 'groups') {
-    return ['group', 'chat', 'member', 'groupSettings', 'createGroup', 'joinGroup'].includes(
-      route.name,
-    );
+    return [
+      'group',
+      'chat',
+      'member',
+      'groupSettings',
+      'createGroup',
+      'joinGroup',
+      'sharedGames',
+    ].includes(route.name);
   }
   if (tab === 'play') return route.name === 'scan';
   return false;
@@ -221,6 +256,8 @@ function describe(route: Route, groupName?: string) {
     case 'groupSettings': return { title: 'Group settings', kicker: groupName ?? 'Group', meta: '' };
     case 'createGroup': return { title: 'Create a group', kicker: 'Groups', meta: '' };
     case 'joinGroup': return { title: 'Join a group', kicker: 'Invite', meta: '' };
+    case 'shareGame': return { title: 'Share this game', kicker: 'Game finished', meta: '' };
+    case 'sharedGames': return { title: 'Shared games', kicker: groupName ?? 'Group', meta: '' };
   }
 }
 

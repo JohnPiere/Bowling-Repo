@@ -6,7 +6,8 @@ import { saveGame } from '../lib/db';
 import { isGameComplete, nextRollCursor, scoreGame } from '../lib/scoring';
 
 interface Props {
-  onSaved: () => void;
+  /** Receives the saved game so the caller can offer to share it. */
+  onSaved: (gameId: string) => void;
   onScan: () => void;
 }
 
@@ -29,7 +30,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
   async function save() {
     setSaving(true);
     try {
-      await saveGame({
+      const saved = await saveGame({
         bowler: 'You',
         house: house.trim() || undefined,
         rolls,
@@ -41,7 +42,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
       setRolls([]);
       setHouse('');
       setStarted(false);
-      onSaved();
+      onSaved(saved.id);
     } finally {
       setSaving(false);
     }

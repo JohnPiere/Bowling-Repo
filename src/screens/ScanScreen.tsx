@@ -22,7 +22,7 @@ type Stage = 'choose' | 'framing' | 'reading' | 'review';
  * silently, and a wrong score quietly entering your average is worse than
  * having to check one.
  */
-export function ScanScreen({ onImported }: { onImported: () => void }) {
+export function ScanScreen({ onImported }: { onImported: (gameId: string) => void }) {
   const [stage, setStage] = useState<Stage>('choose');
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -107,13 +107,13 @@ export function ScanScreen({ onImported }: { onImported: () => void }) {
     if (!corrected || 'error' in corrected) return;
     setSaving(true);
     try {
-      await importScannedGame(corrected.rolls, {
+      const saved = await importScannedGame(corrected.rolls, {
         bowler: 'You',
         house: house.trim() || undefined,
         sheetImage: review?.image,
       });
       reset();
-      onImported();
+      onImported(saved.id);
     } finally {
       setSaving(false);
     }

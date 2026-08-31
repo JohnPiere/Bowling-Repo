@@ -23,7 +23,9 @@ export type Route =
   | { name: 'joinGroup' }
   | { name: 'groupSettings'; groupId: string }
   | { name: 'chat'; groupId: string }
-  | { name: 'member'; groupId: string; memberId: string };
+  | { name: 'member'; groupId: string; memberId: string }
+  | { name: 'shareGame'; gameId: string }
+  | { name: 'sharedGames'; groupId: string };
 
 export type RouteName = Route['name'];
 

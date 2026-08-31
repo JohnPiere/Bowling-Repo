@@ -29,6 +29,10 @@ export interface Game {
   updatedAt: number;
   /** Set once the record has been pushed to a server. */
   syncedAt?: number;
+  /** Ids of the groups this game has been shared into. */
+  sharedTo?: string[];
+  /** Whether the scanned sheet photo went with it. */
+  sharedWithSheet?: boolean;
 }
 
 export interface PushRecord {
@@ -106,6 +110,54 @@ export async function deleteGame(id: string): Promise<void> {
 export async function unsyncedGames(): Promise<Game[]> {
   const all = await (await db()).getAllFromIndex('games', 'by-playedAt');
   return all.filter((game) => game.syncedAt === undefined);
+}
+
+/**
+ * Share a game into a group, or update what was shared.
+ *
+ * Sharing copies nothing: the game stays the bowler's, and the group holds a
+ * reference. Unsharing therefore only has to drop the id — the game itself is
+ * never at risk.
+ */
+export async function shareGame(
+  id: string,
+  groupId: string,
+  options: { withSheet?: boolean } = {},
+): Promise<Game | undefined> {
+  const game = await getGame(id);
+  if (!game) return undefined;
+
+  const sharedTo = game.sharedTo ?? [];
+  const updated: Game = {
+    ...game,
+    sharedTo: sharedTo.includes(groupId) ? sharedTo : [...sharedTo, groupId],
+    sharedWithSheet: options.withSheet ?? game.sharedWithSheet,
+    updatedAt: Date.now(),
+  };
+
+  await (await db()).put('games', updated);
+  return updated;
+}
+
+/** Retract a game from a group. It stays in the bowler's own history. */
+export async function unshareGame(id: string, groupId: string): Promise<Game | undefined> {
+  const game = await getGame(id);
+  if (!game) return undefined;
+
+  const updated: Game = {
+    ...game,
+    sharedTo: (game.sharedTo ?? []).filter((entry) => entry !== groupId),
+    updatedAt: Date.now(),
+  };
+
+  await (await db()).put('games', updated);
+  return updated;
+}
+
+/** Games this bowler has shared into a given group, newest first. */
+export async function gamesSharedWith(groupId: string): Promise<Game[]> {
+  const all = await listGames();
+  return all.filter((game) => game.sharedTo?.includes(groupId));
 }
 
 export async function rememberPushSubscription(subscription: PushSubscription): Promise<void> {

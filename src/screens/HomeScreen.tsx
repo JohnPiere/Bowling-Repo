@@ -7,10 +7,11 @@ interface Props {
   onStartGame: () => void;
   onOpenHistory: () => void;
   onOpenGroup: () => void;
+  onShareGame: (gameId: string) => void;
 }
 
 /** Dashboard: how you are bowling, then the fastest way to bowl again. */
-export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup }: Props) {
+export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup, onShareGame }: Props) {
   const finished = games.filter((game) => game.isComplete);
   const average = finished.length
     ? Math.round(finished.reduce((sum, g) => sum + g.total, 0) / finished.length)
@@ -68,7 +69,7 @@ export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup }: P
       ) : (
         <>
           {finished.slice(0, 5).map((game) => (
-            <GameRow key={game.id} game={game} />
+            <GameRow key={game.id} game={game} onOpen={() => onShareGame(game.id)} />
           ))}
           <button
             type="button"
@@ -123,7 +124,11 @@ export function GameRow({ game, onOpen }: { game: Game; onOpen?: () => void }) {
         })}
       </span>
 
-      {game.source === 'scan' && <span className="pill">Scan</span>}
+      {game.sharedTo && game.sharedTo.length > 0 ? (
+        <span className="pill">Shared</span>
+      ) : (
+        game.source === 'scan' && <span className="pill">Scan</span>
+      )}
     </button>
   );
 }

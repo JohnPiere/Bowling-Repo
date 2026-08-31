@@ -29,9 +29,16 @@ interface Props {
   onOpenMember?: (memberId: string) => void;
   onOpenChat?: () => void;
   onOpenSettings?: () => void;
+  onOpenShared?: () => void;
 }
 
-export function GroupScreen({ group, onOpenMember, onOpenChat, onOpenSettings }: Props) {
+export function GroupScreen({
+  group,
+  onOpenMember,
+  onOpenChat,
+  onOpenSettings,
+  onOpenShared,
+}: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
 
   const roster = group.members;
@@ -209,6 +216,16 @@ export function GroupScreen({ group, onOpenMember, onOpenChat, onOpenSettings }:
         Switching the metric re-ranks in place — rows slide to their new position. Tap anyone to see
         their season.
       </p>
+
+      <button
+        type="button"
+        className="btn-lg"
+        style={{ marginTop: 4 }}
+        onClick={onOpenShared}
+      >
+        <Icon name="share" size={18} />
+        Shared games
+      </button>
 
       <h2 className="section-title">Recent activity</h2>
       <div className="card">
