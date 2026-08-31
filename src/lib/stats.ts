@@ -7,6 +7,7 @@
  */
 
 import type { Game } from './db';
+import { describeLeave, isSplit, leavesFromPinfalls } from './pins';
 import { FRAMES_PER_GAME, scoreGame } from './scoring';
 
 export type RangeKey = 'g5' | 'd30' | 'd90' | 'd180' | 'all';
@@ -164,4 +165,92 @@ export function bestStrikeRun(games: Game[]): number {
   }
 
   return best;
+}
+
+
+export interface LeaveRecord {
+  /** The pins that stood, sorted. */
+  pins: number[];
+  label: string;
+  /** How often this leave came up. */
+  times: number;
+  /** How often the next ball cleared it. */
+  converted: number;
+  isSplit: boolean;
+}
+
+/**
+ * What gets left standing, and how often it gets picked up.
+ *
+ * Only games scored on the rack carry pin data, so this is silent about the
+ * rest rather than guessing. A leave counts only when there was a ball after
+ * it to convert with — the last ball of a game leaves something standing that
+ * was never a spare attempt.
+ */
+export function leaveRecords(games: Game[]): LeaveRecord[] {
+  const byKey = new Map<string, LeaveRecord>();
+
+  for (const game of games) {
+    if (!game.pinfalls?.length) continue;
+
+    const leaves = leavesFromPinfalls(game.pinfalls);
+    const frames = scoreGame(game.rolls).frames;
+
+    // Which ball index starts each frame, so a leave can be tied to the frame
+    // it belongs to and the last ball of one is not read as a spare attempt.
+    let ball = 0;
+    for (const frame of frames) {
+      const first = ball;
+      ball += frame.rolls.length;
+
+      // A strike leaves nothing; the tenth is skipped because its bonus balls
+      // are not spare attempts at the leave before them.
+      if (frame.isStrike || frame.index === FRAMES_PER_GAME - 1) continue;
+      if (frame.rolls.length < 2) continue;
+
+      const standing = leaves[first];
+      if (!standing || standing.length === 0) continue;
+
+      const key = standing.join('-');
+      const record = byKey.get(key) ?? {
+        pins: standing,
+        label: describeLeave(standing),
+        times: 0,
+        converted: 0,
+        isSplit: isSplit(standing),
+      };
+
+      record.times += 1;
+      // Converted when the frame ended as a spare.
+      if (frame.isSpare) record.converted += 1;
+      byKey.set(key, record);
+    }
+  }
+
+  return [...byKey.values()].sort((a, b) => b.times - a.times || a.pins.length - b.pins.length);
+}
+
+export interface SplitSummary {
+  faced: number;
+  converted: number;
+  /** 0..100, or null when no split has come up. */
+  rate: number | null;
+  /** Frames with pin data behind these numbers. */
+  framesWithPins: number;
+}
+
+export function splitSummary(games: Game[]): SplitSummary {
+  const records = leaveRecords(games);
+  const splits = records.filter((record) => record.isSplit);
+
+  const faced = splits.reduce((sum, record) => sum + record.times, 0);
+  const converted = splits.reduce((sum, record) => sum + record.converted, 0);
+  const framesWithPins = records.reduce((sum, record) => sum + record.times, 0);
+
+  return {
+    faced,
+    converted,
+    rate: faced === 0 ? null : Math.round((converted / faced) * 100),
+    framesWithPins,
+  };
 }

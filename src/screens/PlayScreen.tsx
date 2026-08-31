@@ -1,10 +1,21 @@
 import { useState } from 'react';
 import { PinKeypad } from '../components/PinKeypad';
+import { PinRack } from '../components/PinRack';
 import { Scorecard } from '../components/Scorecard';
 import { Icon } from '../components/Icon';
 import { saveGame } from '../lib/db';
-import { isGameComplete, nextRollCursor, scoreGame } from '../lib/scoring';
+import { FULL_RACK, standingAfter } from '../lib/pins';
+import { isGameComplete, nextRollCursor, pinsAvailable, scoreGame } from '../lib/scoring';
 import { describeSaveFailure } from '../lib/storage';
+
+/**
+ * How the bowler is entering the game.
+ *
+ * The rack records which pins fell, which is what makes a leave — a 10-pin, a
+ * 7-10 — visible later; the pad records only how many, and is faster when you
+ * are trying to keep up with a league.
+ */
+type Entry = 'rack' | 'pad';
 
 interface Props {
   /** Receives the saved game so the caller can offer to share it. */
@@ -20,7 +31,12 @@ interface Props {
  */
 export function PlayScreen({ onSaved, onScan }: Props) {
   const [started, setStarted] = useState(false);
+  const [entry, setEntry] = useState<Entry>('rack');
   const [rolls, setRolls] = useState<number[]>([]);
+  /** Which pins each ball took. Only kept while scoring on the rack. */
+  const [pinfalls, setPinfalls] = useState<number[][]>([]);
+  /** Pins marked as down by the ball being entered, before it is committed. */
+  const [pending, setPending] = useState<number[]>([]);
   const [house, setHouse] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -28,6 +44,31 @@ export function PlayScreen({ onSaved, onScan }: Props) {
   const card = scoreGame(rolls);
   const cursor = nextRollCursor(rolls);
   const complete = isGameComplete(rolls);
+
+  // What is on the deck for the ball being entered. Derived from the pinfalls
+  // so a re-rack after a mark happens on its own.
+  const standing = deckFor(pinfalls, pinsAvailable(rolls));
+
+  function knockDown(pin: number) {
+    setPending((current) =>
+      current.includes(pin) ? current.filter((p) => p !== pin) : [...current, pin],
+    );
+  }
+
+  function commitBall() {
+    setRolls((current) => [...current, pending.length]);
+    setPinfalls((current) => [...current, pending]);
+    setPending([]);
+  }
+
+  function undo() {
+    if (pending.length > 0) {
+      setPending([]);
+      return;
+    }
+    setRolls((current) => current.slice(0, -1));
+    setPinfalls((current) => current.slice(0, -1));
+  }
 
   async function save() {
     setSaving(true);
@@ -37,12 +78,17 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         bowler: 'You',
         house: house.trim() || undefined,
         rolls,
+        // Only when every ball was entered on the rack; a half-recorded game
+        // would make the leave statistics quietly wrong.
+        pinfalls: pinfalls.length === rolls.length ? pinfalls : undefined,
         total: card.total,
         isComplete: complete,
         source: 'manual',
         playedAt: Date.now(),
       });
       setRolls([]);
+      setPinfalls([]);
+      setPending([]);
       setHouse('');
       setStarted(false);
       onSaved(saved.id);
@@ -62,13 +108,32 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         <button
           type="button"
           className="btn-lg btn-lg--primary"
-          onClick={() => setStarted(true)}
+          onClick={() => {
+            setEntry('rack');
+            setStarted(true);
+          }}
         >
           <Icon name="play" size={18} />
-          Enter pins by hand
+          Tap the pins you knocked down
         </button>
         <p className="muted" style={{ margin: '6px 0 14px' }}>
-          Fastest while you bowl. One tap a ball, and the card fills in as you go.
+          Records which pins fell, so a 10-pin and a 7-10 show up later as
+          themselves rather than as "9" and "8".
+        </p>
+
+        <button
+          type="button"
+          className="btn-lg"
+          onClick={() => {
+            setEntry('pad');
+            setStarted(true);
+          }}
+        >
+          Just count the pins
+        </button>
+        <p className="muted" style={{ margin: '6px 0 14px' }}>
+          One tap a ball. Faster when you are keeping up with a league, but it
+          cannot tell you what you left.
         </p>
 
         <button type="button" className="btn-lg" onClick={onScan}>
@@ -122,6 +187,28 @@ export function PlayScreen({ onSaved, onScan }: Props) {
             {saving ? 'Saving…' : 'Save this game'}
           </button>
         </>
+      ) : entry === 'rack' ? (
+        <>
+          <PinRack standing={standing} knocked={pending} onToggle={knockDown} />
+
+          <div className="row" style={{ gap: 8, marginTop: 14 }}>
+            <button
+              type="button"
+              className="btn-lg"
+              onClick={undo}
+              disabled={rolls.length === 0 && pending.length === 0}
+            >
+              Undo
+            </button>
+            <button type="button" className="btn-lg btn-lg--primary" onClick={commitBall}>
+              {pending.length === standing.length && standing.length === 10
+                ? 'Strike'
+                : pending.length === standing.length
+                  ? 'Spare'
+                  : `Ball down · ${pending.length}`}
+            </button>
+          </div>
+        </>
       ) : (
         <PinKeypad
           rolls={rolls}
@@ -136,6 +223,8 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         style={{ marginTop: 11 }}
         onClick={() => {
           setRolls([]);
+          setPinfalls([]);
+          setPending([]);
           setStarted(false);
         }}
       >
@@ -143,4 +232,27 @@ export function PlayScreen({ onSaved, onScan }: Props) {
       </button>
     </>
   );
+}
+
+/**
+ * The pins on the deck for the next ball.
+ *
+ * Derived from what has been thrown rather than tracked separately, so a
+ * re-rack after a strike or a spare — including the tenth frame's extra
+ * balls — falls out of the scoring rules instead of being special-cased here.
+ * `available` is the count the scorer says is on the deck, which is the
+ * authority; the pinfalls only say which ones they are.
+ */
+function deckFor(pinfalls: number[][], available: number): number[] {
+  if (available === FULL_RACK.length) return [...FULL_RACK];
+
+  let standing = [...FULL_RACK];
+  for (const ball of pinfalls) {
+    standing = standingAfter(standing, ball);
+    if (standing.length === 0) standing = [...FULL_RACK];
+  }
+
+  // If the two disagree — a game part-entered on the pad, say — trust the
+  // scorer and show a plausible deck of the right size.
+  return standing.length === available ? standing : standing.slice(0, available);
 }

@@ -5,7 +5,9 @@ import {
   ballOutcomes,
   bestStrikeRun,
   firstBallDistribution,
+  leaveRecords,
   scoreTrend,
+  splitSummary,
   summarise,
 } from '../src/lib/stats';
 import { scoreGame } from '../src/lib/scoring';
@@ -146,5 +148,107 @@ describe('bestStrikeRun', () => {
     expect(bestStrikeRun([game(strikes)])).toBe(12);
     expect(bestStrikeRun([game(open4s)])).toBe(0);
     expect(bestStrikeRun([game([10, 10, 3, 4, 10, 0, 5])])).toBe(2);
+  });
+});
+
+describe('leaveRecords', () => {
+  const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  /** A game where every frame leaves `leave` and converts it or not. */
+  function rackGame(leave: number[], convert: boolean, id = 'p'): Game {
+    const firstBall = FULL.filter((p) => !leave.includes(p));
+    const rolls: number[] = [];
+    const pinfalls: number[][] = [];
+
+    for (let f = 0; f < 10; f++) {
+      rolls.push(firstBall.length);
+      pinfalls.push(firstBall);
+      rolls.push(convert ? leave.length : 0);
+      pinfalls.push(convert ? leave : []);
+    }
+    // The tenth frame earns a bonus ball when it is spared.
+    if (convert) {
+      rolls.push(0);
+      pinfalls.push([]);
+    }
+
+    const card = scoreGame(rolls);
+    return {
+      id, bowler: 'You', rolls, pinfalls, total: card.total,
+      isComplete: card.isComplete, source: 'manual',
+      playedAt: NOW, updatedAt: NOW,
+    };
+  }
+
+  it('says nothing about games with no pin data', () => {
+    expect(leaveRecords([game(open4s)])).toEqual([]);
+  });
+
+  it('counts a leave and whether it was picked up', () => {
+    const records = leaveRecords([rackGame([10], true)]);
+    expect(records).toHaveLength(1);
+    // Nine frames, since the tenth is excluded as its bonus ball is not a
+    // spare attempt at the leave before it.
+    expect(records[0].times).toBe(9);
+    expect(records[0].converted).toBe(9);
+    expect(records[0].label).toBe('10 pin');
+    expect(records[0].isSplit).toBe(false);
+  });
+
+  it('counts a missed leave as faced but not converted', () => {
+    const records = leaveRecords([rackGame([10], false)]);
+    expect(records[0].times).toBe(9);
+    expect(records[0].converted).toBe(0);
+  });
+
+  it('marks a split leave as one', () => {
+    const records = leaveRecords([rackGame([7, 10], false)]);
+    expect(records[0].isSplit).toBe(true);
+    expect(records[0].label).toBe('7-10 split');
+  });
+
+  it('ignores frames that struck, since they leave nothing', () => {
+    expect(leaveRecords([game(strikes, 0, { pinfalls: Array(12).fill(FULL) })])).toEqual([]);
+  });
+
+  it('orders the most frequent leave first', () => {
+    const records = leaveRecords([rackGame([10], true, 'a'), rackGame([10], true, 'b'), rackGame([7], false, 'c')]);
+    expect(records[0].pins).toEqual([10]);
+    expect(records[0].times).toBe(18);
+    expect(records[1].pins).toEqual([7]);
+  });
+});
+
+describe('splitSummary', () => {
+  const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  it('reports nothing when no split has come up', () => {
+    const summary = splitSummary([game(open4s)]);
+    expect(summary.faced).toBe(0);
+    expect(summary.rate).toBeNull();
+  });
+
+  it('counts splits faced and converted', () => {
+    const leave = [7, 10];
+    const first = FULL.filter((p) => !leave.includes(p));
+    const rolls: number[] = [];
+    const pinfalls: number[][] = [];
+    for (let f = 0; f < 10; f++) {
+      rolls.push(8); pinfalls.push(first);
+      // Convert every other one.
+      const got = f % 2 === 0;
+      rolls.push(got ? 2 : 0);
+      pinfalls.push(got ? leave : []);
+    }
+    const card = scoreGame(rolls);
+    const g: Game = {
+      id: 'sp', bowler: 'You', rolls, pinfalls, total: card.total,
+      isComplete: card.isComplete, source: 'manual', playedAt: NOW, updatedAt: NOW,
+    };
+
+    const summary = splitSummary([g]);
+    expect(summary.faced).toBe(9);
+    expect(summary.converted).toBe(5);
+    expect(summary.rate).toBe(56);
   });
 });

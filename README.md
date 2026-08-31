@@ -13,7 +13,8 @@ scanning, which is not in the handoff.
 | **Installable** | Web app manifest, service worker, offline app shell. Android gets a native install prompt; iOS gets Share-sheet instructions, which is the only route Safari offers. |
 | **Notifications** | Web Push with VAPID, end to end — permission, subscription, delivery, and tapping a notification to focus the app. |
 | **Scan a score sheet** | Photograph a paper sheet; the grid is found, each frame is read on-device, and the parsed game is shown for correction before it is saved. A league sheet with several bowlers on it is read as several rows, and you pick yours. |
-| **Live scoring** | Pin keypad that only offers counts that are physically standing, with a scorecard that fills in as you bowl. |
+| **Live scoring** | Tap the pins you knocked down on a drawn rack, so a leave is recorded as itself — a 10-pin, a 7-10 — not just as a number. Or a counting pad when you need to keep up with a league. |
+| **What you leave** | Which leaves come up most and how often you pick them up, split conversion included. Only from games scored on the rack, and it says so. |
 | **History** | Every game, grouped by session, filterable by range. |
 | **Analytics** | Score trend, how frames finish, first-ball distribution — one range selector over all three, each with a table view. |
 | **Each game** | Full scorecard, the sheet it was scanned from, which boards it is on, correcting a frame after the fact, and deletion. |
@@ -55,7 +56,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 20 checks
+npm run verify:app       # 21 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 

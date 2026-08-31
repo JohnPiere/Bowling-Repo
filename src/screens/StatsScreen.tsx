@@ -8,8 +8,10 @@ import {
   ballOutcomes,
   bestStrikeRun,
   firstBallDistribution,
+  leaveRecords,
   RANGES,
   scoreTrend,
+  splitSummary,
   summarise,
   type RangeKey,
 } from '../lib/stats';
@@ -32,6 +34,8 @@ export function StatsScreen({ games }: { games: Game[] }) {
     [inRange],
   );
   const bestRun = useMemo(() => bestStrikeRun(inRange), [inRange]);
+  const leaves = useMemo(() => leaveRecords(inRange), [inRange]);
+  const splits = useMemo(() => splitSummary(inRange), [inRange]);
 
   if (summary.games === 0) {
     return (
@@ -69,6 +73,67 @@ export function StatsScreen({ games }: { games: Game[] }) {
       <div className="card">
         <OutcomeSplitChart outcomes={outcomes} />
       </div>
+
+      {leaves.length > 0 && (
+        <>
+          <h2 className="section-title">What you leave</h2>
+          <div className="card">
+            {splits.faced > 0 && (
+              <div className="row row--between" style={{ marginBottom: 12 }}>
+                <span className="grow">
+                  <span style={{ display: 'block', fontSize: 13 }}>Splits</span>
+                  <span className="muted tnum">
+                    {splits.converted} of {splits.faced} picked up
+                  </span>
+                </span>
+                <span className="tnum" style={{ fontSize: 21 }}>
+                  {splits.rate}%
+                </span>
+              </div>
+            )}
+
+            {/* The handful worth looking at; the tail is noise. */}
+            {leaves.slice(0, 6).map((leave) => {
+              const rate = Math.round((leave.converted / leave.times) * 100);
+              return (
+                <div key={leave.pins.join('-')} className="leave-row">
+                  <span className="grow">
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: 13,
+                        color: leave.isSplit ? 'var(--negative)' : 'var(--color-text)',
+                      }}
+                    >
+                      {leave.label}
+                    </span>
+                    <span className="muted tnum">
+                      {leave.times} time{leave.times === 1 ? '' : 's'} · {leave.converted} picked up
+                    </span>
+                  </span>
+                  {/* Bar length is the conversion rate, so a row that is
+                      mostly empty is one to practise. */}
+                  <span className="leave-row__bar">
+                    <span
+                      className="leave-row__fill"
+                      style={{ width: `${Math.max(2, rate)}%` }}
+                    />
+                  </span>
+                  <span className="tnum" style={{ fontSize: 13, minWidth: 34, textAlign: 'right' }}>
+                    {rate}%
+                  </span>
+                </div>
+              );
+            })}
+
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              From {splits.framesWithPins} frame{splits.framesWithPins === 1 ? '' : 's'} scored on
+              the rack. Games entered by count, or imported from a sheet, know how many pins fell
+              but not which.
+            </p>
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">First ball</h2>
       <div className="card">

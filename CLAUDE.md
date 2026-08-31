@@ -39,7 +39,8 @@ src/lib/
   scoring.ts      ten-pin scoring from a flat roll list
   marks.ts        parses X / - marks off a sheet into rolls
   leaderboard.ts  ranking, bar scaling, podium order, movement
-  stats.ts        season summary, trend, outcomes, first-ball buckets
+  stats.ts        season summary, trend, outcomes, first-ball buckets, leaves
+  pins.ts         the rack, adjacency, split detection, leave names
   ocr/            segmentation, preprocessing, the recogniser interface
   db.ts           IndexedDB
   navigation.ts   the screen stack

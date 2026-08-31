@@ -1053,3 +1053,50 @@ body {
 .roster__actions { padding: 0 12px 12px; }
 
 .btn-lg--danger { color: var(--negative); border-color: rgba(224, 163, 182, 0.4); }
+
+/* ── Pin rack ──────────────────────────────────────────────────────────── */
+
+.rack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rack__svg { display: block; overflow: visible; }
+
+.rack__pin {
+  fill: var(--color-surface);
+  stroke: var(--color-neutral-600);
+  stroke-width: 0.5;
+  transition: fill 0.14s ease, stroke 0.14s ease;
+}
+/* Knocked down by this ball. */
+.rack__pin--knocked { fill: var(--color-accent); stroke: var(--color-accent-300); }
+/* Already down before this ball: drawn faintly rather than removed, so the
+   deck keeps its shape and a leave stays recognisable. */
+.rack__pin--gone { fill: transparent; stroke: var(--color-neutral-800); }
+
+.rack__number {
+  font-size: 3px;
+  fill: var(--color-neutral-500);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.rack__pin--knocked + .rack__number { fill: #17141f; }
+.rack__pin--gone + .rack__number { fill: var(--color-neutral-800); }
+
+.rack__hit { cursor: pointer; }
+.rack__hit:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+.rack__leave { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.pill--warn { border-color: var(--negative); color: var(--negative); }
+
+.leave-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.leave-row__bar {
+  flex: 0 0 72px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.leave-row__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-700), #b5abfc);
+}

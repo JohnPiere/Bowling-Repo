@@ -20,6 +20,12 @@ export interface Game {
   house?: string;
   /** Pin counts in the order they were thrown. */
   rolls: number[];
+  /**
+   * Which pins each ball took, when the game was scored on the rack rather
+   * than the number pad. Optional: a game entered by count, or imported from
+   * a sheet, has counts and nothing more.
+   */
+  pinfalls?: number[][];
   /** Final score, denormalised so the list does not rescore every game. */
   total: number;
   isComplete: boolean;

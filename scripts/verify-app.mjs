@@ -37,10 +37,10 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-/** Bowl a full game of strikes through the keypad. */
+/** Bowl a full game of strikes through the counting pad. */
 async function bowlPerfectGame(page) {
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  const start = page.getByRole('button', { name: 'Enter pins by hand' });
+  const start = page.getByRole('button', { name: 'Just count the pins' });
   if (await start.count()) await start.click();
   for (let i = 0; i < 12; i++) {
     await page.locator('.keypad__key--mark').click();
@@ -147,6 +147,72 @@ async function main() {
       });
       assert(totals.includes(300), `stored totals were ${JSON.stringify(totals)}`);
       return `stored ${JSON.stringify(totals)}`;
+    });
+
+    await check('the rack records which pins fell, and names the leave', async () => {
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await page.getByRole('button', { name: /Tap the pins/ }).click();
+      await page.waitForSelector('.rack__svg');
+
+      const knock = async (...pins) => {
+        for (const pin of pins) {
+          await page.locator(`[aria-label^="Pin ${pin},"]`).click();
+          await page.waitForTimeout(25);
+        }
+      };
+      const commit = async () => {
+        await page.locator('.btn-lg--primary').click();
+        await page.waitForTimeout(120);
+      };
+
+      assert((await page.locator('.rack__pin').count()) === 10, 'the rack is not ten pins');
+
+      // Clearing the deck must read as a strike, not as "10".
+      await knock(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+      const label = (await page.locator('.btn-lg--primary').textContent())?.trim();
+      assert(label === 'Strike', `the commit button said "${label}"`);
+      await commit();
+
+      // The 7 and the 10 are the definitive split: not adjacent, head down.
+      await knock(1, 2, 3, 4, 5, 6, 8, 9);
+      const leave = (await page.locator('.rack__leave').textContent()) ?? '';
+      assert(leave.includes('7-10'), `the leave read "${leave}"`);
+      assert(/split/i.test(leave), `the split was not named: "${leave}"`);
+      await commit();
+
+      // A spare re-racks the deck for the next frame.
+      await knock(7, 10);
+      await commit();
+      const upright = await page.locator('.rack__pin:not(.rack__pin--gone)').count();
+      assert(upright === 10, `${upright} pins on the deck after a spare`);
+
+      // Finish, and check the pin data was stored alongside the counts.
+      await page.getByRole('button', { name: 'Discard this game' }).click();
+      await page.getByRole('button', { name: /Tap the pins/ }).click();
+      await page.waitForSelector('.rack__svg');
+      for (let i = 0; i < 12; i++) {
+        await knock(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        await commit();
+      }
+      await page.waitForSelector('text=Game finished', { timeout: 15000 });
+      await page.getByRole('button', { name: 'Save this game' }).click();
+      await page.waitForTimeout(700);
+
+      const stored = await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        return new Promise((res) => {
+          const rq = db.transaction('games').objectStore('games').getAll();
+          rq.onsuccess = () =>
+            res(rq.result.map((g) => ({ total: g.total, balls: g.pinfalls?.length ?? null })));
+        });
+      });
+      const perfect = stored.find((g) => g.total === 300 && g.balls === 12);
+      assert(perfect, `no 300 with twelve pinfalls: ${JSON.stringify(stored)}`);
+
+      return 'strike, 7-10 named, re-rack after a spare, 300 with pin data';
     });
 
     await check('a failed save does not cost the game', async () => {
@@ -338,7 +404,7 @@ async function main() {
       // Bowl a game whose first frame is wrong, the way a misread scan or a
       // mis-tap leaves one.
       await page.getByRole('button', { name: 'Play', exact: true }).click();
-      const start = page.getByRole('button', { name: 'Enter pins by hand' });
+      const start = page.getByRole('button', { name: 'Just count the pins' });
       if (await start.count()) await start.click();
       for (let i = 0; i < 2; i++) {
         await page.locator('.keypad__key', { hasText: /^–$/ }).click();
