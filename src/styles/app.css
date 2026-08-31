@@ -346,6 +346,14 @@ body {
 }
 .game-row + .game-row { margin-top: 7px; }
 .game-row__score { font-size: 21px; letter-spacing: -0.02em; min-width: 46px; }
+/* A long venue name would otherwise wrap and leave the list ragged, with rows
+   of two different heights depending on whether a game was scanned. */
+.game-row__name,
+.game-row__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .game-row__name { font-size: 13px; }
 .game-row__sub { font-size: 10.5px; color: var(--color-neutral-500); }
 
@@ -354,6 +362,7 @@ body {
 .spark__bar { width: 3px; border-radius: 1px; background: var(--color-accent-700); }
 
 .pill {
+  flex: none;
   font-size: 9.5px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
