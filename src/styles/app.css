@@ -87,6 +87,14 @@ body {
   cursor: pointer;
   position: relative;
 }
+/* The handoff draws icon buttons at 40px. Keep that, and let the tap area
+   reach 44 past the visible edge. */
+.iconbtn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+}
 .iconbtn--accent {
   border-color: var(--color-accent-700);
   background: rgba(145, 132, 217, 0.12);
@@ -407,13 +415,21 @@ body {
   display: flex;
   gap: 7px;
   overflow-x: auto;
-  padding: 0 var(--gutter) 2px;
-  margin: 0 calc(var(--gutter) * -1) 10px;
+  /* Vertical padding makes room for the chips' extended hit areas; the
+     negative margin keeps the layout spacing unchanged. */
+  padding: 11px var(--gutter) 11px;
+  margin: -11px calc(var(--gutter) * -1) 1px;
   scrollbar-width: none;
 }
 .chips::-webkit-scrollbar { display: none; }
 
+/*
+ * A chip is 30px tall by design. Rather than fatten it and lose the row's
+ * proportions, the tap area is extended past the visible edge — the thumb gets
+ * 44px, the eye still sees the design.
+ */
 .chip {
+  position: relative;
   flex: none;
   padding: 7px 13px;
   border-radius: 999px;
@@ -426,6 +442,13 @@ body {
   border: 1px solid var(--color-neutral-800);
   color: var(--color-neutral-400);
 }
+.chip::after {
+  content: '';
+  position: absolute;
+  /* 30px tall + 11px either side clears 44 with room for sub-pixel rounding. */
+  inset: -11px 0;
+}
+
 .chip[aria-pressed='true'] {
   background: rgba(145, 132, 217, 0.16);
   border-color: var(--color-accent);
@@ -771,6 +794,7 @@ body {
 }
 
 .viz__table-toggle {
+  position: relative;
   appearance: none;
   background: none;
   border: 0;
@@ -781,6 +805,12 @@ body {
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+/* Same trick: a text link that stays a text link, with a thumb-sized target. */
+.viz__table-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -13px -8px;
 }
 
 .viz__table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
@@ -932,6 +962,7 @@ body {
 
 /* ── Group settings ────────────────────────────────────────────────────── */
 
+/* The track is 26px tall by design; the tap area is not. */
 .switch {
   flex: none;
   width: 44px;
@@ -943,6 +974,12 @@ body {
   cursor: pointer;
   position: relative;
   transition: background 0.18s ease, border-color 0.18s ease;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -11px -4px;
+  border-radius: 999px;
 }
 .switch--on { background: rgba(145, 132, 217, 0.35); border-color: var(--color-accent); }
 

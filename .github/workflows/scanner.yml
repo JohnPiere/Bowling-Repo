@@ -1,0 +1,36 @@
+# The scanner check drives a real browser and takes a couple of minutes, so it
+# runs on demand and on a schedule rather than on every push.
+name: Scanner
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm i -D playwright && npx playwright install --with-deps chromium
+      - run: npm run build
+
+      - name: Serve and verify
+        run: |
+          npm run preview -- --port 4173 &
+          npx wait-on http://localhost:4173 --timeout 60000
+          npm run verify:scanner -- http://localhost:4173
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-sheets
+          path: scanner-check/

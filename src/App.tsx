@@ -76,19 +76,13 @@ export function App() {
           {meta && <div className="appbar__meta">{meta}</div>}
         </div>
 
-        {route.name === 'group' && group && (
-          <button
-            type="button"
-            className="iconbtn"
-            aria-label="Group settings"
-            onClick={() => nav.push({ name: 'groupSettings', groupId: group.id })}
-          >
-            <Icon name="settings" size={18} />
-          </button>
-        )}
-
-        {/* Settings lives in the header rather than a sixth tab, per the handoff. */}
-        {route.name !== 'settings' && (
+        {/*
+          * Settings lives in the header rather than a sixth tab, per the
+          * handoff. The group dashboard is the exception: its hero card
+          * already carries a settings button for the group itself, and two
+          * identical gears in view at once is a coin toss for the reader.
+          */}
+        {route.name !== 'settings' && route.name !== 'group' && (
           <button
             type="button"
             className="iconbtn"
