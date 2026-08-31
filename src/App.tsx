@@ -251,7 +251,11 @@ export function App() {
         )}
 
         {route.name === 'settings' && (
-          <SettingsScreen games={games} onOpenVideos={() => nav.push({ name: 'videos' })} />
+          <SettingsScreen
+            games={games}
+            onOpenVideos={() => nav.push({ name: 'videos' })}
+            onRestored={refresh}
+          />
         )}
       </main>
 

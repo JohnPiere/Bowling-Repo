@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
-import type { Game } from '../lib/db';
+import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
+import { putGames, type Game } from '../lib/db';
 import {
   getInstallState,
   IOS_INSTALL_STEPS,
@@ -31,15 +32,40 @@ import {
 export function SettingsScreen({
   games,
   onOpenVideos,
+  onRestored,
 }: {
   games: Game[];
   onOpenVideos?: () => void;
+  onRestored?: () => void;
 }) {
   const [install, setInstall] = useState<InstallState>(getInstallState);
   const [push, setPush] = useState<PushStatus>('unavailable');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageReport | null>(null);
+  const [plan, setPlan] = useState<RestorePlan | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restored, setRestored] = useState<number | null>(null);
+  const backupRef = useRef<HTMLInputElement | null>(null);
+
+  async function readBackup(file: File) {
+    setRestoreError(null);
+    setRestored(null);
+    try {
+      setPlan(planRestore(await file.text(), games));
+    } catch (err) {
+      setPlan(null);
+      setRestoreError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function applyRestore() {
+    if (!plan) return;
+    await putGames(plan.toAdd);
+    setRestored(plan.toAdd.length);
+    setPlan(null);
+    onRestored?.();
+  }
 
   useEffect(() => subscribeToInstallState(setInstall), []);
   useEffect(() => {
@@ -249,13 +275,78 @@ export function SettingsScreen({
           className="btn-lg"
           style={{ marginTop: 11 }}
           onClick={() => exportGames(games)}
+          disabled={games.length === 0}
         >
           <Icon name="share" size={18} />
-          Export games as JSON
+          Export {games.length} game{games.length === 1 ? '' : 's'}
         </button>
+
+        <button
+          type="button"
+          className="btn-lg"
+          style={{ marginTop: 11 }}
+          onClick={() => backupRef.current?.click()}
+        >
+          Restore from a file
+        </button>
+        <input
+          ref={backupRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void readBackup(file);
+          }}
+        />
+
+        {restoreError && (
+          <div className="note note--bad" style={{ marginTop: 11, marginBottom: 0 }}>
+            {restoreError}
+          </div>
+        )}
+
+        {restored !== null && (
+          <div className="note note--good" style={{ marginTop: 11, marginBottom: 0 }}>
+            Restored {restored} game{restored === 1 ? '' : 's'}.
+          </div>
+        )}
+
+        {/* Nothing is written until this is confirmed: a restore that quietly
+            doubled a season would be worse than one that failed. */}
+        {plan && (
+          <div className="note note--info" style={{ marginTop: 11, marginBottom: 0 }}>
+            <strong>
+              {plan.toAdd.length} game{plan.toAdd.length === 1 ? '' : 's'} to add
+            </strong>
+            <p style={{ margin: '4px 0 0' }}>
+              {plan.alreadyHere > 0 &&
+                `${plan.alreadyHere} already on this device and left alone. `}
+              {plan.rejected.length > 0 &&
+                `${plan.rejected.length} could not be read (${plan.rejected[0].reason}). `}
+              Nothing is changed until you say so.
+            </p>
+            <div className="row" style={{ gap: 8, marginTop: 10 }}>
+              <button type="button" className="btn-lg" onClick={() => setPlan(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-lg btn-lg--primary"
+                onClick={applyRestore}
+                disabled={plan.toAdd.length === 0}
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+        )}
+
         <p className="footnote" style={{ marginBottom: 0 }}>
-          Everything is stored on this device only. There is no account and nothing is uploaded —
-          export is currently the only backup.
+          Everything is stored on this device only. There is no account and nothing is uploaded, so
+          a file is the only backup — and the only way to move a season to a new phone. Scanned
+          photos are not included; the scores are the part that cannot be bowled again.
         </p>
       </div>
     </>
@@ -282,7 +373,9 @@ function describe(status: PushStatus): string {
  * place for tens of megabytes of base64.
  */
 function exportGames(games: Game[]): void {
-  const blob = new Blob([JSON.stringify(games, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(buildBackup(games), null, 2)], {
+    type: 'application/json',
+  });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement('a');

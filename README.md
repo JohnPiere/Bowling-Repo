@@ -56,7 +56,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 21 checks
+npm run verify:app       # 26 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 

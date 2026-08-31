@@ -15,7 +15,12 @@
  * Exits non-zero if any check fails.
  */
 
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+
 const BASE = process.argv[2] ?? 'http://localhost:4173';
+
+/** Where downloaded and generated files go. */
+const OUT = 'app-check';
 
 const results = [];
 
@@ -63,6 +68,8 @@ async function main() {
     console.error('These checks need Playwright:  npm i -D playwright');
     process.exit(2);
   });
+
+  mkdirSync(OUT, { recursive: true });
 
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -681,6 +688,113 @@ async function main() {
     });
 
     await context.close();
+  }
+
+  // ── Backup and restore ────────────────────────────────────────────────
+  //
+  // Two contexts, because the point of a backup is moving a season to a
+  // different device — restoring onto the phone that made it proves nothing.
+  {
+    const source = await browser.newContext({ acceptDownloads: true });
+    const page = await source.newPage();
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    let backupPath = '';
+
+    await check('a season exports to a file', async () => {
+      await page.evaluate(async () => {
+        const DAY = 86400000;
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        const tx = db.transaction(['games'], 'readwrite');
+        for (let i = 0; i < 7; i++) {
+          tx.objectStore('games').put({
+            id: `backup-${i}`, bowler: 'You', house: 'Rose Bowl',
+            rolls: Array(20).fill(4), total: 80, isComplete: true,
+            source: 'manual', playedAt: Date.now() - i * DAY, updatedAt: Date.now(),
+          });
+        }
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page.waitForSelector('text=Storage');
+
+      const pending = page.waitForEvent('download');
+      await page.getByRole('button', { name: /Export 7 games/ }).click();
+      backupPath = `${OUT}/backup.json`;
+      await (await pending).saveAs(backupPath);
+
+      const parsed = JSON.parse(readFileSync(backupPath, 'utf8'));
+      assert(parsed.games?.length === 7, `exported ${parsed.games?.length} games`);
+      assert(parsed.format === 'lane-log/backup', `format was ${parsed.format}`);
+      return `7 games, ${parsed.format}`;
+    });
+
+    await source.close();
+
+    const fresh = await browser.newContext();
+    const other = await fresh.newPage();
+    await other.goto(BASE, { waitUntil: 'networkidle' });
+    await other.getByRole('button', { name: 'Settings', exact: true }).click();
+    await other.waitForSelector('text=Storage');
+
+    const countGames = () =>
+      other.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        return new Promise((res) => {
+          const rq = db.transaction('games').objectStore('games').count();
+          rq.onsuccess = () => res(rq.result);
+        });
+      });
+
+    await check('a file that is not a backup is refused with a reason', async () => {
+      const junk = `${OUT}/not-a-backup.json`;
+      writeFileSync(junk, '<html>nope</html>');
+      await other.setInputFiles('input[type=file]', junk);
+      await other.waitForSelector('.note--bad');
+      const message = (await other.locator('.note--bad').textContent())?.trim();
+      assert(/JSON/i.test(message ?? ''), `unhelpful message: ${message}`);
+      return message;
+    });
+
+    await check('restoring shows a plan before it writes anything', async () => {
+      await other.setInputFiles('input[type=file]', backupPath);
+      await other.waitForSelector('text=7 games to add');
+      // A restore that silently doubled a season would be worse than one that
+      // failed, so nothing may be written before it is confirmed.
+      assert((await countGames()) === 0, 'games were written before confirming');
+      return 'plan shown, store untouched';
+    });
+
+    await check('a restored season lands and is usable', async () => {
+      await other.getByRole('button', { name: 'Restore', exact: true }).click();
+      await other.waitForSelector('text=Restored 7 games');
+      assert((await countGames()) === 7, 'the games were not stored');
+
+      await other.getByRole('button', { name: 'Home', exact: true }).click();
+      await other.waitForSelector('.game-row');
+      const average = (await other.locator('.hero__numeral').textContent())?.trim();
+      assert(average === '80', `the average read ${average}`);
+      return `average ${average} on the new device`;
+    });
+
+    await check('restoring the same file twice adds nothing', async () => {
+      await other.getByRole('button', { name: 'Settings', exact: true }).click();
+      await other.setInputFiles('input[type=file]', backupPath);
+      await other.waitForSelector('text=0 games to add');
+      const text = (await other.locator('.note--info').last().textContent()) ?? '';
+      assert(text.includes('7 already on this device'), text.trim());
+      assert((await countGames()) === 7, 'the season was duplicated');
+      return 'all seven recognised as already here';
+    });
+
+    await fresh.close();
   }
 
   // ── Focus and motion ──────────────────────────────────────────────────

@@ -206,6 +206,24 @@ export async function reviseGame(
   return updated;
 }
 
+/**
+ * Write several games at once.
+ *
+ * Restoring a season one save at a time would be hundreds of transactions;
+ * this is one, so a restore either lands or does not.
+ */
+export async function putGames(games: Game[]): Promise<number> {
+  if (games.length === 0) return 0;
+
+  const database = await db();
+  const tx = database.transaction('games', 'readwrite');
+  const store = tx.objectStore('games');
+  for (const game of games) await store.put(game);
+  await tx.done;
+
+  return games.length;
+}
+
 /** The scanned photo a game came from, loaded only when something needs it. */
 export async function getSheetImage(gameId: string): Promise<Blob | undefined> {
   return (await (await db()).get('sheets', gameId))?.image;
