@@ -16,7 +16,7 @@ export function SharedGamesScreen({ group }: { group: Group }) {
   const [mine, setMine] = useState<Game[]>([]);
 
   const refresh = useCallback(() => {
-    void gamesSharedWith(group.id).then(setMine);
+    gamesSharedWith(group.id).then(setMine, () => setMine([]));
   }, [group.id]);
 
   useEffect(refresh, [refresh]);
@@ -24,8 +24,12 @@ export function SharedGamesScreen({ group }: { group: Group }) {
   const theirs = (SAMPLE_SHARED[group.id] ?? []).filter((post) => !post.isYours);
 
   async function retract(gameId: string) {
-    await unshareGame(gameId, group.id);
-    refresh();
+    try {
+      await unshareGame(gameId, group.id);
+    } finally {
+      // Re-read either way: the list should show what is actually stored.
+      refresh();
+    }
   }
 
   return (

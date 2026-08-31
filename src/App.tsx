@@ -38,9 +38,25 @@ export function App() {
   const nav = useNavigation(initialRoute());
   const { session, signIn } = useSession();
   const [games, setGames] = useState<Game[]>([]);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    void listGames().then(setGames);
+    listGames().then(
+      (loaded) => {
+        setGames(loaded);
+        setStorageError(null);
+      },
+      (err: unknown) => {
+        // Without this the app shows an empty season and says nothing — which
+        // looks exactly like having lost one. A private window, or a browser
+        // set to block site data, is the usual cause.
+        setStorageError(
+          err instanceof Error && err.message
+            ? `Storage on this device is unavailable: ${err.message}`
+            : 'Storage on this device is unavailable.',
+        );
+      },
+    );
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -120,6 +136,18 @@ export function App() {
           </button>
         )}
       </header>
+
+      {storageError && (
+        <div style={{ padding: '10px var(--gutter) 0' }}>
+          <div className="note note--bad" style={{ marginBottom: 0 }}>
+            <strong>{storageError}</strong>
+            <p style={{ margin: '6px 0 0' }}>
+              Nothing has been deleted — Lane Log simply cannot read or write here. A private
+              window, or a browser set to block site data, will do this.
+            </p>
+          </div>
+        </div>
+      )}
 
       <main
         ref={mainRef}

@@ -78,10 +78,10 @@ export function SettingsScreen({
 
   useEffect(() => subscribeToInstallState(setInstall), []);
   useEffect(() => {
-    void estimateStorage().then(setStorage);
+    estimateStorage().then(setStorage, () => setStorage(null));
   }, [games.length]);
   useEffect(() => {
-    void currentPushStatus().then(setPush);
+    currentPushStatus().then(setPush, () => setPush('unavailable'));
   }, [install]);
 
   const availability = pushAvailability();

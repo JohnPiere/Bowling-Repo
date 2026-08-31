@@ -22,7 +22,9 @@ export interface StorageReport {
 export const STORAGE_WARN_AT = 0.85;
 
 export async function estimateStorage(): Promise<StorageReport> {
-  const persisted = (await navigator.storage?.persisted?.()) ?? false;
+  // Both calls can reject where site data is restricted, and neither is worth
+  // failing a screen over.
+  const persisted = await navigator.storage?.persisted?.().catch(() => false) ?? false;
 
   // Not universally implemented, and Safari's numbers are approximate.
   const estimate = await navigator.storage?.estimate?.().catch(() => null);

@@ -24,6 +24,7 @@ interface Props {
 export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoSize, setPhotoSize] = useState<number | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -46,12 +47,20 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
     let url: string | null = null;
     let cancelled = false;
 
-    void getSheetImage(game.id).then((blob) => {
-      if (!blob || cancelled) return;
-      url = URL.createObjectURL(blob);
-      setPhoto(url);
-      setPhotoSize(blob.size);
-    });
+    getSheetImage(game.id).then(
+      (blob) => {
+        if (cancelled) return;
+        if (!blob) {
+          setPhotoFailed(true);
+          return;
+        }
+        url = URL.createObjectURL(blob);
+        setPhoto(url);
+        setPhotoSize(blob.size);
+      },
+      // Otherwise the screen says "Loading the photo…" for ever.
+      () => !cancelled && setPhotoFailed(true),
+    );
 
     return () => {
       cancelled = true;
@@ -98,8 +107,13 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
   }
 
   async function retract(groupId: string) {
-    await unshareGame(game.id, groupId);
-    onChanged();
+    try {
+      await unshareGame(game.id, groupId);
+      onChanged();
+    } catch {
+      // Nothing has changed, so leaving the row as it was is the honest
+      // outcome; the next attempt will either work or not.
+    }
   }
 
   const edited = editing && draft.trim() ? tryParseMarks(draft) : null;
@@ -210,6 +224,8 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
                 {formatBytes(photoSize)} · stored on this device only.
               </p>
             </>
+          ) : photoFailed ? (
+            <p className="empty">The photo for this game could not be read.</p>
           ) : (
             <p className="empty">Loading the photo…</p>
           )}

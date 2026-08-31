@@ -805,6 +805,42 @@ async function main() {
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.goto(BASE, { waitUntil: 'networkidle' });
 
+    await check('blocked storage is explained, not shown as an empty season', async () => {
+      const blocked = await browser.newContext();
+      const denied = await blocked.newPage({ viewport: { width: 412, height: 892 } });
+
+      // What a private window, or a browser set to block site data, does.
+      await denied.addInitScript(() => {
+        Object.defineProperty(window, 'indexedDB', {
+          configurable: true,
+          get() {
+            return {
+              open() {
+                throw new DOMException('Access to storage is denied.', 'SecurityError');
+              },
+            };
+          },
+        });
+      });
+
+      await denied.goto(BASE, { waitUntil: 'domcontentloaded' });
+      await denied.waitForTimeout(2000);
+
+      const rendered = (await denied.locator('#root').innerText().catch(() => '')).trim();
+      assert(rendered.length > 0, 'the app did not render at all');
+
+      const banner = (await denied.locator('.note--bad').first().textContent()) ?? '';
+      // An empty list with no explanation looks exactly like a lost season.
+      assert(/storage/i.test(banner), `no storage warning shown: "${banner.slice(0, 60)}"`);
+      assert(
+        /nothing has been deleted/i.test(banner),
+        'the warning does not say the games are safe',
+      );
+
+      await blocked.close();
+      return 'app renders, and says why it is empty';
+    });
+
     await check('a bad record breaks its screen, not the whole app', async () => {
       // Pin data of a shape the leave statistics cannot iterate. Restores
       // reject this at the door; the boundary is for the one nobody predicted.
