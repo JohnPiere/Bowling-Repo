@@ -12,7 +12,7 @@ scanning, which is not in the handoff.
 |---|---|
 | **Installable** | Web app manifest, service worker, offline app shell. Android gets a native install prompt; iOS gets Share-sheet instructions, which is the only route Safari offers. |
 | **Notifications** | Web Push with VAPID, end to end — permission, subscription, delivery, and tapping a notification to focus the app. |
-| **Scan a score sheet** | Photograph a paper sheet; the grid is found, each frame is read on-device, and the parsed game is shown for correction before it is saved. A league sheet with several bowlers on it is read as several rows, and you pick yours. |
+| **Scan a score sheet** | One game at a time. The camera works like a barcode reader — a bar in the middle of the preview that you slide one game's row into — and a photo you already have gets a box to drag around the game you want. Only that strip is read: the grid is found inside it, each frame is recognised on-device, and the game is shown for correction before anything is saved. |
 | **Live scoring** | Tap the pins you knocked down on a drawn rack, so a leave is recorded as itself — a 10-pin, a 7-10 — not just as a number. Or a counting pad when you need to keep up with a league. |
 | **What you leave** | Which leaves come up most and how often you pick them up, split conversion included. Only from games scored on the rack, and it says so. |
 | **History** | Every game, grouped by session, filterable by range. |
@@ -56,7 +56,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 28 checks
+npm run verify:app       # 30 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 
@@ -104,7 +104,9 @@ src/lib/          the parts worth testing on their own
   db.ts           IndexedDB store
   push.ts         subscription and permission
   install.ts      Home Screen installation
-  camera.ts       live capture and the file-input fallback
+  camera.ts       live capture, cropping to a region, the file-input fallback
+  reticle.ts      the bar a row is lined up inside, and locking on to one
+  region.ts       the box dragged around a game on a picked photo
 src/screens/      one file per screen
 src/styles/       nocturne.css (design system, vendored) + app.css
 src/sw.ts         service worker: offline shell + push handling
@@ -145,6 +147,15 @@ CDN between the user and first paint.
 save typing and not good enough to trust. Every scan lands on a review screen
 with an editable mark string, and a wrong read costs a correction rather than a
 corrupted average.
+
+**The scanner reads one game, not one sheet.** A house sheet stacks a row per
+game — three is normal, six happens — and projecting them together destroys the
+frame grid of every one of them. So the bowler says which row: into the bar on
+the camera, or inside a box dragged on a picked photo. Detection runs on the
+preview and, when it finds a row lying in the bar, the brackets snap to the
+row's own rules and the capture takes those — lock-on, so a miss costs nothing.
+The date, the time and the house are typed, not read: sheets print them
+somewhere else, or in another language, or not at all.
 
 **The scanner reads the grid, not the page.** A score sheet's vertical rules say
 exactly where one frame ends; reading the whole image in one pass throws that

@@ -383,3 +383,4 @@ describe('findHorizontalRules — a photographed sheet', () => {
     expect(findHorizontalRules(rows, width, { top: 0, bottom: 199 })).toEqual([100]);
   });
 });
+

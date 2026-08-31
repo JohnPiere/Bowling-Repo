@@ -1,22 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
+import { RegionPicker } from '../components/RegionPicker';
+import { RowFinder } from '../components/RowFinder';
 import { Scorecard } from '../components/Scorecard';
-import {
-  captureFrame,
-  fileToCapture,
-  startRearCamera,
-  stopStream,
-  supportsLiveCamera,
-} from '../lib/camera';
+import { startRearCamera, stopStream, supportsLiveCamera } from '../lib/camera';
+import { fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
 import { importScannedGame, scanScoreSheet, type ScanReview } from '../lib/import';
 import { tryParseMarks } from '../lib/marks';
 import { scoreGame } from '../lib/scoring';
 import { describeSaveFailure, isQuotaError } from '../lib/storage';
 
-type Stage = 'choose' | 'framing' | 'reading' | 'review';
+type Stage = 'choose' | 'framing' | 'picking' | 'reading' | 'review';
 
 /**
  * Scan a paper score sheet into a game.
+ *
+ * One row at a time, not one sheet: a house sheet stacks a row per game and
+ * some run to six, and reading them together is both harder and not what
+ * anyone asked for. The camera works like a barcode reader — a bar to line one
+ * row up inside — and a picked photo gets the same shape as a box to drag.
+ *
+ * Nothing on the sheet is read for when or where the game was bowled. Sheets
+ * print those in a different place, or a different language, or not at all, and
+ * two fields to type beats a date silently read wrong.
  *
  * The flow always ends at a review step, even for a confident read. OCR on
  * pencil marks is good enough to save typing and not good enough to trust
@@ -33,8 +39,11 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dropPhoto, setDropPhoto] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [picking, setPicking] = useState<Blob | null>(null);
+  const [day, setDay] = useState(() => toDateInput(Date.now()));
+  const [time, setTime] = useState(() => toTimeInput(Date.now()));
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -45,16 +54,10 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
   async function openCamera() {
     setError(null);
     try {
-      const stream = await startRearCamera();
-      streamRef.current = stream;
+      const opened = await startRearCamera();
+      streamRef.current = opened;
+      setStream(opened);
       setStage('framing');
-      // The element only exists after the stage renders.
-      queueMicrotask(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStage('choose');
@@ -64,6 +67,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
   function closeCamera() {
     stopStream(streamRef.current);
     streamRef.current = null;
+    setStream(null);
   }
 
   async function read(image: Blob) {
@@ -82,29 +86,23 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
     }
   }
 
-  async function shoot() {
-    if (!videoRef.current) return;
-    try {
-      const shot = await captureFrame(videoRef.current);
-      closeCamera();
-      await read(shot.blob);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+  function pickFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      setError('That file is not an image.');
+      return;
     }
-  }
-
-  async function pickFile(file: File) {
-    try {
-      const shot = await fileToCapture(file);
-      await read(shot.blob);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
+    setError(null);
+    setPicking(file);
+    setStage('picking');
   }
 
   // The review screen re-parses whatever is in the correction box, so a fixed
   // typo updates the card immediately.
   const corrected = marks.trim() ? tryParseMarks(marks) : null;
+
+  // Null means the two fields do not make a date between them; the save button
+  // stays off rather than quietly filing the game under today.
+  const playedAt = fromInputs(day, time);
 
   async function commit() {
     if (!corrected || 'error' in corrected) return;
@@ -114,6 +112,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
       const saved = await importScannedGame(corrected.rolls, {
         bowler: 'You',
         house: house.trim() || undefined,
+        playedAt: playedAt ?? undefined,
         sheetImage: review?.image,
         keepPhoto: !dropPhoto,
       });
@@ -122,7 +121,11 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
     } catch (err) {
       // The scored game is the valuable part; if the photo is what will not
       // fit, offer to drop it rather than lose the import.
-      setSaveError(describeSaveFailure(err, { hasPhoto: Boolean(review?.image) && !dropPhoto }));
+      setSaveError(
+        describeSaveFailure(err, {
+          hasPhoto: Boolean(review?.image) && !dropPhoto,
+        }),
+      );
       if (isQuotaError(err)) setDropPhoto(true);
     } finally {
       setSaving(false);
@@ -131,6 +134,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
 
   function reset() {
     closeCamera();
+    setPicking(null);
     setReview(null);
     setMarks('');
     setHouse('');
@@ -147,8 +151,9 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
       {stage === 'choose' && (
         <>
           <p className="muted" style={{ margin: '0 0 14px' }}>
-            Photograph a finished sheet straight on, with the ten frames filling the frame. Lane Log
-            reads the marks and shows you the game before anything is saved.
+            One game at a time. Point the camera at your sheet and slide it until the game you want
+            lies inside the bar, the way you would scan a barcode — only that strip is read. Nothing
+            is saved until you have seen the score and can fix it.
           </p>
 
           {supportsLiveCamera() && (
@@ -166,6 +171,10 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           >
             Use a photo instead
           </button>
+          <p className="footnote" style={{ marginTop: 7 }}>
+            You draw the box around one game yourself, so a sheet of six reads as easily as a sheet
+            of one.
+          </p>
 
           {/* `capture` opens the camera app directly on a phone; without it the
               same input still offers the photo roll, which is the fallback when
@@ -185,29 +194,34 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
         </>
       )}
 
-      {stage === 'framing' && (
-        <>
-          <div className="viewfinder">
-            <video ref={videoRef} className="viewfinder__video" playsInline muted />
-            <div className="viewfinder__guide" />
-            <div className="viewfinder__hint">Fill the guide with all ten frames</div>
-          </div>
-          <button type="button" className="btn-lg btn-lg--primary" onClick={shoot}>
-            <Icon name="camera" size={18} />
-            Take the photo
-          </button>
-          <button
-            type="button"
-            className="btn-lg"
-            style={{ marginTop: 11 }}
-            onClick={() => {
-              closeCamera();
-              setStage('choose');
-            }}
-          >
-            Cancel
-          </button>
-        </>
+      {stage === 'framing' && stream && (
+        <RowFinder
+          stream={stream}
+          onCapture={(shot) => {
+            closeCamera();
+            void read(shot.blob);
+          }}
+          onCancel={() => {
+            closeCamera();
+            setStage('choose');
+          }}
+          onError={setError}
+        />
+      )}
+
+      {stage === 'picking' && picking && (
+        <RegionPicker
+          image={picking}
+          onPick={(shot) => {
+            setPicking(null);
+            void read(shot.blob);
+          }}
+          onCancel={() => {
+            setPicking(null);
+            setStage('choose');
+          }}
+          onError={setError}
+        />
       )}
 
       {stage === 'reading' && (
@@ -298,6 +312,35 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             One group a frame. X for a strike, / for a spare, - for a miss.
           </p>
 
+          <div className="row" style={{ gap: 11, marginBottom: 11 }}>
+            <label className="grow">
+              <span className="hero__label">Date</span>
+              <input
+                className="input tnum"
+                style={{ marginTop: 5 }}
+                type="date"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+              />
+            </label>
+            <label className="grow">
+              <span className="hero__label">Time</span>
+              <input
+                className="input tnum"
+                style={{ marginTop: 5 }}
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {playedAt === null && (
+            <div className="note note--warn">
+              That date is not one the calendar has — check it before saving.
+            </div>
+          )}
+
           <label style={{ display: 'block', marginBottom: 11 }}>
             <span className="hero__label">Where you bowled</span>
             <input
@@ -320,7 +363,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           <button
             type="button"
             className="btn-lg btn-lg--primary"
-            disabled={!corrected || 'error' in corrected || saving}
+            disabled={!corrected || 'error' in corrected || saving || playedAt === null}
             onClick={commit}
           >
             <Icon name="check" size={18} />

@@ -694,6 +694,137 @@ body {
   pointer-events: none;
 }
 
+/* The row finder: a barcode reader's bar, not a document scanner's outline.
+ *
+ * The brackets move between the fixed bar and a locked-on row, so they
+ * transition rather than jump — detection only runs eight times a second, and
+ * without the tween the lock reads as a glitch instead of a snap. */
+.finder {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 3 / 4;
+  margin-bottom: 11px;
+}
+.finder__video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Only the strip that will be read stays bright. */
+.finder__shade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: rgba(11, 12, 20, 0.55);
+  pointer-events: none;
+}
+
+.reticle {
+  position: absolute;
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(233, 233, 237, 0.22) inset;
+  transition:
+    left 0.14s ease-out,
+    top 0.14s ease-out,
+    width 0.14s ease-out,
+    height 0.14s ease-out,
+    transform 0.14s ease-out;
+}
+.reticle--locked {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent) inset;
+}
+
+/* Corner brackets rather than a full outline: they read as "aiming" and they
+   leave the sheet's own printed rules visible underneath, which is what the
+   bowler is actually lining up. */
+.reticle__corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  transition: border-color 0.2s ease;
+}
+.reticle--locked .reticle__corner { border-color: var(--color-accent-300); }
+
+.reticle__corner--tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-radius: 7px 0 0 0; }
+.reticle__corner--tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-radius: 0 7px 0 0; }
+.reticle__corner--bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-radius: 0 0 0 7px; }
+.reticle__corner--br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-radius: 0 0 7px 0; }
+
+.finder__hint {
+  position: absolute;
+  inset: auto 0 10px;
+  text-align: center;
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle { transition: none; }
+}
+
+/* Drawing a box around one game on a photo already taken. */
+.picker {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 3 / 4;
+  margin-bottom: 11px;
+  touch-action: none; /* or the browser pans the page instead of dragging the box */
+  user-select: none;
+}
+.picker__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.picker__box {
+  position: absolute;
+  border: 2px solid var(--color-accent-300);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: 0 0 0 9999px rgba(11, 12, 20, 0.5);
+  cursor: move;
+}
+
+/* The handle is drawn at 14px and grabbed at 44px: a corner big enough to hit
+   with a thumb would cover the row it is meant to be cropping. */
+.picker__handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent-300);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.picker__handle::after {
+  content: '';
+  position: absolute;
+  inset: -15px;
+}
+.picker__handle--nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.picker__handle--ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.picker__handle--sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.picker__handle--se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+
+/* A full-width look at exactly what the box will cut out. */
+.picker__preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  margin-bottom: 11px;
+}
+.picker__preview img { display: block; pointer-events: none; }
+
 .shot { width: 100%; border-radius: 12px; display: block; margin-bottom: 11px; }
 
 .progress {

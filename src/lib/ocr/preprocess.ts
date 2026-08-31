@@ -10,7 +10,14 @@
  * it to find the sheet's rules, and thresholding twice would be wasteful.
  */
 
+import {
+  orientationTransform,
+  readExifOrientation,
+  swapsAxes,
+  type Orientation,
+} from './orientation';
 import { estimateShear } from './segment';
+import { findSheetBox, hasDarkSurround, insetBox, otsuThreshold, type SheetBox } from './sheet';
 
 /** Long edge to scale to. Bigger is slower with little accuracy to show for it. */
 const TARGET_LONG_EDGE = 1600;
@@ -37,14 +44,23 @@ export interface Prepared {
  * and crops in one coordinate space.
  */
 export async function preprocessForOcr(image: Blob): Promise<Prepared> {
-  const bitmap = await createImageBitmap(image);
+  // Decoded without the browser's own orientation handling, because browsers
+  // disagree about whether they do any — Chromium ignores the tag here even
+  // when asked to honour it. Reading it and turning the image ourselves is the
+  // only way to get one behaviour everywhere.
+  const bitmap = await uprightBitmap(image);
 
   try {
-    const upright = rasterise(bitmap, 0);
+    // Then crop to the paper. A sheet lying on a dark surface otherwise
+    // contributes a solid block of ink whose edges look far more like rules
+    // than any printed line does.
+    const crop = findPaper(bitmap);
+
+    const upright = rasterise(bitmap, 0, crop);
     const shear = estimateShear(upright.binary, upright.width, upright.height);
 
     // Under about a quarter of a degree, redrawing costs more than it buys.
-    const prepared = Math.abs(shear) < 0.004 ? upright : rasterise(bitmap, shear);
+    const prepared = Math.abs(shear) < 0.004 ? upright : rasterise(bitmap, shear, crop);
 
     const blob = await new Promise<Blob | null>((resolve) =>
       prepared.canvas.toBlob(resolve, 'image/png'),
@@ -57,6 +73,108 @@ export async function preprocessForOcr(image: Blob): Promise<Prepared> {
 }
 
 /**
+ * Decode an image with its EXIF orientation already applied.
+ *
+ * Exported because anything that shows a picked photo has to agree with what
+ * the reader sees: a box drawn on a preview that is the right way up would
+ * crop the wrong part of an image that is not.
+ */
+export async function uprightBitmap(image: Blob): Promise<ImageBitmap> {
+  const orientation = await readOrientation(image);
+  const raw = await createImageBitmap(image, { imageOrientation: 'none' });
+  if (orientation === 1) return raw;
+
+  const turned = await turnUpright(raw, orientation);
+  if (turned !== raw) raw.close();
+  return turned;
+}
+
+async function readOrientation(image: Blob): Promise<Orientation> {
+  try {
+    // The tag lives in the first few kilobytes; there is no need for the rest.
+    const head = await image.slice(0, 128 * 1024).arrayBuffer();
+    return readExifOrientation(head);
+  } catch {
+    return 1;
+  }
+}
+
+/** Redraw a bitmap with its orientation tag applied. */
+async function turnUpright(bitmap: ImageBitmap, orientation: Orientation): Promise<ImageBitmap> {
+  const turned = swapsAxes(orientation);
+  const width = turned ? bitmap.height : bitmap.width;
+  const height = turned ? bitmap.width : bitmap.height;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d');
+  if (!context) return bitmap;
+
+  context.setTransform(...orientationTransform(orientation, bitmap.width, bitmap.height));
+  context.drawImage(bitmap, 0, 0);
+  context.setTransform(1, 0, 0, 1, 0, 0);
+
+  return createImageBitmap(canvas);
+}
+
+/** Small enough to find paper on, big enough for the shape to survive. */
+const PAPER_SCAN_EDGE = 400;
+
+/**
+ * The part of the photo that is the sheet, or null if the whole thing is.
+ *
+ * Paper is the bright thing; whatever it is lying on is generally not. Otsu
+ * picks the split rather than a fixed level, because how bright "bright" is
+ * depends entirely on the exposure.
+ */
+function findPaper(bitmap: ImageBitmap): SheetBox | null {
+  const scale = Math.min(1, PAPER_SCAN_EDGE / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return null;
+
+  context.drawImage(bitmap, 0, 0, width, height);
+  const { data } = context.getImageData(0, 0, width, height);
+
+  const histogram = new Array<number>(256).fill(0);
+  const grey = new Uint8Array(width * height);
+  for (let i = 0; i < grey.length; i++) {
+    const p = i * 4;
+    const value = (data[p] * 299 + data[p + 1] * 587 + data[p + 2] * 114) / 1000;
+    grey[i] = value;
+    histogram[Math.round(value)] += 1;
+  }
+
+  const threshold = otsuThreshold(histogram);
+  const bright = new Uint8Array(grey.length);
+  for (let i = 0; i < grey.length; i++) bright[i] = grey[i] > threshold ? 1 : 0;
+
+  // A crop of a single row is all paper: there is no table around it, and
+  // cropping to the "brightest region" would land inside one frame's cell.
+  if (!hasDarkSurround(grey, width, height, threshold)) return null;
+
+  const box = findSheetBox(bright, width, height);
+  if (!box) return null;
+
+  // Back to the bitmap's own scale, inset so the paper's edge is left behind.
+  const inset = insetBox(box, 0.01);
+  return {
+    x: Math.round(inset.x / scale),
+    y: Math.round(inset.y / scale),
+    width: Math.round(inset.width / scale),
+    height: Math.round(inset.height / scale),
+  };
+}
+
+/**
  * Draw the photo at working size, straightened, and threshold it.
  *
  * A true rotation rather than the horizontal shear the column projection uses.
@@ -65,10 +183,16 @@ export async function preprocessForOcr(image: Blob): Promise<Prepared> {
  * across thirty rows and never form the peak that locates the sheet. Rotating
  * fixes both directions at once.
  */
-function rasterise(bitmap: ImageBitmap, shear: number): Omit<Prepared, 'blob'> {
-  const scale = Math.min(1, TARGET_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+function rasterise(
+  bitmap: ImageBitmap,
+  shear: number,
+  crop: SheetBox | null,
+): Omit<Prepared, 'blob'> {
+  const source = crop ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
+
+  const scale = Math.min(1, TARGET_LONG_EDGE / Math.max(source.width, source.height));
+  const width = Math.round(source.width * scale);
+  const height = Math.round(source.height * scale);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -88,7 +212,17 @@ function rasterise(bitmap: ImageBitmap, shear: number): Omit<Prepared, 'blob'> {
     context.rotate(-Math.atan(shear));
     context.translate(-width / 2, -height / 2);
   }
-  context.drawImage(bitmap, 0, 0, width, height);
+  context.drawImage(
+    bitmap,
+    source.x,
+    source.y,
+    source.width,
+    source.height,
+    0,
+    0,
+    width,
+    height,
+  );
   context.setTransform(1, 0, 0, 1, 0, 0);
 
   const frame = context.getImageData(0, 0, width, height);

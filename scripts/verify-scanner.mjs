@@ -2,10 +2,11 @@
  * End-to-end check of the score sheet scanner.
  *
  * The unit tests cover the segmentation maths on synthetic buffers; this
- * drives the real thing — canvas, thresholding, deskew, Tesseract, the mark
- * parser and the review screen — against generated sheets that imitate what a
- * phone actually captures: a tilt, uneven overhead light, sensor noise, and
- * pencil rather than ink.
+ * drives the real thing — canvas, thresholding, deskew, row detection, the box
+ * a bowler draws round one game, Tesseract, the mark parser and the review
+ * screen — against generated sheets that imitate what a phone actually
+ * captures: a tilt, uneven overhead light, sensor noise, and pencil rather than
+ * ink.
  *
  * Opt-in, because it needs a browser and takes a minute:
  *
@@ -208,6 +209,14 @@ async function main() {
     await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
     await page.waitForSelector('text=Use a photo instead');
     await page.setInputFiles('input[type=file]', join(OUT, testCase.file));
+
+    // A picked photo now stops at a box to draw around one game. The box comes
+    // up on whichever row the detector likes best, so accepting it is the same
+    // thing a bowler does on a sheet the app has read correctly. Every row on
+    // these sheets carries the same game, so which one it lands on does not
+    // change what the score should be.
+    await page.waitForSelector('text=Drag a box around one game', { timeout: 30000 });
+    await page.getByRole('button', { name: 'Read this game' }).click();
 
     await page
       .waitForSelector('text=Marks — correct anything', { timeout: 180000 })

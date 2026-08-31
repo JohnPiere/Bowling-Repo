@@ -12,3 +12,9 @@ public/tesseract/
 scanner-check/
 public/fonts/
 app-check/
+
+# A personal score sheet used for local scanner testing — never committed.
+public/real-sheet.jpg
+
+# Scratch files from poking at the pipeline in a browser.
+*.tmp.*

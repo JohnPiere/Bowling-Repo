@@ -20,7 +20,7 @@ npm run push:server      # :8787, proxied at /api in dev
 
 # Browser checks. Opt-in: npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 16 checks
+npm run verify:app       # 30 checks
 npm run verify:scanner   # 6 generated sheets
 
 # Headers are ignored by `vite preview`, so test the CSP against this instead.
@@ -70,10 +70,36 @@ fetches one when something actually shows it.
 **A scan is never imported silently.** OCR on pencil is good enough to save
 typing and not good enough to trust. Every scan lands on a review screen.
 
-## The scanner, and two mistakes it is easy to repeat
+## The scanner: one game at a time
 
-It finds the sheet's rules and reads each frame separately, because reading
-the whole image in one pass throws away the grid that says where frames end.
+A house sheet stacks a row per game — three is normal, six happens — and
+reading the whole sheet at once does not work. Every row's frame grid has to
+survive being projected on top of every other row's, and it does not: the
+rules of one land in the gaps of the next until the projection is noise.
+
+So the unit of a scan is **one row**, and the bowler says which:
+
+- **The camera is a barcode reader.** A fixed bar sits in the middle of the
+  preview (`lib/reticle.ts`) and the sheet is slid until one row lies inside
+  it. Only that strip is captured. Detection still runs on the preview at 8 Hz
+  and, when it finds a row lying in the bar, the brackets snap to the row's own
+  rules and the capture takes those instead — lock-on, not selection, so a miss
+  costs nothing.
+- **A picked photo gets a box to drag** (`components/RegionPicker.tsx`), seeded
+  on whichever row `detectGameRows` likes best. The seed is opened out past the
+  row's rules on purpose: the band runs from one rule's centre to the next, and
+  a crop that shaves the borders off leaves the reader nothing to find the
+  frame grid against.
+
+Nothing on the sheet is read for the date, the time or the house. Sheets print
+them somewhere else, or in another language, or not at all; two fields to type
+beats a date silently read wrong.
+
+Within a row it finds the rules and reads each frame separately, because
+reading even one row in a single pass throws away the grid that says where
+frames end.
+
+Three mistakes that are easy to repeat:
 
 1. **Thresholds must be relative to what was found, not to the image.** A
    photographed sheet fills part of the frame, so a threshold anchored to
@@ -82,6 +108,14 @@ the whole image in one pass throws away the grid that says where frames end.
 2. **Straightening must be a rotation, not a shear.** A shear fixes vertical
    rules and leaves horizontal ones tilted — and the horizontal borders are
    what locate the sheet at all.
+3. **Live detection must crop to the paper first, but only when there is
+   paper to crop to.** A sheet on a table is a bright rectangle on something
+   darker; thresholded, that darker something is ink across every row it
+   occupies, far stronger than any printed rule, so the rules never clear the
+   bar. Cropping fixes it — but held close the sheet fills the frame, the same
+   threshold now separates print from paper, and the brightest run is the
+   *inside of a row*. Cropping to that throws away the rules being looked for.
+   `findPaper` checks the frame's outer edge is actually dark before it crops.
 
 Segmentation is pure and tested on synthetic buffers, but those buffers hid
 both bugs. `npm run verify:scanner` generates sheets that imitate a photograph

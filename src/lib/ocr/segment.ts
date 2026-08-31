@@ -41,11 +41,12 @@ export function projectColumns(
   width: number,
   height: number,
   shear = 0,
+  rowStep = 1,
 ): number[] {
   const projection = new Array<number>(width).fill(0);
   const midY = height / 2;
 
-  for (let y = 0; y < height; y++) {
+  for (let y = 0; y < height; y += rowStep) {
     const row = y * width;
     const offset = Math.round((y - midY) * shear);
 
@@ -56,7 +57,8 @@ export function projectColumns(
     }
   }
 
-  return projection;
+  // Scale back up so a subsampled projection is comparable with a full one.
+  return rowStep === 1 ? projection : projection.map((value) => value * rowStep);
 }
 
 /** How concentrated a projection is — a well-aligned sheet gives sharp spikes. */
@@ -69,27 +71,39 @@ function peakiness(projection: number[]): number {
 /**
  * The shear that makes the rules line up best.
  *
- * Tries a small fan of angles and keeps the one whose projection is most
- * concentrated. Roughly ±3°, which covers holding a phone by hand; past that
- * the bowler is better served by retaking the photo than by the app guessing.
+ * Tries a fan of angles and keeps the one whose projection is most
+ * concentrated. Coarse first, then finer around the winner: a photograph put
+ * down on a table is routinely five or six degrees out, and searching that
+ * range at full resolution in half-degree steps costs more than the accuracy
+ * is worth.
  */
 export function estimateShear(binary: Binary, width: number, height: number): number {
-  const candidates: number[] = [];
-  for (let i = -6; i <= 6; i++) candidates.push((i * 0.5 * Math.PI) / 180);
+  // Skew is a property of the whole page, so a subsampled view finds it just
+  // as well and a good deal faster.
+  const step = Math.max(1, Math.round(Math.min(width, height) / 400));
 
-  let best = 0;
-  let bestScore = -1;
+  const score = (shear: number) =>
+    peakiness(projectColumns(binary, width, height, shear, step));
 
-  for (const angle of candidates) {
-    const shear = Math.tan(angle);
-    const score = peakiness(projectColumns(binary, width, height, shear));
-    if (score > bestScore) {
-      bestScore = score;
-      best = shear;
+  const search = (from: number, to: number, increment: number, current: number) => {
+    let best = current;
+    let bestScore = score(current);
+
+    for (let degrees = from; degrees <= to; degrees += increment) {
+      const shear = Math.tan((degrees * Math.PI) / 180);
+      const value = score(shear);
+      if (value > bestScore) {
+        bestScore = value;
+        best = shear;
+      }
     }
-  }
 
-  return best;
+    return best;
+  };
+
+  const coarse = search(-8, 8, 1, 0);
+  const centre = (Math.atan(coarse) * 180) / Math.PI;
+  return search(centre - 1, centre + 1, 0.2, coarse);
 }
 
 /**
@@ -281,6 +295,7 @@ export interface Band {
   top: number;
   bottom: number;
 }
+
 
 /**
  * The gaps between horizontal rules — one per row of content.

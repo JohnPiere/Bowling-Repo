@@ -16,6 +16,7 @@
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const BASE = process.argv[2] ?? 'http://localhost:4173';
 
@@ -40,6 +41,52 @@ async function check(name, fn) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+/**
+ * A house sheet as they actually come: three games stacked, each a row of ten
+ * ruled frames of marks over its running totals. Returned base64, to be written
+ * out and picked through the file input.
+ */
+async function drawSheet(page) {
+  const dataUrl = await page.evaluate(() => {
+    const marks = ['X', '9/', '72', 'X', 'X', '8-', '9/', 'X', '63', 'XXX'];
+    const running = [20, 37, 46, 74, 92, 100, 120, 139, 148, 178];
+
+    const cell = 108;
+    const rowHeight = 100;
+    const gap = 46;
+    const games = 3;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cell * marks.length + 40;
+    canvas.height = 40 + games * (rowHeight + gap);
+
+    const g = canvas.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    g.strokeStyle = '#000';
+    g.lineWidth = 3;
+    g.textAlign = 'center';
+
+    for (let game = 0; game < games; game++) {
+      const top = 20 + game * (rowHeight + gap);
+      for (let i = 0; i < marks.length; i++) {
+        const x = 20 + i * cell;
+        g.strokeRect(x, top, cell, 60);
+        g.strokeRect(x, top + 60, cell, 40);
+        g.fillStyle = '#000';
+        g.font = 'bold 40px sans-serif';
+        g.fillText(marks[i], x + cell / 2, top + 45);
+        g.font = '30px sans-serif';
+        g.fillText(String(running[i]), x + cell / 2, top + 91);
+      }
+    }
+
+    return canvas.toDataURL('image/png');
+  });
+
+  return dataUrl.split(',')[1];
 }
 
 /** Bowl a full game of strikes through the counting pad. */
@@ -73,6 +120,9 @@ async function main() {
 
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined,
+    // A synthetic camera, so the checks that open one do not need a device and
+    // never sit waiting on a permission prompt.
+    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
   });
 
   // ── Progressive web app basics ────────────────────────────────────────
@@ -648,6 +698,87 @@ async function main() {
         });
         return [...new Set(small)];
       });
+
+    await check('a picked photo stops at a box to draw around one game', async () => {
+      const file = join(OUT, 'three-games.png');
+      writeFileSync(file, Buffer.from(await drawSheet(page), 'base64'));
+
+      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
+      await page.waitForSelector('text=Use a photo instead');
+      await page.setInputFiles('input[type=file]', file);
+
+      // Nothing is read until the bowler says which game. A sheet can hold six.
+      await page.waitForSelector('.picker__box', { timeout: 20000 });
+      assert(
+        await page.locator('.picker__preview img').count(),
+        'no preview of what would be read',
+      );
+
+      const before = await page.locator('.picker__box').boundingBox();
+      const photo = await page.locator('.picker__photo').boundingBox();
+
+      // The sheet holds three games, so there is somewhere else to go: drag the
+      // box onto a different row and check it followed the pointer.
+      await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(before.x + before.width / 2, photo.y + photo.height * 0.85, {
+        steps: 10,
+      });
+      await page.mouse.up();
+
+      const after = await page.locator('.picker__box').boundingBox();
+      assert(Math.abs(after.y - before.y) > 8, `the box did not move (${before.y} -> ${after.y})`);
+
+      const disabled = await page
+        .getByRole('button', { name: 'Read this game' })
+        .isDisabled();
+      assert(!disabled, 'the box was drawn but could not be read');
+
+      return `box seeded on one of three games, dragged ${Math.round(after.y - before.y)}px, preview shown`;
+    });
+
+    await check('the camera aims with a bar, and dims everything outside it', async () => {
+      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
+      await page.getByRole('button', { name: 'Open the camera' }).click();
+
+      await page.waitForSelector('.reticle', { timeout: 15000 });
+
+      const shape = await page.evaluate(() => {
+        const bar = document.querySelector('.reticle');
+        const rect = bar.getBoundingClientRect();
+        const finder = document.querySelector('.finder').getBoundingClientRect();
+        const shades = [...document.querySelectorAll('.finder__shade')].map((s) =>
+          s.getBoundingClientRect(),
+        );
+
+        return {
+          aspect: rect.width / rect.height,
+          locked: bar.classList.contains('reticle--locked'),
+          // The bar is inside the picture it is aiming at, wherever it has
+          // moved to. Its *position* is deliberately not asserted: it snaps on
+          // to a row when it finds one and eases back when it loses it, so
+          // there is no fixed place it is supposed to be.
+          inside: rect.y >= finder.y - 1 && rect.y + rect.height <= finder.bottom + 1,
+          corners: document.querySelectorAll('.reticle__corner').length,
+          shades: shades.length,
+        };
+      });
+
+      // A row is long and shallow; a square frame would be the wrong thing to
+      // ask someone to fill.
+      assert(shape.aspect > 4, `the bar is ${shape.aspect.toFixed(1)}:1, not row-shaped`);
+      assert(shape.corners === 4, `${shape.corners} corner marks`);
+      assert(shape.shades === 2, 'the picture outside the bar was not dimmed');
+      assert(shape.inside, 'the bar is not inside the preview it is aiming at');
+
+      return `${shape.aspect.toFixed(1)}:1 bar, four corners, dimmed outside${
+        shape.locked ? ', locked on to a row' : ''
+      }`;
+    });
 
     await check('every control is at least 44px to the thumb', async () => {
       const screens = [];
