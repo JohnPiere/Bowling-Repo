@@ -51,7 +51,39 @@ describe('planRestore', () => {
     const file = JSON.stringify(buildBackup([game({ id: 'dup' }), game({ id: 'dup' })]));
     const plan = planRestore(file, []);
     expect(plan.toAdd).toHaveLength(1);
-    expect(plan.alreadyHere).toBe(1);
+    // Counted as a repeat within the file, not as something this device has —
+    // it holds nothing.
+    expect(plan.duplicatedInFile).toBe(1);
+    expect(plan.alreadyHere).toBe(0);
+  });
+
+  it('does not let a restored game claim a photo the file cannot carry', () => {
+    // The app's own earlier export was a bare array that kept the flag.
+    const file = JSON.stringify([game({ id: 'photo', hasSheet: true })]);
+    expect(planRestore(file, []).toAdd[0].hasSheet).toBeUndefined();
+  });
+
+  it('rejects malformed pin data rather than storing it', () => {
+    // Persisted as-is, this breaks the leave statistics mid-render, long
+    // after the restore and with the bad record already written.
+    const file = JSON.stringify([
+      { ...game({ id: 'a' }), pinfalls: 5 },
+      { ...game({ id: 'b' }), pinfalls: [5] },
+      { ...game({ id: 'c' }), pinfalls: [[11]] },
+      { ...game({ id: 'd' }), pinfalls: [[1, 2, 3]] },
+    ]);
+    const plan = planRestore(file, []);
+    expect(plan.toAdd.map((g) => g.id)).toEqual(['d']);
+    expect(plan.rejected.map((r) => r.reason)).toEqual([
+      'the pin data is not a list',
+      'the pin data is not a list of pin numbers',
+      'the pin data is not a list of pin numbers',
+    ]);
+  });
+
+  it('rejects a malformed sharing list', () => {
+    const file = JSON.stringify([{ ...game({ id: 'x' }), sharedTo: [1, 2] }]);
+    expect(planRestore(file, []).rejected[0].reason).toMatch(/group ids/);
   });
 
   it('rescores rather than trusting a total in the file', () => {

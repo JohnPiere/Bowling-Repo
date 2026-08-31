@@ -18,6 +18,7 @@ import {
   type PushStatus,
 } from '../lib/push';
 import {
+  describeSaveFailure,
   estimateStorage,
   formatBytes,
   requestPersistence,
@@ -61,10 +62,18 @@ export function SettingsScreen({
 
   async function applyRestore() {
     if (!plan) return;
-    await putGames(plan.toAdd);
-    setRestored(plan.toAdd.length);
-    setPlan(null);
-    onRestored?.();
+    setRestoreError(null);
+    try {
+      await putGames(plan.toAdd);
+      setRestored(plan.toAdd.length);
+      setPlan(null);
+      onRestored?.();
+    } catch (err) {
+      // Restoring a season onto a nearly full device is exactly when this
+      // fails, and a Restore button that silently does nothing is the worst
+      // way to find out.
+      setRestoreError(describeSaveFailure(err));
+    }
   }
 
   useEffect(() => subscribeToInstallState(setInstall), []);
@@ -323,6 +332,8 @@ export function SettingsScreen({
             <p style={{ margin: '4px 0 0' }}>
               {plan.alreadyHere > 0 &&
                 `${plan.alreadyHere} already on this device and left alone. `}
+              {plan.duplicatedInFile > 0 &&
+                `${plan.duplicatedInFile} repeated within the file. `}
               {plan.rejected.length > 0 &&
                 `${plan.rejected.length} could not be read (${plan.rejected[0].reason}). `}
               Nothing is changed until you say so.
@@ -383,5 +394,7 @@ function exportGames(games: Game[]): void {
   link.download = `lane-log-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
 
-  URL.revokeObjectURL(url);
+  // Revoking immediately can pull the blob out from under a download the
+  // browser has not started reading yet. One frame is enough.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

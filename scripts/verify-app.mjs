@@ -758,7 +758,9 @@ async function main() {
       writeFileSync(junk, '<html>nope</html>');
       await other.setInputFiles('input[type=file]', junk);
       await other.waitForSelector('.note--bad');
-      const message = (await other.locator('.note--bad').textContent())?.trim();
+      // .first(): a push-permission note can also be on screen, and matching
+      // two would be a strict-mode violation rather than a real failure.
+      const message = (await other.locator('.note--bad').first().textContent())?.trim();
       assert(/JSON/i.test(message ?? ''), `unhelpful message: ${message}`);
       return message;
     });
@@ -795,6 +797,59 @@ async function main() {
     });
 
     await fresh.close();
+  }
+
+  // ── Failure containment ───────────────────────────────────────────────
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage({ viewport: { width: 412, height: 892 } });
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    await check('a bad record breaks its screen, not the whole app', async () => {
+      // Pin data of a shape the leave statistics cannot iterate. Restores
+      // reject this at the door; the boundary is for the one nobody predicted.
+      await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        const tx = db.transaction(['games'], 'readwrite');
+        tx.objectStore('games').put({
+          id: 'boundary-check', bowler: 'You', rolls: Array(20).fill(4), total: 80,
+          isComplete: true, source: 'manual', pinfalls: [5],
+          playedAt: Date.now(), updatedAt: Date.now(),
+        });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Stats', exact: true }).click();
+      await page.waitForTimeout(1000);
+
+      const root = (await page.locator('#root').innerText().catch(() => '')).trim();
+      // Everything is on the device with no server copy, so a blank page
+      // means a season the bowler cannot reach.
+      assert(root.length > 0, 'the app went blank');
+      assert(
+        (await page.getByRole('button', { name: 'Try again' }).count()) > 0,
+        'no way to recover was offered',
+      );
+
+      // Clean up, so later checks are not looking at a broken screen.
+      await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        const tx = db.transaction(['games'], 'readwrite');
+        tx.objectStore('games').delete('boundary-check');
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+
+      return 'contained, with a way back';
+    });
+
+    await context.close();
   }
 
   // ── Focus and motion ──────────────────────────────────────────────────

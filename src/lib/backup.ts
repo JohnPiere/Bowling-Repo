@@ -28,6 +28,10 @@ export interface RestorePlan {
   toAdd: Game[];
   /** Games already here, matched by id. Left alone. */
   alreadyHere: number;
+  /** Entries repeated within the file itself. Counted separately, because
+   *  saying they are "already on this device" would be untrue of a device
+   *  holding nothing. */
+  duplicatedInFile: number;
   /** Entries that were not usable, with the reason. */
   rejected: { index: number; reason: string }[];
 }
@@ -65,6 +69,7 @@ export function planRestore(raw: string, existing: Game[]): RestorePlan {
   const toAdd: Game[] = [];
   const rejected: RestorePlan['rejected'] = [];
   let alreadyHere = 0;
+  let duplicatedInFile = 0;
   // A file can carry the same id twice; the first wins.
   const seen = new Set<string>();
 
@@ -76,8 +81,12 @@ export function planRestore(raw: string, existing: Game[]): RestorePlan {
     }
 
     const game = entry as Game;
-    if (known.has(game.id) || seen.has(game.id)) {
+    if (known.has(game.id)) {
       alreadyHere += 1;
+      return;
+    }
+    if (seen.has(game.id)) {
+      duplicatedInFile += 1;
       return;
     }
 
@@ -85,10 +94,17 @@ export function planRestore(raw: string, existing: Game[]): RestorePlan {
     // Rescore rather than trusting the file: a total that disagrees with its
     // own rolls is the kind of thing a hand-edited export carries.
     const card = scoreGame(game.rolls);
-    toAdd.push({ ...game, total: card.total, isComplete: card.isComplete });
+
+    // A backup carries no photos, so a restored game must not claim one — the
+    // app's own earlier export format was a bare array that kept the flag,
+    // and a game claiming a photo it does not have shows "Loading the photo…"
+    // for ever.
+    const { hasSheet: _hasSheet, ...rest } = game;
+
+    toAdd.push({ ...rest, total: card.total, isComplete: card.isComplete });
   });
 
-  return { toAdd, alreadyHere, rejected };
+  return { toAdd, alreadyHere, duplicatedInFile, rejected };
 }
 
 /** Accept either a whole backup or a bare array of games. */
@@ -123,6 +139,26 @@ function describeProblem(entry: unknown): string | null {
   if (!isValidRolls(game.rolls)) return 'the rolls do not describe a real game';
   if (typeof game.playedAt !== 'number' || !Number.isFinite(game.playedAt)) {
     return 'no date';
+  }
+
+  // Everything below is persisted as-is, so anything malformed becomes a
+  // record that breaks a screen long after the restore — with the bad data
+  // already written. Pin data is the sharp edge: the leave statistics iterate
+  // it, and a number where an array belongs throws mid-render.
+  if (game.pinfalls !== undefined) {
+    if (!Array.isArray(game.pinfalls)) return 'the pin data is not a list';
+    const ballsAreValid = game.pinfalls.every(
+      (ball) =>
+        Array.isArray(ball) &&
+        ball.every((pin) => Number.isInteger(pin) && pin >= 1 && pin <= 10),
+    );
+    if (!ballsAreValid) return 'the pin data is not a list of pin numbers';
+  }
+
+  if (game.sharedTo !== undefined) {
+    if (!Array.isArray(game.sharedTo) || game.sharedTo.some((id) => typeof id !== 'string')) {
+      return 'the sharing list is not a list of group ids';
+    }
   }
 
   return null;
