@@ -7,7 +7,7 @@
 
 export type IconName =
   | 'home' | 'play' | 'history' | 'stats' | 'users' | 'settings'
-  | 'camera' | 'bell' | 'back' | 'chat' | 'gear' | 'check' | 'share';
+  | 'camera' | 'bell' | 'back' | 'chat' | 'ball' | 'check' | 'share';
 
 const PATHS: Record<IconName, string> = {
   home: 'M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5',
@@ -22,7 +22,8 @@ const PATHS: Record<IconName, string> = {
   bell: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0',
   back: 'M15 19l-7-7 7-7',
   chat: 'M21 12a8 8 0 01-8 8H8l-5 3 1.5-4.5A8 8 0 1121 12z',
-  gear: 'M12 4a8 8 0 100 16 8 8 0 000-16zM9.6 9.5h.01M13.4 8.8h.01M11.2 12.6h.01',
+  // A bowling ball — the prototype's "Gear" tab, i.e. equipment.
+  ball: 'M12 4a8 8 0 100 16 8 8 0 000-16zM9.6 9.5h.01M13.4 8.8h.01M11.2 12.6h.01',
   check: 'M20 6L9 17l-5-5',
   share: 'M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v13',
 };

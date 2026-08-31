@@ -806,3 +806,178 @@ body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ── Social ────────────────────────────────────────────────────────────── */
+
+/* "or" between two routes into the app, with the rule fading at both ends —
+   a Nocturne signature. */
+.rule-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  font-size: 11px;
+  color: var(--color-neutral-600);
+}
+.rule-or::before,
+.rule-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-divider), transparent);
+}
+
+.unread {
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #17141f;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
+.code-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.code-cells { display: flex; gap: 6px; margin: 10px 0 12px; }
+.code-cell {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--color-neutral-800);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 18px;
+  color: var(--color-neutral-700);
+}
+.code-cell--filled {
+  border-color: var(--color-accent);
+  background: rgba(145, 132, 217, 0.12);
+  color: #cfc7ff;
+}
+.code-cell--next { border-color: var(--color-accent-700); }
+
+/* Radio-style choice rows for create-group and settings. */
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--color-neutral-800);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.choice--on { border-color: var(--color-accent); background: rgba(145, 132, 217, 0.10); }
+.choice:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.choice__dot {
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-neutral-600);
+}
+.choice--on .choice__dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 4px var(--color-bg);
+}
+.choice__label { display: block; font-size: 13px; font-weight: 500; }
+.choice__note { display: block; font-size: 11px; color: var(--color-neutral-500); margin-top: 3px; }
+
+/* ── Chat ──────────────────────────────────────────────────────────────── */
+
+/* The composer is pinned; only the thread scrolls. */
+.chat { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.chat__thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+.msg { display: flex; gap: 10px; align-items: flex-start; }
+.msg__author { font-size: 12px; font-weight: 500; }
+.msg__body { margin: 2px 0 0; font-size: 13px; }
+
+.msg__card {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.msg--mine .msg__card { background: rgba(145, 132, 217, 0.10); }
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--color-divider);
+}
+.composer .input { min-height: 44px; }
+
+/* ── Group settings ────────────────────────────────────────────────────── */
+
+.switch {
+  flex: none;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-neutral-700);
+  background: var(--color-neutral-800);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.switch--on { background: rgba(145, 132, 217, 0.35); border-color: var(--color-accent); }
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-neutral-500);
+  transition: left 0.18s ease, background 0.18s ease;
+}
+.switch--on .switch__knob { left: 21px; background: #b5abfc; }
+
+.roster {
+  border-radius: 12px;
+  background: var(--color-surface);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.roster--open { box-shadow: inset 0 0 0 1px var(--color-accent-700); background: rgba(145, 132, 217, 0.07); }
+
+.roster__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.roster__actions { padding: 0 12px 12px; }
+
+.btn-lg--danger { color: var(--negative); border-color: rgba(224, 163, 182, 0.4); }

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
-import { SAMPLE_FEED, SAMPLE_GROUP, SAMPLE_ROSTER } from '../data/roster';
+import { SAMPLE_FEED } from '../data/roster';
+import type { Group } from '../data/groups';
 import {
   boardHeight,
   METRICS,
@@ -23,18 +24,24 @@ import {
  * so switching metric slides them to their new places. Sorting the array
  * before rendering would re-mount the rows and throw the animation away.
  */
-export function GroupScreen({ onOpenMember }: { onOpenMember?: (id: string) => void }) {
+interface Props {
+  group: Group;
+  onOpenMember?: (memberId: string) => void;
+  onOpenChat?: () => void;
+  onOpenSettings?: () => void;
+}
+
+export function GroupScreen({ group, onOpenMember, onOpenChat, onOpenSettings }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
 
+  const roster = group.members;
   const metric = metricByKey(metricKey);
-  const standings = useMemo(() => rankRoster(SAMPLE_ROSTER, metricKey), [metricKey]);
+  const standings = useMemo(() => rankRoster(roster, metricKey), [roster, metricKey]);
   const places = useMemo(() => podium(standings), [standings]);
 
   const mine = standings.find((s) => s.member.isMe) ?? standings[0];
-  const groupAverage = Math.round(
-    SAMPLE_ROSTER.reduce((sum, m) => sum + m.avg, 0) / SAMPLE_ROSTER.length,
-  );
-  const totalPins = SAMPLE_ROSTER.reduce((sum, m) => sum + m.pins, 0);
+  const groupAverage = Math.round(roster.reduce((sum, m) => sum + m.avg, 0) / roster.length);
+  const totalPins = roster.reduce((sum, m) => sum + m.pins, 0);
 
   return (
     <>
@@ -42,22 +49,30 @@ export function GroupScreen({ onOpenMember }: { onOpenMember?: (id: string) => v
         <div className="orb" />
 
         <div className="row">
-          <span className="hero__avatar">{SAMPLE_GROUP.initials}</span>
+          <span className="hero__avatar">{group.initials}</span>
           <div className="grow">
-            <div className="hero__name">{SAMPLE_GROUP.name}</div>
+            <div className="hero__name">{group.name}</div>
             <div className="hero__meta">
-              {SAMPLE_ROSTER.length} members · {SAMPLE_GROUP.isOpen ? 'open' : 'invite-only'}
-              {SAMPLE_GROUP.youOwnIt ? ' · you own it' : ''}
+              {roster.length} members · {group.isOpen ? 'open' : 'invite-only'}
+              {group.yourRole === 'owner' ? ' · you own it' : ''}
             </div>
           </div>
-          <button type="button" className="iconbtn" aria-label="Group settings">
+          <button
+            type="button"
+            className="iconbtn"
+            aria-label="Group settings"
+            onClick={onOpenSettings}
+          >
             <Icon name="settings" size={18} />
           </button>
-          <button type="button" className="iconbtn iconbtn--accent" aria-label="Group chat">
+          <button
+            type="button"
+            className="iconbtn iconbtn--accent"
+            aria-label="Group chat"
+            onClick={onOpenChat}
+          >
             <Icon name="chat" size={18} />
-            {SAMPLE_GROUP.unreadMessages > 0 && (
-              <span className="iconbtn__badge">{SAMPLE_GROUP.unreadMessages}</span>
-            )}
+            {group.unread > 0 && <span className="iconbtn__badge">{group.unread}</span>}
           </button>
         </div>
 
@@ -65,7 +80,7 @@ export function GroupScreen({ onOpenMember }: { onOpenMember?: (id: string) => v
           <div>
             <div className="hero__label">Your rank</div>
             <div className="hero__numeral tnum">{mine.rank}</div>
-            <div className="hero__meta">of {SAMPLE_ROSTER.length}</div>
+            <div className="hero__meta">of {roster.length}</div>
           </div>
 
           <div className="grow">
@@ -98,7 +113,7 @@ export function GroupScreen({ onOpenMember }: { onOpenMember?: (id: string) => v
         <div className="hero__pulse">
           {[
             { label: 'Group avg', value: groupAverage },
-            { label: 'Games this week', value: SAMPLE_GROUP.gamesThisWeek },
+            { label: 'Games this week', value: gamesThisWeek(roster) },
             { label: 'Pins in August', value: `${(totalPins / 1000).toFixed(1)}k` },
           ].map((cell) => (
             <div key={cell.label}>
@@ -309,4 +324,14 @@ function BoardRow({
       </span>
     </button>
   );
+}
+
+/**
+ * Games the group has logged this week.
+ *
+ * Sample data carries no per-game timestamps, so this is derived from the
+ * roster rather than invented — a real feed replaces it with a count.
+ */
+function gamesThisWeek(roster: { games: number }[]): number {
+  return Math.max(1, Math.round(roster.reduce((sum, m) => sum + m.games, 0) / 6));
 }
