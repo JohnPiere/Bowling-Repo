@@ -15,6 +15,8 @@ export interface ScanReview {
   /** What OCR read, kept so the bowler can see what the app saw. */
   rawText: string;
   confidence: number;
+  /** How the sheet was read — see RecognitionResult. */
+  strategy?: 'per-frame' | 'whole-sheet';
   /** True when the scan is clean enough that we are not second-guessing it. */
   isConfident: boolean;
   sheet: ParsedSheet | null;
@@ -29,13 +31,14 @@ export async function scanScoreSheet(
   image: Blob,
   onProgress?: (fraction: number) => void,
 ): Promise<ScanReview> {
-  const { text, confidence } = await getRecogniser().recognise(image, onProgress);
+  const { text, confidence, strategy } = await getRecogniser().recognise(image, onProgress);
   const parsed = tryParseMarks(text);
 
   if ('error' in parsed) {
     return {
       rawText: text,
       confidence,
+      strategy,
       isConfident: false,
       sheet: null,
       scorecard: null,
@@ -57,6 +60,7 @@ export async function scanScoreSheet(
   return {
     rawText: text,
     confidence,
+    strategy,
     isConfident: confidence >= REVIEW_CONFIDENCE_THRESHOLD && parsed.warnings.length === 0,
     sheet: parsed,
     scorecard,

@@ -4,5 +4,9 @@ dev-dist/
 .env
 .env.local
 server/subscriptions.json
+
+# Vendored by scripts/vendor-ocr.mjs at build time.
+public/tesseract/
 *.local
 .DS_Store
+scanner-check/

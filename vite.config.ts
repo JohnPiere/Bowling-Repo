@@ -14,8 +14,11 @@ export default defineConfig({
       registerType: 'prompt',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // Tesseract ships a large wasm core; the default 2 MiB cap would drop it.
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // The OCR engine is vendored same-origin but deliberately not
+        // precached: it is several megabytes the bowler should not pay for at
+        // install time. The service worker's CacheFirst route keeps it after
+        // the first scan instead.
+        globIgnores: ['**/tesseract/**'],
       },
       devOptions: {
         // Lets the push and offline paths be exercised with `npm run dev`.

@@ -12,10 +12,12 @@ scanning, which is not in the handoff.
 |---|---|
 | **Installable** | Web app manifest, service worker, offline app shell. Android gets a native install prompt; iOS gets Share-sheet instructions, which is the only route Safari offers. |
 | **Notifications** | Web Push with VAPID, end to end — permission, subscription, delivery, and tapping a notification to focus the app. |
-| **Scan a score sheet** | Photograph a paper sheet; OCR reads the marks on-device and shows the parsed game for correction before it is saved. |
+| **Scan a score sheet** | Photograph a paper sheet; the grid is found, each frame is read on-device, and the parsed game is shown for correction before it is saved. |
 | **Live scoring** | Pin keypad that only offers counts that are physically standing, with a scorecard that fills in as you bowl. |
 | **History** | Every game, grouped by session, filterable by range. |
+| **Analytics** | Score trend, how frames finish, first-ball distribution — one range selector over all three, each with a table view. |
 | **Group dashboard** | The handoff's centrepiece: hero standing, metric switcher, podium, and the six-row board whose rows *slide* between ranks. |
+| **The rest of the crew** | Auth (guest by default), groups list, create and join by code or QR, chat, member detail, group settings, and sharing a game to a board. |
 
 ## Running it
 
@@ -45,6 +47,20 @@ npm test             # unit tests
 npm run typecheck
 npm run build        # production build into dist/
 ```
+
+The scanner has an end-to-end check of its own, opt-in because it drives a real
+browser:
+
+```bash
+npm i -D playwright
+npm run build && npm run preview &
+npm run verify:scanner
+```
+
+It generates score sheets that imitate what a phone captures — a tilt, uneven
+overhead light, sensor noise, pencil rather than ink — pushes each through the
+real scan flow, and fails if a readable sheet is misread or an unreadable one
+produces a game anyway.
 
 ### Testing on a phone
 
@@ -91,6 +107,18 @@ save typing and not good enough to trust. Every scan lands on a review screen
 with an editable mark string, and a wrong read costs a correction rather than a
 corrupted average.
 
+**The scanner reads the grid, not the page.** A score sheet's vertical rules say
+exactly where one frame ends; reading the whole image in one pass throws that
+away and leaves the parser guessing frame boundaries from whitespace. So the
+sheet is straightened, its rules are located, and each frame is cropped and read
+on its own. Two details are easy to get wrong and were: the rule threshold has to
+be measured against the tallest column actually found rather than the image
+height, because a photographed sheet fills only part of the frame; and the
+straightening has to be a rotation rather than a horizontal shear, because a
+shear fixes the vertical rules while leaving the sheet's horizontal borders
+tilted — and those borders are what locate the sheet at all. When no grid is
+found the scanner falls back to reading the whole image and says so.
+
 ## Answers to the handoff's open questions
 
 The handoff asks six questions under "Questions for the Build". Where this
@@ -109,11 +137,11 @@ build has taken a position:
 
 ## Not built yet
 
-Phase 2 onward from the handoff: the analytics screen and its charts, auth,
-the groups list, create/join a group, chat, shared posts, member detail, and
-group settings. The group dashboard's roster is sample data in
-`src/data/roster.ts` — obviously fictional, and the one place to replace when
-there is a group API.
+The video screen and clip storage (out of scope for MVP in the handoff too),
+real Google and Apple OAuth, QR *scanning* (showing a code works; reading one
+does not), and any backend at all — groups, rosters, chat and shared posts are
+sample data in `src/data/`, obviously fictional, and the one place to replace
+when there is a group API.
 
 ## Known limits
 
@@ -122,7 +150,14 @@ there is a group API.
   The Settings screen says so rather than showing a button that cannot work.
 - **On-device OCR reads printed and neatly pencilled sheets well, messy
   handwriting poorly.** `ScoreSheetRecogniser` in `src/lib/ocr/types.ts` is the
-  seam for a cloud vision model when better accuracy is worth a server.
+  seam for a cloud vision model when better accuracy is worth a server. The
+  generated sheets `verify:scanner` uses are clean handwriting-substitutes, not
+  real handwriting — treat them as a regression guard, not proof it reads yours.
+- **The OCR engine is vendored to our own origin** by `scripts/vendor-ocr.mjs`
+  (wasm core, worker and language data, ~5 MB), so scanning does not depend on a
+  public CDN. It is deliberately left out of the precache — it downloads on the
+  first scan and is cached from then on, rather than costing every install five
+  megabytes up front.
 - **Inter loads from Google Fonts** via the vendored design-system CSS, so the
   first offline load falls back to the system font. Self-host the woff2 files
   to fix.

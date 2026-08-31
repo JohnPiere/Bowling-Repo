@@ -285,6 +285,9 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           <h2 className="section-title">What the scan read</h2>
           <pre className="rawtext">{review.rawText.trim() || '(nothing legible)'}</pre>
           <p className="footnote">
+            {review.strategy === 'per-frame'
+              ? 'Read frame by frame — the sheet’s own rules marked where each frame ends.'
+              : 'Read as one image; no frame grid was found, so the marks were split on spacing.'}{' '}
             Confidence {Math.round(review.confidence * 100)}%. Recognition ran on this device; the
             photo is stored with the game and never uploaded.
           </p>

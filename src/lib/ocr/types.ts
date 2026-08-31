@@ -12,6 +12,14 @@ export interface RecognitionResult {
   text: string;
   /** 0..1, how sure the recogniser is. Drives whether we warn before import. */
   confidence: number;
+  /**
+   * How the sheet was read. 'per-frame' means the grid was found and each
+   * frame was cropped and read on its own, which is markedly more reliable
+   * than reading the whole sheet in one pass.
+   */
+  strategy?: 'per-frame' | 'whole-sheet';
+  /** Frames that produced any marks, when read per-frame. */
+  framesRead?: number;
 }
 
 export interface ScoreSheetRecogniser {
