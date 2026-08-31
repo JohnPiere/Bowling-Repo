@@ -1,0 +1,3 @@
+# The app owns its routing, so a refresh on any in-app screen must get the
+# shell rather than a 404.
+/*  /index.html  200

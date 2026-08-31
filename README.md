@@ -69,6 +69,15 @@ a bare LAN address does not. Put an HTTPS tunnel in front of the dev server
 (`cloudflared tunnel --url http://localhost:5173`, or similar) and open that URL
 on the handset.
 
+### Deploying
+
+`docs/DEPLOYING.md` covers it: build, upload `dist/` to any static host, and —
+if you want notifications — run the push server somewhere with three
+environment variables. Two host settings matter (serve `index.html` for unknown
+paths; never cache `sw.js`), and configs for Netlify, Cloudflare Pages, Vercel
+and nginx are included. There is a five-step checklist at the end for
+confirming a deployment on a real phone.
+
 ## How it is put together
 
 ```
