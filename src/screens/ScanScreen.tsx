@@ -11,6 +11,7 @@ import {
 import { importScannedGame, scanScoreSheet, type ScanReview } from '../lib/import';
 import { tryParseMarks } from '../lib/marks';
 import { scoreGame } from '../lib/scoring';
+import { describeSaveFailure, isQuotaError } from '../lib/storage';
 
 type Stage = 'choose' | 'framing' | 'reading' | 'review';
 
@@ -30,6 +31,8 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
   const [marks, setMarks] = useState('');
   const [house, setHouse] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dropPhoto, setDropPhoto] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -106,14 +109,21 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
   async function commit() {
     if (!corrected || 'error' in corrected) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const saved = await importScannedGame(corrected.rolls, {
         bowler: 'You',
         house: house.trim() || undefined,
         sheetImage: review?.image,
+        keepPhoto: !dropPhoto,
       });
       reset();
       onImported(saved.id);
+    } catch (err) {
+      // The scored game is the valuable part; if the photo is what will not
+      // fit, offer to drop it rather than lose the import.
+      setSaveError(describeSaveFailure(err, { hasPhoto: Boolean(review?.image) && !dropPhoto }));
+      if (isQuotaError(err)) setDropPhoto(true);
     } finally {
       setSaving(false);
     }
@@ -125,6 +135,8 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
     setMarks('');
     setHouse('');
     setProgress(0);
+    setSaveError(null);
+    setDropPhoto(false);
     setStage('choose');
   }
 
@@ -268,6 +280,14 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             />
           </label>
 
+          {saveError && <div className="note note--bad">{saveError}</div>}
+
+          {dropPhoto && (
+            <div className="note note--info">
+              The photo will not be kept with this game. The score sheet itself is unaffected.
+            </div>
+          )}
+
           <button
             type="button"
             className="btn-lg btn-lg--primary"
@@ -275,7 +295,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             onClick={commit}
           >
             <Icon name="check" size={18} />
-            {saving ? 'Saving…' : 'Save this game'}
+            {saving ? 'Saving…' : dropPhoto ? 'Save without the photo' : 'Save this game'}
           </button>
 
           <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={reset}>

@@ -10,6 +10,7 @@ import { getRecogniser, REVIEW_CONFIDENCE_THRESHOLD } from './ocr';
 import { tryParseMarks, type ParsedSheet } from './marks';
 import { scoreGame, type Scorecard } from './scoring';
 import { saveGame, type Game } from './db';
+import { shrinkForStorage } from './storage';
 
 export interface ScanReview {
   /** What OCR read, kept so the bowler can see what the app saw. */
@@ -73,9 +74,23 @@ export async function scanScoreSheet(
 /** Commit a reviewed scan, with whatever corrections the bowler made. */
 export async function importScannedGame(
   rolls: number[],
-  meta: { bowler: string; house?: string; playedAt?: number; sheetImage?: Blob },
+  meta: {
+    bowler: string;
+    house?: string;
+    playedAt?: number;
+    sheetImage?: Blob;
+    /** Drop the photo — the way out when the device is out of room. */
+    keepPhoto?: boolean;
+  },
 ): Promise<Game> {
   const scorecard = scoreGame(rolls);
+  const keepPhoto = meta.keepPhoto ?? true;
+
+  // A camera original is several megabytes; a season of them would fill the
+  // origin's quota on its own, and nothing downstream needs that resolution.
+  const sheetImage =
+    keepPhoto && meta.sheetImage ? await shrinkForStorage(meta.sheetImage) : undefined;
+
   return saveGame({
     bowler: meta.bowler,
     house: meta.house,
@@ -83,7 +98,7 @@ export async function importScannedGame(
     total: scorecard.total,
     isComplete: scorecard.isComplete,
     source: 'scan',
-    sheetImage: meta.sheetImage,
+    sheetImage,
     playedAt: meta.playedAt ?? Date.now(),
   });
 }

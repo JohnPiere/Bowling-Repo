@@ -4,6 +4,7 @@ import { Scorecard } from '../components/Scorecard';
 import { Icon } from '../components/Icon';
 import { saveGame } from '../lib/db';
 import { isGameComplete, nextRollCursor, scoreGame } from '../lib/scoring';
+import { describeSaveFailure } from '../lib/storage';
 
 interface Props {
   /** Receives the saved game so the caller can offer to share it. */
@@ -22,6 +23,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
   const [rolls, setRolls] = useState<number[]>([]);
   const [house, setHouse] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const card = scoreGame(rolls);
   const cursor = nextRollCursor(rolls);
@@ -29,6 +31,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
 
   async function save() {
     setSaving(true);
+    setSaveError(null);
     try {
       const saved = await saveGame({
         bowler: 'You',
@@ -43,6 +46,9 @@ export function PlayScreen({ onSaved, onScan }: Props) {
       setHouse('');
       setStarted(false);
       onSaved(saved.id);
+    } catch (err) {
+      // Keep the rolls on screen: a failed save must not cost the game.
+      setSaveError(describeSaveFailure(err));
     } finally {
       setSaving(false);
     }
@@ -104,6 +110,8 @@ export function PlayScreen({ onSaved, onScan }: Props) {
               placeholder="Rose Bowl Lanes"
             />
           </label>
+          {saveError && <div className="note note--bad">{saveError}</div>}
+
           <button
             type="button"
             className="btn-lg btn-lg--primary"

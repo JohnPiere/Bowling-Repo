@@ -16,6 +16,13 @@ import {
   unsubscribeFromPush,
   type PushStatus,
 } from '../lib/push';
+import {
+  estimateStorage,
+  formatBytes,
+  requestPersistence,
+  STORAGE_WARN_AT,
+  type StorageReport,
+} from '../lib/storage';
 
 /**
  * Settings, which on this app is mostly the two things that make it feel like
@@ -26,8 +33,12 @@ export function SettingsScreen({ games }: { games: Game[] }) {
   const [push, setPush] = useState<PushStatus>('unavailable');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [storage, setStorage] = useState<StorageReport | null>(null);
 
   useEffect(() => subscribeToInstallState(setInstall), []);
+  useEffect(() => {
+    void estimateStorage().then(setStorage);
+  }, [games.length]);
   useEffect(() => {
     void currentPushStatus().then(setPush);
   }, [install]);
@@ -159,6 +170,64 @@ export function SettingsScreen({ games }: { games: Game[] }) {
           <span className="muted">Scanned sheets kept</span>
           <span className="tnum">{games.filter((g) => g.sheetImage).length}</span>
         </div>
+
+        {storage?.usage !== null && storage !== null && (
+          <>
+            <div className="row row--between" style={{ marginTop: 6 }}>
+              <span className="muted">Used</span>
+              <span className="tnum">
+                {formatBytes(storage.usage)}
+                {storage.quota ? ` of ${formatBytes(storage.quota)}` : ''}
+              </span>
+            </div>
+
+            {storage.fraction !== null && (
+              <div className="progress" style={{ marginTop: 8 }}>
+                <div
+                  className="progress__fill"
+                  style={{
+                    width: `${Math.min(100, Math.round(storage.fraction * 100))}%`,
+                    background:
+                      storage.fraction >= STORAGE_WARN_AT ? 'var(--negative)' : undefined,
+                  }}
+                />
+              </div>
+            )}
+
+            {storage.fraction !== null && storage.fraction >= STORAGE_WARN_AT && (
+              <div className="note note--warn" style={{ marginTop: 11, marginBottom: 0 }}>
+                Storage is nearly full. Export your games, then delete some older ones — scanned
+                sheets take by far the most room.
+              </div>
+            )}
+          </>
+        )}
+
+        {storage && !storage.persisted && (
+          <>
+            <button
+              type="button"
+              className="btn-lg"
+              style={{ marginTop: 11 }}
+              onClick={async () => {
+                const granted = await requestPersistence();
+                setStorage(await estimateStorage());
+                setMessage(
+                  granted
+                    ? null
+                    : 'The browser would not promise to keep this data. It still works, but it can be cleared under storage pressure.',
+                );
+              }}
+            >
+              Ask the browser to keep this data
+            </button>
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              Without this, a browser short of space may clear your games. Installing the app
+              usually makes the browser grant it.
+            </p>
+          </>
+        )}
+
         <button
           type="button"
           className="btn-lg"
@@ -168,7 +237,7 @@ export function SettingsScreen({ games }: { games: Game[] }) {
           <Icon name="share" size={18} />
           Export games as JSON
         </button>
-        <p className="footnote">
+        <p className="footnote" style={{ marginBottom: 0 }}>
           Everything is stored on this device only. There is no account and nothing is uploaded —
           export is currently the only backup.
         </p>
