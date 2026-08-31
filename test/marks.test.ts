@@ -77,3 +77,34 @@ describe('tryParseMarks', () => {
     expect(tryParseMarks('X 9/')).toHaveProperty('rolls');
   });
 });
+
+describe('a strike ends the frame', () => {
+  it('ignores a stray mark after a strike, and says so', () => {
+    // "X-" is what a speck of dirt beside a strike reads as. Kept, it would
+    // push an extra roll in and shift every later frame.
+    const sheet = parseMarks('X- 9/ 72 X X 8- 9/ X 63 XXX');
+    expect(sheet.rolls.slice(0, 3)).toEqual([10, 9, 1]);
+    expect(scoreGame(sheet.rolls).total).toBe(178);
+    expect(sheet.warnings.join(' ')).toMatch(/strike ends the frame/);
+  });
+
+  it('leaves the tenth frame alone, where a strike does not end it', () => {
+    const sheet = parseMarks('-- -- -- -- -- -- -- -- -- XXX');
+    expect(sheet.rolls.slice(-3)).toEqual([10, 10, 10]);
+    expect(sheet.warnings.join(' ')).not.toMatch(/strike ends the frame/);
+  });
+
+  it('scores a sheet with a stray mark the same as a clean one', () => {
+    const clean = parseMarks('X 9/ 72 X X 8- 9/ X 63 XXX');
+    const noisy = parseMarks('X- 9/ 72 X X 8- 9/ X 63 XXX');
+    expect(noisy.rolls).toEqual(clean.rolls);
+  });
+});
+
+describe('marks that differ but mean the same game', () => {
+  it('reads a spare written as its pin count identically', () => {
+    // OCR routinely reads "/" as "1". After a 9 those are the same throw, so
+    // the game is unaffected even though the marks differ.
+    expect(parseMarks('9/ 44').rolls).toEqual(parseMarks('91 44').rolls);
+  });
+});

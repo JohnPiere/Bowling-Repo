@@ -76,9 +76,20 @@ function normalise(raw: string): string[][] {
  * `carry` is the pin count of the ball before this frame's first mark, which a
  * leading spare would otherwise have nothing to subtract from.
  */
-function frameToRolls(marks: string[], frameIndex: number): number[] {
+function frameToRolls(marks: string[], frameIndex: number, warnings: string[]): number[] {
   const rolls: number[] = [];
   const isTenth = frameIndex === FRAMES_PER_GAME - 1;
+
+  // A strike ends a frame everywhere but the tenth, so anything after it is
+  // ink the recogniser invented — a speck read as a dash, most often. Keeping
+  // it would not fail loudly: it would push an extra roll into the list and
+  // silently shift every later frame, which is the worst outcome available.
+  if (!isTenth && marks[0] === 'X' && marks.length > 1) {
+    warnings.push(
+      `Frame ${frameIndex + 1}: a strike ends the frame, so "${marks.slice(1).join('')}" after it was ignored.`,
+    );
+    marks = marks.slice(0, 1);
+  }
 
   marks.forEach((mark, i) => {
     if (mark === 'X') {
@@ -148,7 +159,7 @@ export function parseMarks(raw: string): ParsedSheet {
 
   const rolls: number[] = [];
   frames.forEach((frame, index) => {
-    rolls.push(...frameToRolls(frame, index));
+    rolls.push(...frameToRolls(frame, index, warnings));
   });
 
   if (!isValidRolls(rolls)) {

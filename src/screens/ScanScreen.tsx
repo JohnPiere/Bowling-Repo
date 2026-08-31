@@ -252,6 +252,35 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             <div className="note note--bad">{corrected.error}</div>
           )}
 
+          {review.otherRows && review.otherRows.length > 0 && (
+            <>
+              <h2 className="section-title">Which row is yours</h2>
+              {[review.rawText, ...review.otherRows].map((row, index) => {
+                const parsed = tryParseMarks(row);
+                const total = 'rolls' in parsed ? scoreGame(parsed.rolls).total : null;
+                const isChosen = marks.replace(/\s/g, '') === row.replace(/\s/g, '');
+
+                return (
+                  <button
+                    key={`${index}-${row}`}
+                    type="button"
+                    className={`choice${isChosen ? ' choice--on' : ''}`}
+                    onClick={() => setMarks(row)}
+                  >
+                    <span className="choice__dot" aria-hidden="true" />
+                    <span className="grow">
+                      <span className="choice__label tnum">
+                        {index === 0 ? 'Top row' : `Row ${index + 1}`}
+                        {total !== null && ` · ${total}`}
+                      </span>
+                      <span className="choice__note tnum">{row || '(nothing read)'}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+
           <label style={{ display: 'block', marginBottom: 11 }}>
             <span className="hero__label">Marks — correct anything the scan got wrong</span>
             <input

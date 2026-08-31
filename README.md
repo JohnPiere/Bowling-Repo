@@ -12,7 +12,7 @@ scanning, which is not in the handoff.
 |---|---|
 | **Installable** | Web app manifest, service worker, offline app shell. Android gets a native install prompt; iOS gets Share-sheet instructions, which is the only route Safari offers. |
 | **Notifications** | Web Push with VAPID, end to end — permission, subscription, delivery, and tapping a notification to focus the app. |
-| **Scan a score sheet** | Photograph a paper sheet; the grid is found, each frame is read on-device, and the parsed game is shown for correction before it is saved. |
+| **Scan a score sheet** | Photograph a paper sheet; the grid is found, each frame is read on-device, and the parsed game is shown for correction before it is saved. A league sheet with several bowlers on it is read as several rows, and you pick yours. |
 | **Live scoring** | Pin keypad that only offers counts that are physically standing, with a scorecard that fills in as you bowl. |
 | **History** | Every game, grouped by session, filterable by range. |
 | **Analytics** | Score trend, how frames finish, first-ball distribution — one range selector over all three, each with a table view. |
@@ -56,7 +56,7 @@ a browser:
 npm i -D playwright
 npm run build && npm run preview &
 npm run verify:app       # 15 checks
-npm run verify:scanner   # 5 generated sheets
+npm run verify:scanner   # 6 generated sheets
 ```
 
 `verify:app` answers the questions only a real browser can: does the service
@@ -66,9 +66,13 @@ the leaderboard *move* its rows rather than re-sort them, is every control 44px
 to a thumb.
 
 `verify:scanner` generates score sheets that imitate what a phone captures — a
-tilt, uneven overhead light, sensor noise, pencil rather than ink — pushes each
-through the real scan flow, and fails if a readable sheet is misread or an
-unreadable one produces a game anyway.
+tilt, uneven overhead light, sensor noise, pencil rather than ink, and a league
+sheet with four bowlers stacked on it — pushes each through the real scan flow,
+and fails if a readable sheet is misread or an unreadable one produces a game
+anyway. The sheets are seeded, so a pass or a failure is attributable to a
+change in the scanner rather than to the noise. It compares the resulting
+*game*, not the mark string: different marks can describe the same throws, and a
+scanner that gets the game right has done its job.
 
 ### Testing on a phone
 

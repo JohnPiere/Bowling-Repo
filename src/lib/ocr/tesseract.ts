@@ -17,12 +17,17 @@
 import { createWorker, type Worker } from 'tesseract.js';
 import { cropRegion, preprocessForOcr, type Prepared } from './preprocess';
 import {
+  findHorizontalRules,
   findMarkBand,
   findRules,
   findSheetBounds,
+  looksLikeMarks,
   projectColumns,
   projectRows,
+  toBands,
   toFrameCells,
+  type Band,
+  type Cell,
 } from './segment';
 import type { RecognitionResult, ScoreSheetRecogniser } from './types';
 
@@ -162,26 +167,78 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     const bounds = findSheetBounds(rows, sheetRight - sheetLeft);
     if (!bounds) return null;
 
-    const band = findMarkBand(rows, sheetRight - sheetLeft, bounds);
-    if (!band) return null;
+    const sheetWidth = sheetRight - sheetLeft;
 
-    // Inset past the border rule itself, which reads as a stray mark.
+    // A league sheet stacks bowlers, so look for every band the rules make
+    // rather than assuming one marks row over one row of totals.
+    const horizontals = findHorizontalRules(rows, sheetWidth, bounds);
+    let bands = toBands(horizontals);
+
+    if (bands.length === 0) {
+      // Only the borders: fall back to the single-row reading.
+      const band = findMarkBand(rows, sheetWidth, bounds);
+      if (!band) return null;
+      bands = [band];
+    }
+
+    await this.useMode(worker, PSM_SINGLE_LINE);
+
+    const readRows: { text: string; confidence: number; frames: number }[] = [];
+    let done = 0;
+    const totalCells = bands.length * grid.cells.length;
+
+    for (const band of bands) {
+      const row = await this.readBand(worker, canvas, grid.cells, band, () => {
+        done += 1;
+        onProgress?.(0.15 + (0.8 * done) / totalCells);
+      });
+
+      // Skip the running totals under each bowler, and any band of ruling
+      // that carried nothing.
+      if (row && row.frames >= 3 && looksLikeMarks(row.text)) readRows.push(row);
+    }
+
+    if (readRows.length === 0) return null;
+
+    const [first, ...rest] = readRows;
+
+    return {
+      // Frames are space-separated, which is exactly what the mark parser
+      // expects — and here the separation is the paper's, not a guess.
+      text: first.text,
+      // Discount by how regular the grid was: a doubtful grid should not
+      // produce a confident-looking read.
+      confidence: first.confidence * (0.7 + 0.3 * grid.regularity),
+      strategy: 'per-frame',
+      framesRead: first.frames,
+      otherRows: rest.map((row) => row.text),
+    };
+  }
+
+  /** Read one horizontal band, cell by cell. */
+  private async readBand(
+    worker: Worker,
+    canvas: HTMLCanvasElement,
+    cells: Cell[],
+    band: Band,
+    onCell: () => void,
+  ): Promise<{ text: string; confidence: number; frames: number } | null> {
+    // Inset past the rules themselves, which read as stray marks.
     const top = band.top + 2;
     const bottom = band.bottom - 2;
     if (bottom - top < 8) return null;
 
-    await this.useMode(worker, PSM_SINGLE_LINE);
-
     const frames: string[] = [];
     const confidences: number[] = [];
 
-    for (const [index, cell] of grid.cells.entries()) {
+    for (const cell of cells) {
       const crop = await cropRegion(canvas, {
         x: cell.x0,
         y: top,
         width: cell.x1 - cell.x0,
         height: bottom - top,
       });
+      onCell();
       if (!crop) continue;
 
       const { data } = await worker.recognize(crop);
@@ -191,29 +248,13 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       // so later frames do not shift left.
       frames.push(marks);
       if (marks) confidences.push(Math.max(0, Math.min(1, (data.confidence ?? 0) / 100)));
-
-      onProgress?.(0.15 + (0.8 * (index + 1)) / grid.cells.length);
     }
 
     const read = frames.filter(Boolean);
-    // A grid that yields almost nothing was probably not a grid.
-    if (read.length < 3) return null;
-
     const mean =
-      confidences.length === 0
-        ? 0
-        : confidences.reduce((a, b) => a + b, 0) / confidences.length;
+      confidences.length === 0 ? 0 : confidences.reduce((a, b) => a + b, 0) / confidences.length;
 
-    return {
-      // Frames are space-separated, which is exactly what the mark parser
-      // expects — and here the separation is the paper's, not a guess.
-      text: frames.join(' ').trim(),
-      // Discount by how regular the grid was: a doubtful grid should not
-      // produce a confident-looking read.
-      confidence: mean * (0.7 + 0.3 * grid.regularity),
-      strategy: 'per-frame',
-      framesRead: read.length,
-    };
+    return { text: frames.join(' ').trim(), confidence: mean, frames: read.length };
   }
 
   async dispose(): Promise<void> {

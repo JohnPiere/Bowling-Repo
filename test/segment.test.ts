@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   estimateShear,
+  findHorizontalRules,
   findMarkBand,
   findRules,
   findSheetBounds,
+  looksLikeMarks,
+  toBands,
   idealRules,
   projectColumns,
   projectRows,
@@ -260,5 +263,123 @@ describe('findMarkBand', () => {
 
   it('refuses a band too short to hold marks', () => {
     expect(findMarkBand(new Array(120).fill(0), 200, { top: 10, bottom: 15 })).toBeNull();
+  });
+});
+
+describe('findHorizontalRules', () => {
+  /** A sheet with `count` full-width rules at the given rows. */
+  const ruled = (width: number, height: number, rows: number[]) => {
+    const binary = new Uint8Array(width * height);
+    for (const y of rows) {
+      for (let x = 0; x < width; x++) binary[y * width + x] = 1;
+    }
+    return { binary, width, height };
+  };
+
+  it('finds every rule between the sheet borders', () => {
+    const { binary, width, height } = ruled(200, 200, [10, 50, 90, 130, 170]);
+    const rows = projectRows(binary, width, height);
+    const rules = findHorizontalRules(rows, width, { top: 10, bottom: 170 });
+    expect(rules).toEqual([10, 50, 90, 130, 170]);
+  });
+
+  it('ignores anything outside the sheet', () => {
+    const { binary, width, height } = ruled(200, 200, [2, 10, 50, 90, 195]);
+    const rows = projectRows(binary, width, height);
+    expect(findHorizontalRules(rows, width, { top: 10, bottom: 90 })).toEqual([10, 50, 90]);
+  });
+
+  it('collapses a thick rule to its centre', () => {
+    const { binary, width, height } = ruled(200, 200, [40, 41, 42]);
+    const rows = projectRows(binary, width, height);
+    expect(findHorizontalRules(rows, width, { top: 0, bottom: 199 })).toEqual([41]);
+  });
+});
+
+describe('toBands', () => {
+  it('returns the gap between each pair of rules', () => {
+    expect(toBands([10, 50, 90])).toEqual([
+      { top: 10, bottom: 50 },
+      { top: 50, bottom: 90 },
+    ]);
+  });
+
+  it('drops bands too thin to hold anything', () => {
+    // 10..14 is four rows: ruling, not content.
+    expect(toBands([10, 14, 60])).toEqual([{ top: 14, bottom: 60 }]);
+  });
+
+  it('returns nothing for fewer than two rules', () => {
+    expect(toBands([10])).toEqual([]);
+    expect(toBands([])).toEqual([]);
+  });
+});
+
+describe('looksLikeMarks', () => {
+  it('recognises a row with strikes or spares', () => {
+    expect(looksLikeMarks('X 9/ 72 X X')).toBe(true);
+    expect(looksLikeMarks('5/ 5/ 5/')).toBe(true);
+  });
+
+  it('rejects a row of running totals', () => {
+    expect(looksLikeMarks('20 37 46 74 92 100 120 139 148 178')).toBe(false);
+  });
+
+  it('keeps an all-open game, which has no marks to find', () => {
+    // Pin counts that fall as often as they rise are not running totals.
+    expect(looksLikeMarks('44 53 71 62 44 35 80 44 53 62')).toBe(true);
+  });
+
+  it('does not mistake a couple of numbers for a totals row', () => {
+    expect(looksLikeMarks('44 53')).toBe(true);
+  });
+
+  it('rejects totals even when they are read imperfectly', () => {
+    expect(looksLikeMarks('20 37 46 74 92')).toBe(false);
+  });
+});
+
+describe('findHorizontalRules — a photographed sheet', () => {
+  /**
+   * Straightening resamples the image, so a rule that was one solid row
+   * becomes two rows at roughly half strength. A threshold anchored to the
+   * sheet width misses those; one anchored to the strongest row does not.
+   */
+  const blurred = (width: number, height: number, rows: number[]) => {
+    const binary = new Uint8Array(width * height);
+    for (const y of rows) {
+      for (let x = 0; x < width; x++) {
+        // Half the pixels on each of two adjacent rows.
+        if (x % 2 === 0) binary[y * width + x] = 1;
+        else binary[(y + 1) * width + x] = 1;
+      }
+    }
+    return { binary, width, height };
+  };
+
+  it('finds rules that resampling has spread and weakened', () => {
+    const { binary, width, height } = blurred(200, 200, [10, 60, 110]);
+    const rows = projectRows(binary, width, height);
+    const rules = findHorizontalRules(rows, width, { top: 8, bottom: 130 });
+    expect(rules).toHaveLength(3);
+  });
+
+  it('still finds nothing on a blank sheet', () => {
+    const binary = new Uint8Array(200 * 200);
+    const rows = projectRows(binary, 200, 200);
+    expect(findHorizontalRules(rows, 200, { top: 0, bottom: 199 })).toEqual([]);
+  });
+
+  it('does not promote scattered ink into a rule', () => {
+    const width = 200;
+    const height = 200;
+    const binary = new Uint8Array(width * height);
+    // One real rule, plus a band of marks covering a tenth of the width.
+    for (let x = 0; x < width; x++) binary[100 * width + x] = 1;
+    for (let y = 40; y < 60; y++) {
+      for (let x = 0; x < 20; x++) binary[y * width + x] = 1;
+    }
+    const rows = projectRows(binary, width, height);
+    expect(findHorizontalRules(rows, width, { top: 0, bottom: 199 })).toEqual([100]);
   });
 });

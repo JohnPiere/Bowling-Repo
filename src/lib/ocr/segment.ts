@@ -239,6 +239,88 @@ export function toFrameCells(rules: number[], width: number): Grid | null {
 }
 
 /**
+ * Every horizontal rule inside the sheet.
+ *
+ * A league sheet stacks bowlers, so the rules between the top and bottom
+ * borders divide it into bands rather than into one marks row and one totals
+ * row. Runs of adjacent rows collapse to their centre, the same way vertical
+ * rules do.
+ */
+export function findHorizontalRules(
+  rows: number[],
+  sheetWidth: number,
+  bounds: { top: number; bottom: number },
+  minShare = 0.5,
+): number[] {
+  // Relative to the strongest row inside the sheet, not to the sheet's width.
+  // Straightening a photo resamples it, which spreads each rule over two rows
+  // and halves what any single row holds; a fixed share of the width then
+  // finds the borders of a flat scan and nothing on a photograph. The floor
+  // keeps a page of noise from inventing rules.
+  let peak = 0;
+  for (let y = bounds.top; y <= bounds.bottom; y++) peak = Math.max(peak, rows[y] ?? 0);
+
+  const threshold = Math.max(peak * minShare, sheetWidth * 0.2);
+  const rules: number[] = [];
+
+  let runStart = -1;
+  for (let y = bounds.top; y <= bounds.bottom + 1; y++) {
+    const isRule = y <= bounds.bottom && rows[y] >= threshold;
+
+    if (isRule && runStart < 0) runStart = y;
+    else if (!isRule && runStart >= 0) {
+      rules.push(Math.round((runStart + y - 1) / 2));
+      runStart = -1;
+    }
+  }
+
+  return rules;
+}
+
+export interface Band {
+  top: number;
+  bottom: number;
+}
+
+/**
+ * The gaps between horizontal rules — one per row of content.
+ *
+ * Bands thinner than `minHeight` are the rules themselves touching, or the
+ * ruling of a header, and carry nothing worth recognising.
+ */
+export function toBands(rules: number[], minHeight = 14): Band[] {
+  const bands: Band[] = [];
+
+  for (let i = 1; i < rules.length; i++) {
+    const top = rules[i - 1];
+    const bottom = rules[i];
+    if (bottom - top >= minHeight) bands.push({ top, bottom });
+  }
+
+  return bands;
+}
+
+/**
+ * Whether a band holds a bowler's marks or a row of running totals.
+ *
+ * A marks row almost always carries an X or a slash, and a totals row is
+ * digits that only ever climb. Both signals are needed: an all-open game has
+ * no marks to find, and a bad scan can lose the ones it had.
+ */
+export function looksLikeMarks(text: string): boolean {
+  const cleaned = text.toUpperCase();
+  if (/[X/]/.test(cleaned)) return true;
+
+  // No marks: fall back to shape. Running totals never decrease and end high.
+  const numbers = cleaned.match(/\d+/g)?.map(Number) ?? [];
+  if (numbers.length < 3) return true;
+
+  const climbs = numbers.every((n, i) => i === 0 || n >= numbers[i - 1]);
+  const endsHigh = numbers[numbers.length - 1] > 30;
+  return !(climbs && endsHigh);
+}
+
+/**
  * The horizontal band holding the marks.
  *
  * A sheet stacks marks over a running total. Recognising a whole cell reads

@@ -20,6 +20,12 @@ export interface RecognitionResult {
   strategy?: 'per-frame' | 'whole-sheet';
   /** Frames that produced any marks, when read per-frame. */
   framesRead?: number;
+  /**
+   * Other bowlers found on the same sheet, if it carried more than one row.
+   * A league sheet stacks four to six of them; the first is returned as
+   * `text` and the rest live here for the bowler to choose from.
+   */
+  otherRows?: string[];
 }
 
 export interface ScoreSheetRecogniser {

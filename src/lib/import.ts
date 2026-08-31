@@ -18,6 +18,11 @@ export interface ScanReview {
   confidence: number;
   /** How the sheet was read — see RecognitionResult. */
   strategy?: 'per-frame' | 'whole-sheet';
+  /**
+   * Other bowlers' rows found on the same sheet. A league sheet stacks
+   * several, and only the bowler can say which one is theirs.
+   */
+  otherRows?: string[];
   /** True when the scan is clean enough that we are not second-guessing it. */
   isConfident: boolean;
   sheet: ParsedSheet | null;
@@ -32,7 +37,10 @@ export async function scanScoreSheet(
   image: Blob,
   onProgress?: (fraction: number) => void,
 ): Promise<ScanReview> {
-  const { text, confidence, strategy } = await getRecogniser().recognise(image, onProgress);
+  const { text, confidence, strategy, otherRows } = await getRecogniser().recognise(
+    image,
+    onProgress,
+  );
   const parsed = tryParseMarks(text);
 
   if ('error' in parsed) {
@@ -40,6 +48,7 @@ export async function scanScoreSheet(
       rawText: text,
       confidence,
       strategy,
+      otherRows,
       isConfident: false,
       sheet: null,
       scorecard: null,
@@ -58,10 +67,17 @@ export async function scanScoreSheet(
     );
   }
 
+  if (otherRows && otherRows.length > 0) {
+    warnings.push(
+      `This sheet has ${otherRows.length + 1} bowlers on it. The top row is shown — pick yours below if it is not.`,
+    );
+  }
+
   return {
     rawText: text,
     confidence,
     strategy,
+    otherRows,
     isConfident: confidence >= REVIEW_CONFIDENCE_THRESHOLD && parsed.warnings.length === 0,
     sheet: parsed,
     scorecard,
