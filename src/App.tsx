@@ -6,9 +6,10 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { PlayScreen } from './screens/PlayScreen';
 import { ScanScreen } from './screens/ScanScreen';
+import { StatsScreen } from './screens/StatsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 
-type ScreenKey = 'home' | 'play' | 'scan' | 'history' | 'group' | 'settings';
+type ScreenKey = 'home' | 'play' | 'scan' | 'history' | 'stats' | 'group' | 'settings';
 
 /** Title and kicker for the app bar, per screen. */
 const SCREENS: Record<ScreenKey, { title: string; kicker: string; back?: ScreenKey }> = {
@@ -16,6 +17,7 @@ const SCREENS: Record<ScreenKey, { title: string; kicker: string; back?: ScreenK
   play: { title: 'Play', kicker: 'Live scoring' },
   scan: { title: 'Scan a sheet', kicker: 'Import', back: 'play' },
   history: { title: 'History', kicker: 'Every game' },
+  stats: { title: 'Stats', kicker: 'Analytics' },
   group: { title: 'Tuesday Crew', kicker: 'Group' },
   settings: { title: 'Settings', kicker: 'Preferences' },
 };
@@ -24,6 +26,7 @@ const TABS: { key: ScreenKey; label: string; icon: IconName }[] = [
   { key: 'home', label: 'Home', icon: 'home' },
   { key: 'play', label: 'Play', icon: 'play' },
   { key: 'history', label: 'History', icon: 'history' },
+  { key: 'stats', label: 'Stats', icon: 'stats' },
   { key: 'group', label: 'Crew', icon: 'users' },
   { key: 'settings', label: 'Settings', icon: 'settings' },
 ];
@@ -86,6 +89,7 @@ export function App() {
           />
         )}
         {screen === 'history' && <HistoryScreen games={games} />}
+        {screen === 'stats' && <StatsScreen games={games} />}
         {screen === 'group' && <GroupScreen />}
         {screen === 'settings' && <SettingsScreen games={games} />}
       </main>

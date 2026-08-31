@@ -1,0 +1,150 @@
+import { describe, expect, it } from 'vitest';
+import type { Game } from '../src/lib/db';
+import {
+  applyRange,
+  ballOutcomes,
+  bestStrikeRun,
+  firstBallDistribution,
+  scoreTrend,
+  summarise,
+} from '../src/lib/stats';
+import { scoreGame } from '../src/lib/scoring';
+
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = Date.UTC(2026, 7, 31);
+
+function game(rolls: number[], daysAgo = 0, over: Partial<Game> = {}): Game {
+  const card = scoreGame(rolls);
+  return {
+    id: `g${daysAgo}-${rolls.join('')}`,
+    bowler: 'You',
+    rolls,
+    total: card.total,
+    isComplete: card.isComplete,
+    source: 'manual',
+    playedAt: NOW - daysAgo * DAY,
+    updatedAt: NOW,
+    ...over,
+  };
+}
+
+const strikes = Array<number>(12).fill(10);
+const open4s = Array<number>(20).fill(4);
+const spares = Array<number>(21).fill(5);
+
+describe('applyRange', () => {
+  // Games arrive newest-first, as listGames returns them.
+  const games = [game(open4s, 0), game(open4s, 20), game(open4s, 60), game(open4s, 200)];
+
+  it('keeps everything for "all"', () => {
+    expect(applyRange(games, 'all', NOW)).toHaveLength(4);
+  });
+
+  it('takes the newest N for a game-count range', () => {
+    const recent = applyRange(games, 'g5', NOW);
+    expect(recent).toHaveLength(4);
+    expect(applyRange([...games, game(open4s, 300), game(open4s, 400)], 'g5', NOW)).toHaveLength(5);
+  });
+
+  it('filters by age for a day range', () => {
+    expect(applyRange(games, 'd30', NOW)).toHaveLength(2);
+    expect(applyRange(games, 'd90', NOW)).toHaveLength(3);
+    expect(applyRange(games, 'd180', NOW)).toHaveLength(3);
+  });
+});
+
+describe('summarise', () => {
+  it('reports nothing for an empty list', () => {
+    expect(summarise([])).toEqual({
+      games: 0, average: null, high: null, low: null, totalPins: 0, strikeRate: null,
+    });
+  });
+
+  it('ignores unfinished games', () => {
+    expect(summarise([game([10, 10])]).games).toBe(0);
+  });
+
+  it('averages finished games', () => {
+    const summary = summarise([game(strikes), game(open4s)]);
+    expect(summary.games).toBe(2);
+    expect(summary.high).toBe(300);
+    expect(summary.low).toBe(80);
+    expect(summary.average).toBe(190);
+    expect(summary.totalPins).toBe(380);
+  });
+
+  it('computes strike rate over frames', () => {
+    expect(summarise([game(strikes)]).strikeRate).toBe(100);
+    expect(summarise([game(open4s)]).strikeRate).toBe(0);
+    // One perfect game and one open game: 10 of 20 frames opened with a strike.
+    expect(summarise([game(strikes), game(open4s)]).strikeRate).toBe(50);
+  });
+});
+
+describe('scoreTrend', () => {
+  it('returns points oldest first', () => {
+    const points = scoreTrend([game(open4s, 0), game(strikes, 5)]);
+    expect(points.map((p) => p.score)).toEqual([300, 80]);
+  });
+
+  it('expands the mean until the window is full', () => {
+    const points = scoreTrend([game(open4s, 0), game(strikes, 1)], 10);
+    // Oldest first: 300, then the mean of 300 and 80.
+    expect(points.map((p) => p.rolling)).toEqual([300, 190]);
+  });
+
+  it('drops games outside the window', () => {
+    const games = [game(strikes, 3), game(open4s, 2), game(open4s, 1), game(open4s, 0)];
+    const points = scoreTrend(games, 2);
+    // Last point averages the final two games only, both 80.
+    expect(points.at(-1)?.rolling).toBe(80);
+  });
+
+  it('excludes unfinished games', () => {
+    expect(scoreTrend([game([10, 10])])).toHaveLength(0);
+  });
+});
+
+describe('ballOutcomes', () => {
+  it('counts a perfect game as ten strikes', () => {
+    expect(ballOutcomes([game(strikes)])).toEqual({ strikes: 10, spares: 0, opens: 0 });
+  });
+
+  it('counts an all-spare game as ten spares', () => {
+    expect(ballOutcomes([game(spares)])).toEqual({ strikes: 0, spares: 10, opens: 0 });
+  });
+
+  it('counts an all-open game as ten opens', () => {
+    expect(ballOutcomes([game(open4s)])).toEqual({ strikes: 0, spares: 0, opens: 10 });
+  });
+
+  it('always totals ten frames per finished game', () => {
+    const counts = ballOutcomes([game(strikes), game(spares), game(open4s)]);
+    expect(counts.strikes + counts.spares + counts.opens).toBe(30);
+  });
+});
+
+describe('firstBallDistribution', () => {
+  it('buckets first balls by pin count', () => {
+    const counts = firstBallDistribution([game(strikes)]);
+    expect(counts[10]).toBe(10);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(10);
+  });
+
+  it('ignores the tenth frame bonus balls', () => {
+    // A perfect game throws twelve balls but only ten open a frame.
+    expect(firstBallDistribution([game(strikes)]).reduce((a, b) => a + b, 0)).toBe(10);
+  });
+
+  it('counts a five-count game in the fives bucket', () => {
+    expect(firstBallDistribution([game(spares)])[5]).toBe(10);
+  });
+});
+
+describe('bestStrikeRun', () => {
+  it('finds the longest consecutive run', () => {
+    expect(bestStrikeRun([game(strikes)])).toBe(12);
+    expect(bestStrikeRun([game(open4s)])).toBe(0);
+    expect(bestStrikeRun([game([10, 10, 3, 4, 10, 0, 5])])).toBe(2);
+  });
+});
