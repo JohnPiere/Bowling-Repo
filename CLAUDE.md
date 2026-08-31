@@ -92,6 +92,19 @@ or a pass stops being attributable to the code.
 It compares the resulting **game**, not the mark string: `9/` and `91` are the
 same two throws, so a scanner that reads one for the other is still right.
 
+## Testing
+
+Two kinds of unit test. The example tests say what should happen in cases
+worth naming. The property tests () fuzz — the scoring
+engine against a second scorer written from the rules rather than from the
+code, and the mark parser against random noise. They exist because the cases I
+think to write down are the ones I already handled.
+
+The parser property is the important one: fed anything, it must either refuse
+or return a legal game. A parser that quietly produced a *plausible* wrong
+game would put a score in someone's history that they never bowled, and
+nothing would look amiss.
+
 ## Conventions
 
 - Comments explain *why*, especially where something looks odd. Several things
