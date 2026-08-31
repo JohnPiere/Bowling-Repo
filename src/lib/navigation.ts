@@ -16,6 +16,7 @@ export type Route =
   | { name: 'history' }
   | { name: 'stats' }
   | { name: 'settings' }
+  | { name: 'videos' }
   | { name: 'auth'; then?: Route }
   | { name: 'groups' }
   | { name: 'group'; groupId: string }
@@ -24,6 +25,7 @@ export type Route =
   | { name: 'groupSettings'; groupId: string }
   | { name: 'chat'; groupId: string }
   | { name: 'member'; groupId: string; memberId: string }
+  | { name: 'game'; gameId: string }
   | { name: 'shareGame'; gameId: string }
   | { name: 'sharedGames'; groupId: string };
 

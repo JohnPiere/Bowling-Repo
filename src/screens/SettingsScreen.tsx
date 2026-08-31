@@ -28,7 +28,13 @@ import {
  * Settings, which on this app is mostly the two things that make it feel like
  * an app at all: getting it onto the Home Screen and turning notifications on.
  */
-export function SettingsScreen({ games }: { games: Game[] }) {
+export function SettingsScreen({
+  games,
+  onOpenVideos,
+}: {
+  games: Game[];
+  onOpenVideos?: () => void;
+}) {
   const [install, setInstall] = useState<InstallState>(getInstallState);
   const [push, setPush] = useState<PushStatus>('unavailable');
   const [busy, setBusy] = useState(false);
@@ -158,6 +164,16 @@ export function SettingsScreen({ games }: { games: Game[] }) {
             )}
           </>
         )}
+      </div>
+
+      <h2 className="section-title">Clips</h2>
+      <div className="card">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Video is not built yet — it is the one feature that needs a backend.
+        </p>
+        <button type="button" className="btn-lg" onClick={onOpenVideos}>
+          What it would take
+        </button>
       </div>
 
       <h2 className="section-title">Storage</h2>

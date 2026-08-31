@@ -334,6 +334,78 @@ async function main() {
       return 'shared, then retracted';
     });
 
+    await check('a game opens, shows its stored photo, and can be deleted', async () => {
+      // Seed a scanned game with a real photo, so the detail screen has one
+      // to fetch from the store it now lives in.
+      await page.evaluate(async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 400;
+        canvas.height = 120;
+        const g = canvas.getContext('2d');
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, 400, 120);
+        g.fillStyle = '#111';
+        g.font = '28px sans-serif';
+        g.fillText('X 9/ 72 X', 20, 60);
+        const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.8));
+
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        const tx = db.transaction(['games', 'sheets'], 'readwrite');
+        tx.objectStore('games').put({
+          id: 'verify-detail', bowler: 'You', house: 'Rose Bowl Lanes',
+          rolls: [10, 9, 1, 7, 2, ...Array(12).fill(4)], total: 120,
+          isComplete: true, source: 'scan', hasSheet: true,
+          playedAt: Date.now(), updatedAt: Date.now(),
+        });
+        tx.objectStore('sheets').put({ gameId: 'verify-detail', image: blob, storedAt: Date.now() });
+        await new Promise((res) => { tx.oncomplete = res; });
+      });
+
+      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.locator('.game-row').first().click();
+      await page.waitForSelector('text=The sheet it came from');
+
+      await page.waitForSelector('img.shot', { timeout: 10000 });
+      const decoded = await page.locator('img.shot').evaluate((el) => el.complete && el.naturalWidth > 0);
+      assert(decoded, 'the stored photo did not load from its own store');
+
+      // Destructive, so it must confirm first.
+      await page.getByRole('button', { name: 'Delete this game' }).click();
+      await page.waitForSelector('text=for good');
+      await page.getByRole('button', { name: 'Keep it' }).click();
+      await page.waitForSelector('text=Delete this game');
+
+      await page.getByRole('button', { name: 'Delete this game' }).click();
+      await page.getByRole('button', { name: 'Delete for good' }).click();
+      await page.waitForTimeout(700);
+
+      // Assert on this game's own records: earlier checks in this context
+      // have saved games of their own, so the stores are not empty.
+      const left = await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        const get = (store, key) =>
+          new Promise((res) => {
+            const rq = db.transaction(store).objectStore(store).get(key);
+            rq.onsuccess = () => res(rq.result);
+          });
+        return {
+          game: await get('games', 'verify-detail'),
+          sheet: await get('sheets', 'verify-detail'),
+        };
+      });
+      assert(!left.game, 'the game survived deletion');
+      // Deleting a game must take its photo with it, or storage leaks.
+      assert(!left.sheet, 'an orphaned photo was left behind');
+
+      return 'photo loaded on demand; delete confirmed, then removed both records';
+    });
+
     await check('joining by code validates against the group', async () => {
       await page.getByRole('button', { name: 'Crew', exact: true }).click();
       await page.getByRole('button', { name: 'Join with a code' }).click();

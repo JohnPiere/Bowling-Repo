@@ -9,6 +9,7 @@ import { ChatScreen } from './screens/ChatScreen';
 import { CreateGroupScreen } from './screens/CreateGroupScreen';
 import { GroupScreen } from './screens/GroupScreen';
 import { GroupSettingsScreen } from './screens/GroupSettingsScreen';
+import { GameScreen } from './screens/GameScreen';
 import { GroupsScreen } from './screens/GroupsScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -20,6 +21,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { ShareScreen } from './screens/ShareScreen';
 import { SharedGamesScreen } from './screens/SharedGamesScreen';
 import { StatsScreen } from './screens/StatsScreen';
+import { VideosScreen } from './screens/VideosScreen';
 
 const TABS: { key: RouteName; label: string; icon: IconName }[] = [
   { key: 'home', label: 'Home', icon: 'home' },
@@ -55,7 +57,10 @@ export function App() {
 
   const { route } = nav;
   const group = 'groupId' in route ? findGroup(route.groupId) : undefined;
-  const shareTarget = route.name === 'shareGame' ? games.find((g) => g.id === route.gameId) : undefined;
+  const gameInView =
+    route.name === 'shareGame' || route.name === 'game'
+      ? games.find((g) => g.id === route.gameId)
+      : undefined;
   const { title, kicker, meta } = describe(route, group?.name);
 
   // The chat pins its composer, so it manages its own scrolling.
@@ -105,7 +110,7 @@ export function App() {
             onStartGame={() => nav.selectTab('play')}
             onOpenHistory={() => nav.selectTab('history')}
             onOpenGroup={() => nav.selectTab('groups')}
-            onShareGame={(gameId) => nav.push({ name: 'shareGame', gameId })}
+            onShareGame={(gameId) => nav.push({ name: 'game', gameId })}
           />
         )}
 
@@ -120,7 +125,7 @@ export function App() {
         {route.name === 'history' && (
           <HistoryScreen
             games={games}
-            onShareGame={(gameId) => nav.push({ name: 'shareGame', gameId })}
+            onShareGame={(gameId) => nav.push({ name: 'game', gameId })}
           />
         )}
         {route.name === 'stats' && <StatsScreen games={games} />}
@@ -180,9 +185,25 @@ export function App() {
 
         {route.name === 'sharedGames' && group && <SharedGamesScreen group={group} />}
 
-        {route.name === 'shareGame' && shareTarget && (
+        {route.name === 'game' && gameInView && (
+          <GameScreen
+            game={gameInView}
+            onShare={() => nav.push({ name: 'shareGame', gameId: gameInView.id })}
+            onChanged={refresh}
+            onDeleted={() => {
+              refresh();
+              nav.back();
+            }}
+          />
+        )}
+
+        {route.name === 'game' && !gameInView && (
+          <p className="empty">That game is no longer on this device.</p>
+        )}
+
+        {route.name === 'shareGame' && gameInView && (
           <ShareScreen
-            game={shareTarget}
+            game={gameInView}
             onCancel={nav.back}
             onShared={(groupId) => {
               refresh();
@@ -191,11 +212,17 @@ export function App() {
           />
         )}
 
-        {route.name === 'shareGame' && !shareTarget && (
+        {route.name === 'shareGame' && !gameInView && (
           <p className="empty">That game is no longer on this device.</p>
         )}
 
-        {route.name === 'settings' && <SettingsScreen games={games} />}
+        {route.name === 'videos' && (
+          <VideosScreen onScan={() => nav.push({ name: 'scan' })} />
+        )}
+
+        {route.name === 'settings' && (
+          <SettingsScreen games={games} onOpenVideos={() => nav.push({ name: 'videos' })} />
+        )}
       </main>
 
       <nav className="tabbar">
@@ -242,6 +269,7 @@ function describe(route: Route, groupName?: string) {
     case 'history': return { title: 'History', kicker: 'Every game', meta: '' };
     case 'stats': return { title: 'Stats', kicker: 'Analytics', meta: '' };
     case 'settings': return { title: 'Settings', kicker: 'Preferences', meta: '' };
+    case 'videos': return { title: 'Clips', kicker: 'Slow motion', meta: '' };
     case 'auth': return { title: 'Sign in', kicker: 'Account', meta: '' };
     case 'groups': return { title: 'Groups', kicker: 'Social', meta: '' };
     case 'group': return { title: groupName ?? 'Group', kicker: 'Group', meta: '' };
@@ -250,6 +278,7 @@ function describe(route: Route, groupName?: string) {
     case 'groupSettings': return { title: 'Group settings', kicker: groupName ?? 'Group', meta: '' };
     case 'createGroup': return { title: 'Create a group', kicker: 'Groups', meta: '' };
     case 'joinGroup': return { title: 'Join a group', kicker: 'Invite', meta: '' };
+    case 'game': return { title: 'Game', kicker: 'Your season', meta: '' };
     case 'shareGame': return { title: 'Share this game', kicker: 'Game finished', meta: '' };
     case 'sharedGames': return { title: 'Shared games', kicker: groupName ?? 'Group', meta: '' };
   }
