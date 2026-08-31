@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { GROUPS } from '../data/groups';
 import { shareGame, type Game } from '../lib/db';
+import { notifyGroup } from '../lib/push';
 import { scoreGame } from '../lib/scoring';
 
 interface Props {
@@ -25,6 +26,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
   const [groupId, setGroupId] = useState(available[0]?.id ?? '');
   const [withSheet, setWithSheet] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tellCrew, setTellCrew] = useState(true);
 
   const card = scoreGame(game.rolls);
   const hasPhoto = Boolean(game.sheetImage);
@@ -34,6 +36,19 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
     setBusy(true);
     try {
       await shareGame(game.id, groupId, { withSheet: hasPhoto && withSheet });
+
+      if (tellCrew) {
+        const group = GROUPS.find((entry) => entry.id === groupId);
+        // Deliberately not awaited for its success: the share is already done,
+        // and a push server that is down must not look like a failed share.
+        void notifyGroup({
+          title: group?.name ?? 'Lane Log',
+          body: `You posted a ${game.total} to the board.`,
+          url: `/?screen=groups`,
+          tag: `share-${groupId}`,
+        });
+      }
+
       onShared(groupId);
     } finally {
       setBusy(false);
@@ -118,6 +133,28 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
           </span>
         </span>
       </button>
+
+      <h2 className="section-title">Tell the crew</h2>
+      <div className="card">
+        <div className="row row--between">
+          <span className="grow">
+            <span style={{ display: 'block', fontSize: 13 }}>Send a notification</span>
+            <span className="muted">
+              Members with notifications on get a nudge. Needs the push server running.
+            </span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={tellCrew}
+            aria-label="Send a notification"
+            className={`switch${tellCrew ? ' switch--on' : ''}`}
+            onClick={() => setTellCrew((v) => !v)}
+          >
+            <span className="switch__knob" />
+          </button>
+        </div>
+      </div>
 
       <button
         type="button"

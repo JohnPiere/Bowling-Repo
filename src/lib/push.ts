@@ -151,6 +151,37 @@ async function sendSubscriptionToServer(subscription: PushSubscription): Promise
 }
 
 /**
+ * Tell a crew something happened.
+ *
+ * Fire-and-forget on purpose: a notification that does not go out must never
+ * fail the thing it was announcing. Sharing a game succeeds whether or not the
+ * push server is reachable, and the caller is told separately.
+ *
+ * With no backend there is no group membership to fan out to, so this reaches
+ * whatever subscriptions the push server holds. A real implementation would
+ * take the group id and let the server decide who hears about it.
+ */
+export async function notifyGroup(message: {
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+}): Promise<boolean> {
+  try {
+    const response = await fetch(`${PUSH_API}/notify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+    if (!response.ok) return false;
+    const result = (await response.json()) as { sent?: number };
+    return (result.sent ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fire a notification through the service worker without involving the server.
  * Useful for checking that permission actually works on a given handset.
  */
