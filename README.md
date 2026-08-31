@@ -16,7 +16,7 @@ scanning, which is not in the handoff.
 | **Live scoring** | Pin keypad that only offers counts that are physically standing, with a scorecard that fills in as you bowl. |
 | **History** | Every game, grouped by session, filterable by range. |
 | **Analytics** | Score trend, how frames finish, first-ball distribution — one range selector over all three, each with a table view. |
-| **Each game** | Full scorecard, the sheet it was scanned from, which boards it is on, and deletion — which the storage warning tells you to do, so it had better be possible. |
+| **Each game** | Full scorecard, the sheet it was scanned from, which boards it is on, correcting a frame after the fact, and deletion. |
 | **Group dashboard** | The handoff's centrepiece: hero standing, metric switcher, podium, and the six-row board whose rows *slide* between ranks. |
 | **The rest of the crew** | Auth (guest by default), groups list, create and join by code or QR, chat, member detail, group settings, and sharing a game to a board. |
 
@@ -55,7 +55,7 @@ a browser:
 ```bash
 npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 15 checks
+npm run verify:app       # 16 checks
 npm run verify:scanner   # 6 generated sheets
 ```
 

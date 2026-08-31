@@ -334,6 +334,72 @@ async function main() {
       return 'shared, then retracted';
     });
 
+    await check('a saved game can be corrected, and a bad correction refused', async () => {
+      // Bowl a game whose first frame is wrong, the way a misread scan or a
+      // mis-tap leaves one.
+      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      const start = page.getByRole('button', { name: 'Enter pins by hand' });
+      if (await start.count()) await start.click();
+      for (let i = 0; i < 2; i++) {
+        await page.locator('.keypad__key', { hasText: /^–$/ }).click();
+        await page.waitForTimeout(30);
+      }
+      for (let i = 0; i < 11; i++) {
+        await page.locator('.keypad__key--mark').click();
+        await page.waitForTimeout(25);
+      }
+      await page.getByRole('button', { name: 'Save this game' }).click();
+      await page.waitForTimeout(700);
+
+      await page.getByRole('button', { name: 'Home', exact: true }).click();
+      await page.locator('.game-row').first().click();
+      await page.waitForSelector('text=Correct it');
+
+      await page.getByRole('button', { name: 'Fix a frame' }).click();
+      await page.waitForSelector('text=Corrected game');
+
+      // The box starts from what is stored, not from whatever a scan read.
+      const seeded = await page.locator('.input.tnum').inputValue();
+      assert(seeded.startsWith('--'), `the marks box was not seeded from the game: ${seeded}`);
+
+      await page.locator('.input.tnum').fill(seeded.replace(/^--/, 'X'));
+      await page.waitForTimeout(300);
+      const rescored = await page.locator('.card .tnum').first().textContent();
+      assert(rescored === '300', `rescoring gave ${rescored}, expected 300`);
+
+      await page.getByRole('button', { name: 'Save the correction' }).click();
+      await page.waitForTimeout(700);
+
+      const stored = await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        return new Promise((res) => {
+          const rq = db.transaction('games').objectStore('games').getAll();
+          rq.onsuccess = () => res(rq.result.map((g) => ({ total: g.total, rolls: g.rolls.length })));
+        });
+      });
+      const perfect = stored.find((g) => g.total === 300 && g.rolls === 12);
+      assert(perfect, `the correction did not persist: ${JSON.stringify(stored)}`);
+
+      // A correction that describes an impossible game must not be storable.
+      await page.getByRole('button', { name: 'Fix a frame' }).click();
+      await page.locator('.input.tnum').fill('75 44 44 44 44 44 44 44 44 44');
+      await page.waitForTimeout(300);
+      assert(
+        (await page.locator('.note--bad').count()) > 0,
+        'an impossible game was accepted without complaint',
+      );
+      assert(
+        await page.getByRole('button', { name: 'Save the correction' }).isDisabled(),
+        'an impossible game could still be saved',
+      );
+      await page.getByRole('button', { name: 'Cancel' }).click();
+
+      return 'seeded from the game, rescored live, persisted; impossible refused';
+    });
+
     await check('a game opens, shows its stored photo, and can be deleted', async () => {
       // Seed a scanned game with a real photo, so the detail screen has one
       // to fetch from the store it now lives in.

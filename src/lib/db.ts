@@ -8,6 +8,7 @@
  */
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { scoreGame } from './scoring';
 
 export type GameSource = 'manual' | 'scan';
 
@@ -164,6 +165,39 @@ export async function saveGame(
   await tx.done;
 
   return record;
+}
+
+/**
+ * Correct a game that was saved wrong.
+ *
+ * Rewrites the rolls and rescores from them, so the stored total can never
+ * disagree with the frames it came from. The photo, if there is one, is left
+ * where it is — the paper did not change, only what we read off it.
+ */
+export async function reviseGame(
+  id: string,
+  changes: { rolls?: number[]; house?: string; playedAt?: number },
+): Promise<Game | undefined> {
+  const game = await getGame(id);
+  if (!game) return undefined;
+
+  const rolls = changes.rolls ?? game.rolls;
+  const card = scoreGame(rolls);
+
+  const updated: Game = {
+    ...game,
+    rolls,
+    total: card.total,
+    isComplete: card.isComplete,
+    house: changes.house === undefined ? game.house : changes.house || undefined,
+    playedAt: changes.playedAt ?? game.playedAt,
+    updatedAt: Date.now(),
+    // A corrected game has to be re-synced.
+    syncedAt: undefined,
+  };
+
+  await (await db()).put('games', updated);
+  return updated;
 }
 
 /** The scanned photo a game came from, loaded only when something needs it. */

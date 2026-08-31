@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { GROUPS } from '../data/groups';
-import { deleteGame, getSheetImage, unshareGame, type Game } from '../lib/db';
-import { scoreGame } from '../lib/scoring';
+import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '../lib/db';
+import { frameMarks, scoreGame } from '../lib/scoring';
+import { tryParseMarks } from '../lib/marks';
 import { formatBytes } from '../lib/storage';
 import { formatDay } from './HomeScreen';
 
@@ -25,6 +26,9 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
   const [photoSize, setPhotoSize] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [house, setHouse] = useState(game.house ?? '');
 
   const card = scoreGame(game.rolls);
   const strikes = card.frames.filter((f) => f.isStrike).length;
@@ -56,6 +60,33 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
     };
   }, [game.id, game.hasSheet]);
 
+  function startEditing() {
+    // Seed the box from the game itself, so a correction starts from what is
+    // stored rather than from whatever the scan happened to read.
+    setDraft(
+      scoreGame(game.rolls)
+        .frames.map((frame) => frameMarks(frame).join(''))
+        .join(' ')
+        .trim(),
+    );
+    setHouse(game.house ?? '');
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    const parsed = tryParseMarks(draft);
+    if ('error' in parsed) return;
+
+    setBusy(true);
+    try {
+      await reviseGame(game.id, { rolls: parsed.rolls, house });
+      setEditing(false);
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove() {
     setBusy(true);
     try {
@@ -69,6 +100,85 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
   async function retract(groupId: string) {
     await unshareGame(game.id, groupId);
     onChanged();
+  }
+
+  const edited = editing && draft.trim() ? tryParseMarks(draft) : null;
+  const editedCard = edited && !('error' in edited) ? scoreGame(edited.rolls) : null;
+
+  if (editing) {
+    return (
+      <>
+        <div className="card">
+          <div className="row row--between" style={{ marginBottom: 10 }}>
+            <span className="hero__label">Corrected game</span>
+            <span className="tnum" style={{ fontSize: 28, letterSpacing: '-0.03em' }}>
+              {editedCard ? editedCard.total : '—'}
+            </span>
+          </div>
+          {editedCard && <Scorecard scorecard={editedCard} />}
+        </div>
+
+        {edited && 'error' in edited && <div className="note note--bad">{edited.error}</div>}
+        {edited && !('error' in edited) &&
+          edited.warnings.map((warning) => (
+            <div key={warning} className="note note--warn">
+              {warning}
+            </div>
+          ))}
+
+        <label style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">Marks</span>
+          <input
+            className="input tnum"
+            style={{ marginTop: 5, letterSpacing: '0.08em' }}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.toUpperCase())}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </label>
+        <p className="muted" style={{ margin: '-6px 0 12px' }}>
+          One group a frame. X for a strike, / for a spare, - for a miss.
+        </p>
+
+        <label style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">Where you bowled</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={house}
+            onChange={(e) => setHouse(e.target.value)}
+            placeholder="Rose Bowl Lanes"
+          />
+        </label>
+
+        <button
+          type="button"
+          className="btn-lg btn-lg--primary"
+          disabled={!editedCard || busy}
+          onClick={saveEdit}
+        >
+          <Icon name="check" size={18} />
+          {busy ? 'Saving…' : 'Save the correction'}
+        </button>
+        <button
+          type="button"
+          className="btn-lg"
+          style={{ marginTop: 11 }}
+          onClick={() => setEditing(false)}
+        >
+          Cancel
+        </button>
+
+        {game.hasSheet && photo && (
+          <>
+            <h2 className="section-title">The sheet, for checking against</h2>
+            <img className="shot" src={photo} alt="The scanned score sheet" />
+          </>
+        )}
+      </>
+    );
   }
 
   return (
@@ -105,6 +215,16 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           )}
         </>
       )}
+
+      <h2 className="section-title">Correct it</h2>
+      <button type="button" className="btn-lg" onClick={startEditing}>
+        Fix a frame
+      </button>
+      <p className="footnote">
+        {game.source === 'scan'
+          ? 'A scan gets a frame wrong now and then. The photo stays, so you can check against it.'
+          : 'Mis-tapped a ball? Put it right here.'}
+      </p>
 
       <h2 className="section-title">Sharing</h2>
       {sharedWith.length === 0 ? (
