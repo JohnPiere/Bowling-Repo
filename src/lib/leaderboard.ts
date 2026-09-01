@@ -196,3 +196,39 @@ export function movementSentence(movement: number, metricKey: MetricKey): string
   if (movement < 0) return `▼ ${-movement} ${places} vs rolling avg`;
   return 'same place as the rolling avg';
 }
+
+
+/** How many weeks the crew trend covers. */
+export const TREND_WEEKS = 8;
+
+/**
+ * A member's average, week by week.
+ *
+ * Derived from the two fields the roster already carries — where they are now
+ * (`avg`) and how far they have come (`imp`) — by walking from their baseline
+ * to their current average across the window. Nothing is invented: no wobble,
+ * no seeded noise. A jitter would look more like real bowling and would be a
+ * drawing rather than a reading, and the first person to ask "why was I 178
+ * in week 3" would deserve a better answer than "you were not".
+ *
+ * The roster is sample data (see `src/data/`), so this is sample data too. It
+ * becomes real the moment the roster does.
+ */
+export function weeklyProgress(member: Member, weeks = TREND_WEEKS): number[] {
+  const baseline = member.avg - member.imp;
+  if (weeks < 2) return [member.avg];
+
+  return Array.from({ length: weeks }, (_, i) =>
+    Math.round(baseline + (member.imp * i) / (weeks - 1)),
+  );
+}
+
+/** The crew's average of those, week by week. */
+export function crewWeeklyAverage(members: Member[], weeks = TREND_WEEKS): number[] {
+  if (members.length === 0) return new Array(weeks).fill(0);
+
+  const each = members.map((member) => weeklyProgress(member, weeks));
+  return Array.from({ length: weeks }, (_, i) =>
+    Math.round(each.reduce((sum, series) => sum + series[i], 0) / each.length),
+  );
+}

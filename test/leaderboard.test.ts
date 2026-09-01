@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   boardHeight,
+  crewWeeklyAverage,
   movementGlyph,
   movementSentence,
   podium,
   rankRoster,
   rowOffset,
   type Member,
+  weeklyProgress,
 } from '../src/lib/leaderboard';
 
 const member = (id: string, over: Partial<Member> = {}): Member => ({
@@ -123,5 +125,72 @@ describe('movement copy', () => {
     expect(movementSentence(1, 'pins')).toBe('▲ 1 place vs rolling avg');
     expect(movementSentence(2, 'pins')).toBe('▲ 2 places vs rolling avg');
     expect(movementSentence(0, 'pins')).toBe('same place as the rolling avg');
+  });
+});
+
+describe('weeklyProgress', () => {
+  const member = (avg: number, imp: number): Member => ({
+    id: 'm',
+    name: 'A Bowler',
+    initials: 'AB',
+    avg,
+    high: avg + 40,
+    pins: 1000,
+    hdcp: avg + 10,
+    imp,
+    games: 12,
+    since: 'Jan 2026',
+  });
+
+  it('ends where the bowler is now', () => {
+    const weeks = weeklyProgress(member(190, 12));
+    expect(weeks[weeks.length - 1]).toBe(190);
+  });
+
+  it('starts at their own baseline', () => {
+    expect(weeklyProgress(member(190, 12))[0]).toBe(178);
+  });
+
+  it('never goes backwards for someone who improved', () => {
+    const weeks = weeklyProgress(member(190, 12));
+    for (let i = 1; i < weeks.length; i++) expect(weeks[i]).toBeGreaterThanOrEqual(weeks[i - 1]);
+  });
+
+  it('slopes down for someone who has dropped', () => {
+    const weeks = weeklyProgress(member(170, -8));
+    expect(weeks[0]).toBe(178);
+    expect(weeks[weeks.length - 1]).toBe(170);
+  });
+
+  it('is flat for someone who has not moved', () => {
+    expect(new Set(weeklyProgress(member(180, 0))).size).toBe(1);
+  });
+
+  it('gives one reading when there is no window to walk', () => {
+    expect(weeklyProgress(member(180, 10), 1)).toEqual([180]);
+  });
+});
+
+describe('crewWeeklyAverage', () => {
+  const m = (id: string, avg: number, imp: number): Member => ({
+    id,
+    name: id,
+    initials: 'XX',
+    avg,
+    high: avg,
+    pins: 0,
+    hdcp: avg,
+    imp,
+    games: 1,
+    since: '',
+  });
+
+  it('averages the crew week by week', () => {
+    const weeks = crewWeeklyAverage([m('a', 200, 0), m('b', 100, 0)], 3);
+    expect(weeks).toEqual([150, 150, 150]);
+  });
+
+  it('has nothing to average for an empty crew', () => {
+    expect(crewWeeklyAverage([], 3)).toEqual([0, 0, 0]);
   });
 });

@@ -25,6 +25,18 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Crew trend ──
+  'Your form against the crew': 'クルーとの比較',
+  'You': 'あなた',
+  'Crew average': 'クルー平均',
+  'Difference': '差',
+  'Week': '週',
+  'Week {n}': '第{n}週',
+  'This week': '今週',
+  'Your average against the crew, week by week': '週ごとのあなたとクルー平均',
+  'Your average against the crew over {n} weeks.': '直近{n}週間のあなたとクルー平均の比較。',
+  'Each game': '各ゲーム',
+
   // ── Navigation and screen titles ──
   'Home': 'ホーム',
   'Play': '入力',

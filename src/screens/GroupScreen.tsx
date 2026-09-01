@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CrewTrendChart } from '../components/charts/CrewTrendChart';
 import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
@@ -227,6 +228,11 @@ export function GroupScreen({
         <Icon name="share" size={18} />
         {t('Shared games')}
       </button>
+
+      <h2 className="section-title">{t('Your form against the crew')}</h2>
+      <div className="card">
+        <CrewTrendChart members={roster} />
+      </div>
 
       <h2 className="section-title">{t('Recent activity')}</h2>
       <div className="card">
