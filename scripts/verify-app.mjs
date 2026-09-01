@@ -116,9 +116,29 @@ async function bowlPerfectGame(page) {
  * That is the honest limit of what can be checked here, and the crew screens
  * that make real queries say so rather than being asserted against.
  */
+/**
+ * The Supabase project the built app points at.
+ *
+ * Read out of the bundle rather than written down here. It was written down
+ * once, and the day the project was recreated it became a value that looked
+ * right, matched nothing, and would have failed as "the session did not
+ * restore" — a whole checkfull of misdirection for a copy-paste.
+ */
+async function projectRef(page) {
+  const html = await (await fetch(`${BASE}/`)).text();
+  const entry = html.match(/src="([^"]+\.js)"/)?.[1];
+  if (!entry) return null;
+
+  const url = new URL(entry, `${BASE}/`).href;
+  const code = await (await fetch(url)).text();
+  return code.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+}
+
 async function signIn(page) {
-  await page.evaluate(() => {
-    const ref = 'npdpdfrgbirvopqvvjdd';
+  const ref = await projectRef(page);
+  assert(ref, 'could not find the backend project in the bundle');
+
+  await page.evaluate((ref) => {
     const hour = Math.floor(Date.now() / 1000) + 3600;
     localStorage.setItem(
       `sb-${ref}-auth-token`,
@@ -139,7 +159,7 @@ async function signIn(page) {
         },
       }),
     );
-  });
+  }, ref);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Crew', exact: true }).click();
@@ -188,7 +208,10 @@ async function main() {
 
     await check('iOS home-screen meta tags are present', async () => {
       // iOS ignores the manifest for these, so their absence is silent.
-      const capable = await page.getAttribute('meta[name="apple-mobile-web-app-capable"]', 'content');
+      const capable = await page.getAttribute(
+        'meta[name="apple-mobile-web-app-capable"]',
+        'content',
+      );
       const icon = await page.getAttribute('link[rel="apple-touch-icon"]', 'href');
       assert(capable === 'yes', 'not marked web-app capable');
       assert(icon, 'no apple-touch-icon');
@@ -398,13 +421,21 @@ async function main() {
       await cdp.send('ServiceWorker.deliverPushMessage', {
         origin: BASE,
         registrationId: versions[0].registrationId,
-        data: JSON.stringify({ title: 'Tuesday Crew', body: 'You posted a 212.', url: '/?screen=groups' }),
+        data: JSON.stringify({
+          title: 'Tuesday Crew',
+          body: 'You posted a 212.',
+          url: '/?screen=groups',
+        }),
       });
       await page.waitForTimeout(1200);
 
       const shown = await page.evaluate(async () => {
         const reg = await navigator.serviceWorker.ready;
-        return (await reg.getNotifications()).map((n) => ({ title: n.title, body: n.body, data: n.data }));
+        return (await reg.getNotifications()).map((n) => ({
+          title: n.title,
+          body: n.body,
+          data: n.data,
+        }));
       });
       assert(shown.length > 0, 'no notification was shown');
       assert(shown[0].title === 'Tuesday Crew', `wrong title: ${shown[0].title}`);
@@ -538,7 +569,8 @@ async function main() {
         });
         return new Promise((res) => {
           const rq = db.transaction('games').objectStore('games').getAll();
-          rq.onsuccess = () => res(rq.result.map((g) => ({ total: g.total, rolls: g.rolls.length })));
+          rq.onsuccess = () =>
+            res(rq.result.map((g) => ({ total: g.total, rolls: g.rolls.length })));
         });
       });
       const perfect = stored.find((g) => g.total === 300 && g.rolls === 12);
@@ -582,13 +614,25 @@ async function main() {
         });
         const tx = db.transaction(['games', 'sheets'], 'readwrite');
         tx.objectStore('games').put({
-          id: 'verify-detail', bowler: 'You', house: 'Rose Bowl Lanes',
-          rolls: [10, 9, 1, 7, 2, ...Array(12).fill(4)], total: 120,
-          isComplete: true, source: 'scan', hasSheet: true,
-          playedAt: Date.now(), updatedAt: Date.now(),
+          id: 'verify-detail',
+          bowler: 'You',
+          house: 'Rose Bowl Lanes',
+          rolls: [10, 9, 1, 7, 2, ...Array(12).fill(4)],
+          total: 120,
+          isComplete: true,
+          source: 'scan',
+          hasSheet: true,
+          playedAt: Date.now(),
+          updatedAt: Date.now(),
         });
-        tx.objectStore('sheets').put({ gameId: 'verify-detail', image: blob, storedAt: Date.now() });
-        await new Promise((res) => { tx.oncomplete = res; });
+        tx.objectStore('sheets').put({
+          gameId: 'verify-detail',
+          image: blob,
+          storedAt: Date.now(),
+        });
+        await new Promise((res) => {
+          tx.oncomplete = res;
+        });
       });
 
       await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
@@ -596,7 +640,9 @@ async function main() {
       await page.waitForSelector('text=The sheet it came from');
 
       await page.waitForSelector('img.shot', { timeout: 10000 });
-      const decoded = await page.locator('img.shot').evaluate((el) => el.complete && el.naturalWidth > 0);
+      const decoded = await page
+        .locator('img.shot')
+        .evaluate((el) => el.complete && el.naturalWidth > 0);
       assert(decoded, 'the stored photo did not load from its own store');
 
       // Destructive, so it must confirm first.
@@ -728,10 +774,14 @@ async function main() {
           if (cx < 4 || cy < 4 || cx > innerWidth - 4 || cy > innerHeight - 4) return;
 
           const reach = TARGET / 2 - 1;
-          const tallEnough = r.height >= TARGET || (owns(el, cx, cy - reach) && owns(el, cx, cy + reach));
-          const wideEnough = r.width >= TARGET || (owns(el, cx - reach, cy) && owns(el, cx + reach, cy));
+          const tallEnough =
+            r.height >= TARGET || (owns(el, cx, cy - reach) && owns(el, cx, cy + reach));
+          const wideEnough =
+            r.width >= TARGET || (owns(el, cx - reach, cy) && owns(el, cx + reach, cy));
           if (!tallEnough || !wideEnough) {
-            small.push(`${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)} (${Math.round(r.width)}x${Math.round(r.height)})`);
+            small.push(
+              `${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)} (${Math.round(r.width)}x${Math.round(r.height)})`,
+            );
           }
         });
         return [...new Set(small)];
@@ -769,9 +819,7 @@ async function main() {
       const after = await page.locator('.picker__box').boundingBox();
       assert(Math.abs(after.y - before.y) > 8, `the box did not move (${before.y} -> ${after.y})`);
 
-      const disabled = await page
-        .getByRole('button', { name: 'Read this game' })
-        .isDisabled();
+      const disabled = await page.getByRole('button', { name: 'Read this game' }).isDisabled();
       assert(!disabled, 'the box was drawn but could not be read');
 
       return `box seeded on one of three games, dragged ${Math.round(after.y - before.y)}px, preview shown`;
@@ -880,12 +928,20 @@ async function main() {
         const tx = db.transaction(['games'], 'readwrite');
         for (let i = 0; i < 7; i++) {
           tx.objectStore('games').put({
-            id: `backup-${i}`, bowler: 'You', house: 'Rose Bowl',
-            rolls: Array(20).fill(4), total: 80, isComplete: true,
-            source: 'manual', playedAt: Date.now() - i * DAY, updatedAt: Date.now(),
+            id: `backup-${i}`,
+            bowler: 'You',
+            house: 'Rose Bowl',
+            rolls: Array(20).fill(4),
+            total: 80,
+            isComplete: true,
+            source: 'manual',
+            playedAt: Date.now() - i * DAY,
+            updatedAt: Date.now(),
           });
         }
-        await new Promise((res) => { tx.oncomplete = res; });
+        await new Promise((res) => {
+          tx.oncomplete = res;
+        });
       });
       await page.reload({ waitUntil: 'networkidle' });
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -1001,7 +1057,12 @@ async function main() {
       await denied.goto(BASE, { waitUntil: 'domcontentloaded' });
       await denied.waitForTimeout(2000);
 
-      const rendered = (await denied.locator('#root').innerText().catch(() => '')).trim();
+      const rendered = (
+        await denied
+          .locator('#root')
+          .innerText()
+          .catch(() => '')
+      ).trim();
       assert(rendered.length > 0, 'the app did not render at all');
 
       const banner = (await denied.locator('.note--bad').first().textContent()) ?? '';
@@ -1026,18 +1087,31 @@ async function main() {
         });
         const tx = db.transaction(['games'], 'readwrite');
         tx.objectStore('games').put({
-          id: 'boundary-check', bowler: 'You', rolls: Array(20).fill(4), total: 80,
-          isComplete: true, source: 'manual', pinfalls: [5],
-          playedAt: Date.now(), updatedAt: Date.now(),
+          id: 'boundary-check',
+          bowler: 'You',
+          rolls: Array(20).fill(4),
+          total: 80,
+          isComplete: true,
+          source: 'manual',
+          pinfalls: [5],
+          playedAt: Date.now(),
+          updatedAt: Date.now(),
         });
-        await new Promise((res) => { tx.oncomplete = res; });
+        await new Promise((res) => {
+          tx.oncomplete = res;
+        });
       });
 
       await page.reload({ waitUntil: 'networkidle' });
       await page.getByRole('button', { name: 'Stats', exact: true }).click();
       await page.waitForTimeout(1000);
 
-      const root = (await page.locator('#root').innerText().catch(() => '')).trim();
+      const root = (
+        await page
+          .locator('#root')
+          .innerText()
+          .catch(() => '')
+      ).trim();
       // Everything is on the device with no server copy, so a blank page
       // means a season the bowler cannot reach.
       assert(root.length > 0, 'the app went blank');
@@ -1054,7 +1128,9 @@ async function main() {
         });
         const tx = db.transaction(['games'], 'readwrite');
         tx.objectStore('games').delete('boundary-check');
-        await new Promise((res) => { tx.oncomplete = res; });
+        await new Promise((res) => {
+          tx.oncomplete = res;
+        });
       });
 
       return 'contained, with a way back';

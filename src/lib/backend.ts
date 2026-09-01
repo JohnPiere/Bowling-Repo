@@ -35,10 +35,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * The fallbacks are this app's own, and are public for the reasons above.
  */
 export const BACKEND_URL =
-  import.meta.env.VITE_SUPABASE_URL ?? 'https://npdpdfrgbirvopqvvjdd.supabase.co';
+  import.meta.env.VITE_SUPABASE_URL ?? 'https://kbfzyfbwnwpntiknhyjc.supabase.co';
 
 export const BACKEND_KEY =
-  import.meta.env.VITE_SUPABASE_KEY ?? 'sb_publishable_qMiEFPNl3sEkNVb0bRX3_A_wHh9_O-V';
+  import.meta.env.VITE_SUPABASE_KEY ?? 'sb_publishable_1PN8HGodUwS5J_ybW4Vfcg__UIUAoK7';
 
 /** False in a fork that has stripped the defaults and set nothing. */
 export function isBackendConfigured(): boolean {

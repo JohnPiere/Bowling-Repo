@@ -35,7 +35,7 @@ account, one `Provider` type widened, and one button.
 2. Under **Authorized redirect URIs**, add exactly:
 
    ```
-   https://npdpdfrgbirvopqvvjdd.supabase.co/auth/v1/callback
+   https://kbfzyfbwnwpntiknhyjc.supabase.co/auth/v1/callback
    ```
 
    That is Supabase's callback, not the app's. Google talks to Supabase;
@@ -117,7 +117,7 @@ your games yet — `Settings → Export` is still the only copy off this device.
 ## Local development
 
 ```bash
-# The committed defaults point at the live project, so this needs nothing.
+# The committed default points at the live project.
 npm run dev
 
 # To point at your own project instead:
