@@ -85,15 +85,6 @@ export function AuthScreen({
       <button type="button" className="btn-lg btn-lg--primary" onClick={() => onSignIn('google')}>
         {t('Continue with Google')}
       </button>
-      <button
-        type="button"
-        className="btn-lg"
-        style={{ marginTop: 11 }}
-        onClick={() => onSignIn('apple')}
-      >
-        {t('Continue with Apple')}
-      </button>
-
       <div className="rule-or">{t('or')}</div>
 
       <button type="button" className="btn-lg btn-lg--dashed" onClick={onPlayAsGuest}>
@@ -109,13 +100,8 @@ export function AuthScreen({
         </ul>
       </div>
 
-      {/* Apple sign-in needs a paid developer account to issue the key, which
-          is a bill rather than a line of code — so the button is honest about
-          being unfinished instead of failing at the provider. */}
       <p className="footnote">
-        {t(
-          'Google works. Apple needs a paid Apple developer account before it can be switched on, so that button will tell you so.',
-        )}
+        {t('Signing in never moves your games. They stay on this device either way.')}
       </p>
     </>
   );

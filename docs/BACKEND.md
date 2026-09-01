@@ -24,9 +24,11 @@ policy if exists`), so re-running it after an edit is fine.
 
 ### 2. Give Google somewhere to send people back to
 
-Google is the free provider. Apple needs a paid Apple Developer account
-(currently $99/yr) before it will issue the key Supabase needs, so the Apple
-button says so rather than failing at the provider.
+Google is the only provider the app offers. The design has an Apple button
+beside it and it is not built: Apple will not issue the key Supabase needs
+without a paid Apple Developer account (currently $99/yr), so it is left out
+rather than drawn as a button that can only refuse. Adding it later is that
+account, one `Provider` type widened, and one button.
 
 1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) →
    **Create credentials** → **OAuth client ID** → *Web application*.

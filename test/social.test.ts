@@ -308,20 +308,13 @@ describe('countUnread', () => {
 
 describe('providerUnavailable', () => {
   it('lets a switched-on provider through', () => {
-    expect(providerUnavailable('google', { google: true, apple: false })).toBeNull();
+    expect(providerUnavailable('google', { google: true })).toBeNull();
   });
 
   it('names the dashboard switch for Google', () => {
-    const why = providerUnavailable('google', { google: false, apple: false });
+    const why = providerUnavailable('google', { google: false });
     expect(why).toMatch(/not switched on/i);
     expect(why).toMatch(/Supabase dashboard/i);
-  });
-
-  it('says why Apple is different', () => {
-    // A bill rather than a switch, so "turn it on" would be wrong advice.
-    expect(providerUnavailable('apple', { google: true, apple: false })).toMatch(
-      /paid Apple developer account/i,
-    );
   });
 
   it('does not refuse when the question could not be asked', () => {

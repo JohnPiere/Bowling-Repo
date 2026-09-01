@@ -23,7 +23,15 @@ import {
   redirectUrl,
 } from './backend';
 
-export type Provider = 'google' | 'apple';
+/**
+ * Google only.
+ *
+ * The design has an Apple button beside it, and it is not here: Apple will not
+ * issue the key Supabase needs without a paid developer account, so the button
+ * could only ever have been one that says no. Widening this type and adding the
+ * button back is the whole job if that account ever exists.
+ */
+export type Provider = 'google';
 
 export interface Session {
   /** The account id when signed in, the device's guest id otherwise. */
@@ -81,7 +89,7 @@ export function toSession(auth: AuthSession): Session {
   return {
     id: auth.user.id,
     isGuest: false,
-    provider: provider === 'apple' ? 'apple' : provider === 'google' ? 'google' : undefined,
+    provider: provider === 'google' ? 'google' : undefined,
     name:
       (typeof meta.full_name === 'string' && meta.full_name) ||
       (typeof meta.name === 'string' && meta.name) ||

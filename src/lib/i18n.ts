@@ -38,10 +38,8 @@ export const JA: Record<string, string> = {
     'バックアップされません。端末をなくすとシーズンごと失われます',
   'Everything else works: scoring, scanning, history and analytics':
     'それ以外はすべて使えます。スコア入力・撮影・履歴・分析',
-  'Google works. Apple needs a paid Apple developer account before it can be switched on, so that button will tell you so.':
-    'Googleは利用できます。AppleはApple Developer Program（有料）の登録が必要なため、そのボタンはその旨を表示します。',
-  'Apple sign-in is not switched on for this app yet. It needs a paid Apple developer account; use Google for now.':
-    'Appleサインインはまだ有効ではありません。有料のApple Developer登録が必要です。当面はGoogleをご利用ください。',
+  'Signing in never moves your games. They stay on this device either way.':
+    'サインインしてもゲームは移動しません。この端末に残ります。',
   'Google sign-in is not switched on for this project yet.':
     'Googleサインインはまだ有効になっていません。',
   'This build has no server configured, so there is nothing to sign in to.':
@@ -423,7 +421,6 @@ export const JA: Record<string, string> = {
   'Members with notifications on get a nudge. Needs the push server running.': '通知をオンにしているメンバーに届きます。プッシュサーバーが必要です。',
   'Keep your games, or just start bowling.': '記録を残す。まずは投げるだけでも。',
   'Continue with Google': 'Googleで続ける',
-  'Continue with Apple': 'Appleで続ける',
   'Play as a guest': 'ゲストとして始める',
   'What a guest gives up': 'ゲストでできないこと',
   'Guests can read a group they were sent, but posting needs an account.': 'ゲストは送られたグループを閲覧できますが、投稿にはアカウントが必要です。',

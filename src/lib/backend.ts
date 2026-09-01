@@ -187,13 +187,11 @@ export function enabledProviders(): Promise<Record<string, boolean> | null> {
  * locked door, and the redirect itself will report the real problem.
  */
 export function providerUnavailable(
-  provider: 'google' | 'apple',
+  provider: 'google',
   external: Record<string, boolean> | null,
 ): string | null {
   if (external === null) return null;
   if (external[provider]) return null;
 
-  return provider === 'apple'
-    ? 'Apple sign-in is not switched on for this project. It needs a paid Apple developer account before it can be; use Google for now.'
-    : 'Google sign-in is not switched on for this project yet. Switch it on in the Supabase dashboard under Authentication → Sign In / Providers.';
+  return 'Google sign-in is not switched on for this project yet. Switch it on in the Supabase dashboard under Authentication → Sign In / Providers.';
 }

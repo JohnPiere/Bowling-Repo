@@ -199,5 +199,7 @@ second copy of it, free to drift.
 
 Groups, rosters, chat and shared posts still render the sample data in
 `src/data/` — auth is real, the tables exist, and swapping those screens onto
-`lib/social.ts` is the next step. Also absent: Apple OAuth (it needs a paid
-Apple developer account), cloud backup of games, and video.
+`lib/social.ts` is the next step. Also absent: Apple sign-in — the design has
+the button, and Apple will not issue the key Supabase needs without a paid
+developer account, so it is not drawn rather than drawn refusing. Also no cloud
+backup of games, and no video.
