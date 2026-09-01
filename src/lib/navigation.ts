@@ -25,6 +25,7 @@ export type Route =
   | { name: 'groupSettings'; groupId: string }
   | { name: 'chat'; groupId: string }
   | { name: 'member'; groupId: string; memberId: string }
+  | { name: 'day'; day: string }
   | { name: 'game'; gameId: string }
   | { name: 'shareGame'; gameId: string }
   | { name: 'sharedGames'; groupId: string };

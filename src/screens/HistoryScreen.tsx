@@ -1,102 +1,180 @@
 import { useEffect, useMemo, useState } from 'react';
-import { GameRow } from './HomeScreen';
+import { Icon } from '../components/Icon';
 import type { Game } from '../lib/db';
-// The same ranges the analytics screen offers, so the two agree on both the
-// labels and what each one means.
-import { applyRange, RANGES, type RangeKey } from '../lib/stats';
+import { groupByDay, searchGames, SORTS, type SortKey } from '../lib/history';
+import { frameMarks, scoreGame } from '../lib/scoring';
 
 /**
- * How many games to render at once.
+ * How many sessions to render at once.
  *
- * A long season is hundreds of games, and each row draws a ten-bar spark from
- * a rescored card. Rendering them all costs a second of blank screen for rows
- * nobody has scrolled to yet.
+ * A long season is hundreds of games, and every row rescores a card to draw
+ * its marks. Rendering them all costs a second of blank screen for rows nobody
+ * has scrolled to.
  */
-const PAGE = 40;
+const PAGE = 12;
 
-/** Every game, newest first, grouped by the day it was bowled. */
+/** The season, as the nights it was actually bowled. */
 export function HistoryScreen({
   games,
-  onShareGame,
+  onOpenGame,
+  onOpenDay,
 }: {
   games: Game[];
-  onShareGame: (gameId: string) => void;
+  onOpenGame: (gameId: string) => void;
+  onOpenDay: (day: string) => void;
 }) {
-  const [range, setRange] = useState<RangeKey>('all');
+  const [sort, setSort] = useState<SortKey>('new');
+  const [query, setQuery] = useState('');
   const [shown, setShown] = useState(PAGE);
 
-  const filtered = useMemo(() => applyRange(games, range), [games, range]);
+  const found = useMemo(() => searchGames(games, query), [games, query]);
+  const days = useMemo(() => groupByDay(found, sort), [found, sort]);
 
-  // Changing the range starts the list again rather than keeping a scroll
-  // position into a different set of games.
-  useEffect(() => setShown(PAGE), [range, games.length]);
+  // A changed search or order starts the list again rather than keeping a
+  // scroll position into a different set of days.
+  useEffect(() => setShown(PAGE), [query, sort, games.length]);
 
-  const page = useMemo(() => filtered.slice(0, shown), [filtered, shown]);
-  const sessions = useMemo(() => groupByDay(page), [page]);
-  const remaining = filtered.length - page.length;
+  const page = days.slice(0, shown);
+  const remaining = days.length - page.length;
 
   return (
-    <>
-      <div className="chips" role="group" aria-label="Date range">
-        {RANGES.map((r) => (
+    <div className="stats">
+      <div className="chips" role="group" aria-label="Order">
+        {SORTS.map((option) => (
           <button
-            key={r.key}
+            key={option.key}
             type="button"
             className="chip"
-            aria-pressed={r.key === range}
-            onClick={() => setRange(r.key)}
+            aria-pressed={option.key === sort}
+            onClick={() => setSort(option.key)}
           >
-            {r.label}
+            {option.label}
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="empty">No games in this range.</p>
+      <div className="row" style={{ gap: 8 }}>
+        <div className="search grow">
+          <Icon name="history" size={15} />
+          <input
+            className="input search__field"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search house or date"
+            aria-label="Search games"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </div>
+        <span className="muted tnum" style={{ whiteSpace: 'nowrap' }}>
+          {found.length} game{found.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <p className="footnote" style={{ margin: 0 }}>
+        Grouped by the day you bowled. Tap a day for the whole session.
+      </p>
+
+      {days.length === 0 ? (
+        <p className="empty">
+          {query ? `Nothing matches “${query}”.` : 'No games yet. Bowl one and it lands here.'}
+        </p>
       ) : (
         <>
-          {sessions.map(([day, dayGames]) => (
-            <section key={day}>
-              <h2 className="section-title tnum">
-                {day} · {dayGames.length} game{dayGames.length === 1 ? '' : 's'} · avg{' '}
-                {Math.round(dayGames.reduce((sum, g) => sum + g.total, 0) / dayGames.length)}
-              </h2>
-              {dayGames.map((game) => (
-                <GameRow key={game.id} game={game} onOpen={() => onShareGame(game.id)} />
+          {page.map((day) => (
+            <section key={day.key} className="session">
+              <button type="button" className="session__head" onClick={() => onOpenDay(day.key)}>
+                <span className="grow" style={{ minWidth: 0 }}>
+                  <span className="row" style={{ gap: 7, alignItems: 'baseline' }}>
+                    <span className="session__date">
+                      {new Date(day.at).toLocaleDateString(undefined, {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <span className="session__weekday">
+                      {new Date(day.at).toLocaleDateString(undefined, { weekday: 'short' })}
+                    </span>
+                  </span>
+                  <span className="session__meta">
+                    {day.house ? `${day.house} · ` : ''}
+                    {day.games.length} game{day.games.length === 1 ? '' : 's'}
+                  </span>
+                </span>
+
+                <span style={{ textAlign: 'right', flex: 'none' }}>
+                  <span className="session__label">Series</span>
+                  <span className="session__series tnum">{day.series}</span>
+                </span>
+
+                <Icon name="back" size={15} />
+              </button>
+
+              {day.games.map((game, index) => (
+                <GameLine
+                  key={game.id}
+                  game={game}
+                  number={index + 1}
+                  isBest={game.total === day.high && day.games.length > 1}
+                  onOpen={() => onOpenGame(game.id)}
+                />
               ))}
             </section>
           ))}
 
           {remaining > 0 && (
-            <button
-              type="button"
-              className="btn-lg"
-              style={{ marginTop: 11 }}
-              onClick={() => setShown((current) => current + PAGE)}
-            >
+            <button type="button" className="btn-lg" onClick={() => setShown((n) => n + PAGE)}>
               Show {Math.min(PAGE, remaining)} more · {remaining} older
             </button>
           )}
         </>
       )}
-    </>
+    </div>
   );
 }
 
-/** Games arrive newest-first, so insertion order preserves that per day. */
-function groupByDay(games: Game[]): [string, Game[]][] {
-  const days = new Map<string, Game[]>();
+function GameLine({
+  game,
+  number,
+  isBest,
+  onOpen,
+}: {
+  game: Game;
+  number: number;
+  isBest: boolean;
+  onOpen: () => void;
+}) {
+  // The marks are the shape of the game — a row of X and / says more at a
+  // glance than the total does about how it was bowled.
+  const marks = useMemo(
+    () =>
+      scoreGame(game.rolls)
+        .frames.map((frame) => frameMarks(frame).join(''))
+        .join(' '),
+    [game.rolls],
+  );
 
-  for (const game of games) {
-    const day = new Date(game.playedAt).toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-    const existing = days.get(day);
-    if (existing) existing.push(game);
-    else days.set(day, [game]);
-  }
+  return (
+    <button type="button" className="gameline" onClick={onOpen}>
+      <span className="gameline__no">
+        <span className="gameline__index">Game {number}</span>
+        <span className="gameline__time tnum">
+          {new Date(game.playedAt).toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      </span>
 
-  return [...days.entries()];
+      <span className="gameline__marks tnum grow">{marks}</span>
+
+      {isBest && <span className="tag tag--accent">Best</span>}
+
+      {/* A 200 game is the one score worth picking out of a column. */}
+      <span className={`gameline__score tnum${game.total >= 200 ? ' gameline__score--big' : ''}`}>
+        {game.total}
+      </span>
+    </button>
+  );
 }

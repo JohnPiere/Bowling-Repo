@@ -318,7 +318,9 @@ async function main() {
       for (const tab of ['History', 'Stats']) {
         await page.getByRole('button', { name: tab, exact: true }).click();
         await page.waitForTimeout(400);
-        const populated = await page.locator('.game-row, .viz__svg').count();
+        // `.game-row` on the home screen, `.gameline` in a history session,
+        // a chart on stats — any of them means real data reached the screen.
+        const populated = await page.locator('.game-row, .gameline, .viz__svg').count();
         assert(populated > 0, `${tab} was empty offline`);
       }
 

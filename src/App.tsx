@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { findGroup } from './data/groups';
+import { daySheetHtml, downloadHtml } from './lib/exporting';
+import { dayKey, groupByDay } from './lib/history';
 import { listGames, type Game } from './lib/db';
 import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/navigation';
 import { useSession } from './lib/session';
@@ -15,6 +17,7 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { JoinGroupScreen } from './screens/JoinGroupScreen';
 import { MemberScreen } from './screens/MemberScreen';
+import { PlayDayScreen } from './screens/PlayDayScreen';
 import { PlayScreen } from './screens/PlayScreen';
 import { ScanScreen } from './screens/ScanScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -180,7 +183,25 @@ export function App() {
         {route.name === 'history' && (
           <HistoryScreen
             games={games}
-            onShareGame={(gameId) => nav.push({ name: 'game', gameId })}
+            onOpenGame={(gameId) => nav.push({ name: 'game', gameId })}
+            onOpenDay={(day) => nav.push({ name: 'day', day })}
+          />
+        )}
+
+        {route.name === 'day' && (
+          <PlayDayScreen
+            games={games}
+            day={route.day}
+            onOpenGame={(gameId) => nav.push({ name: 'game', gameId })}
+            onExport={() => {
+              const [session] = groupByDay(games.filter((g) => dayKey(g.playedAt) === route.day));
+              if (session) {
+                downloadHtml(
+                  `lane-log-${new Date(session.at).toISOString().slice(0, 10)}.html`,
+                  daySheetHtml(session),
+                );
+              }
+            }}
           />
         )}
         {route.name === 'stats' && (
@@ -333,6 +354,7 @@ function describe(route: Route, groupName?: string) {
     case 'history': return { title: 'History', kicker: 'Every game', meta: '' };
     case 'stats': return { title: 'Stats', kicker: 'Analytics', meta: '' };
     case 'settings': return { title: 'Settings', kicker: 'Preferences', meta: '' };
+    case 'day': return { title: 'Play day', kicker: 'Session', meta: '' };
     case 'videos': return { title: 'Clips', kicker: 'Slow motion', meta: '' };
     case 'auth': return { title: 'Sign in', kicker: 'Account', meta: '' };
     case 'groups': return { title: 'Groups', kicker: 'Social', meta: '' };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { downloadHtml, gameSheetHtml } from '../lib/exporting';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { GROUPS } from '../data/groups';
@@ -231,6 +232,24 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           )}
         </>
       )}
+
+      <h2 className="section-title">Keep a copy</h2>
+      <button
+        type="button"
+        className="btn-lg"
+        onClick={() =>
+          downloadHtml(
+            `lane-log-game-${new Date(game.playedAt).toISOString().slice(0, 10)}.html`,
+            gameSheetHtml(game),
+          )
+        }
+      >
+        Export this game
+      </button>
+      <p className="footnote">
+        A printable score sheet, saved to this device. Open it and print to save it as a PDF —
+        which is how a phone makes one.
+      </p>
 
       <h2 className="section-title">Correct it</h2>
       <button type="button" className="btn-lg" onClick={startEditing}>
