@@ -8,6 +8,7 @@
  */
 
 import type { Game } from './db';
+import { dateLocale, formatTime } from './datetime';
 
 export type SortKey = 'new' | 'old' | 'high' | 'low';
 
@@ -37,7 +38,7 @@ export function searchGames(games: Game[], query: string): Game[] {
 
   return games.filter((game) => {
     const house = (game.house ?? '').toLowerCase();
-    const date = new Date(game.playedAt).toLocaleDateString(undefined, {
+    const date = new Date(game.playedAt).toLocaleDateString(dateLocale(), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -110,8 +111,7 @@ export function groupByDay(games: Game[], sort: SortKey = 'new'): DayGroup[] {
 
 /** How long a session ran, as "19:30 – 21:05". */
 export function sessionSpan(group: DayGroup): string {
-  const time = (at: number) =>
-    new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = formatTime;
 
   const last = group.games[group.games.length - 1];
   const from = time(group.at);

@@ -8,7 +8,7 @@ import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '.
 import { frameMarks, scoreGame } from '../lib/scoring';
 import { tryParseMarks } from '../lib/marks';
 import { formatBytes } from '../lib/storage';
-import { formatDay } from './HomeScreen';
+import { formatDay } from '../lib/datetime';
 
 interface Props {
   game: Game;

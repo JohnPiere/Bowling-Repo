@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { t } from '../lib/i18n';
 import type { BadgeStatus } from '../lib/badges';
+import { dateLocale, formatLongDate } from '../lib/datetime';
 
 /**
  * The badge shelf.
@@ -43,7 +44,7 @@ export function Achievements({ badges }: { badges: BadgeStatus[] }) {
             {badge.earned ? (
               <span className="badge__meta tnum">
                 {badge.earnedAt
-                  ? new Date(badge.earnedAt).toLocaleDateString(undefined, {
+                  ? new Date(badge.earnedAt).toLocaleDateString(dateLocale(), {
                       day: 'numeric',
                       month: 'short',
                       year: 'numeric',
@@ -81,11 +82,7 @@ export function Achievements({ badges }: { badges: BadgeStatus[] }) {
           {detail.earned ? (
             <div className="tnum badge-detail__status">
               {detail.earnedAt
-                ? new Date(detail.earnedAt).toLocaleDateString(undefined, {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })
+                ? formatLongDate(detail.earnedAt)
                 : 'Yes'}
             </div>
           ) : (

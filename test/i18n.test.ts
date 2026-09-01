@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { format, JA, translate } from '../src/lib/i18n';
+// The raw source, because a duplicate key is gone by the time the object is.
+import i18nSource from '../src/lib/i18n?raw';
 import { DEFAULTS, loadPreferences, savePreferences } from '../src/lib/preferences';
 
 describe('translate', () => {
@@ -48,6 +50,24 @@ describe('the dictionary', () => {
       .filter(([, ja]) => !ja.trim())
       .map(([en]) => en);
     expect(blank).toEqual([]);
+  });
+
+  it('never lists the same English twice', () => {
+    // Has to read the source: a duplicate key is silently collapsed by the
+    // time the object exists, and the *last* one wins. That is how "Strikes"
+    // came to mean both a count and a percentage, with whichever entry
+    // happened to be lower in the file deciding for both screens.
+    const table = i18nSource.slice(i18nSource.indexOf('export const JA'));
+    const body = table.slice(0, table.indexOf('\n};'));
+
+    const seen = new Set<string>();
+    const twice: string[] = [];
+    for (const [, key] of body.matchAll(/^ {2}'((?:[^'\\]|\\.)*)':/gm)) {
+      if (seen.has(key)) twice.push(key);
+      seen.add(key);
+    }
+
+    expect(twice).toEqual([]);
   });
 });
 

@@ -318,9 +318,9 @@ async function main() {
       for (const tab of ['History', 'Stats']) {
         await page.getByRole('button', { name: tab, exact: true }).click();
         await page.waitForTimeout(400);
-        // `.game-row` on the home screen, `.gameline` in a history session,
+        // `.gamecard` on the home screen, `.gameline` in a history session,
         // a chart on stats — any of them means real data reached the screen.
-        const populated = await page.locator('.game-row, .gameline, .viz__svg').count();
+        const populated = await page.locator('.gamecard, .gameline, .viz__svg').count();
         assert(populated > 0, `${tab} was empty offline`);
       }
 
@@ -477,7 +477,7 @@ async function main() {
       await page.waitForTimeout(700);
 
       await page.getByRole('button', { name: 'Home', exact: true }).click();
-      await page.locator('.game-row').first().click();
+      await page.locator('.gamecard').first().click();
       await page.waitForSelector('text=Correct it');
 
       await page.getByRole('button', { name: 'Fix a frame' }).click();
@@ -556,7 +556,7 @@ async function main() {
       });
 
       await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-      await page.locator('.game-row').first().click();
+      await page.locator('.gamecard').first().click();
       await page.waitForSelector('text=The sheet it came from');
 
       await page.waitForSelector('img.shot', { timeout: 10000 });
@@ -913,10 +913,16 @@ async function main() {
       assert((await countGames()) === 7, 'the games were not stored');
 
       await other.getByRole('button', { name: 'Home', exact: true }).click();
-      await other.waitForSelector('.game-row');
-      const average = (await other.locator('.hero__numeral').textContent())?.trim();
-      assert(average === '80', `the average read ${average}`);
-      return `average ${average} on the new device`;
+      await other.waitForSelector('.gamecard');
+      // The hero counts up to its value, so wait for it to settle rather than
+      // reading whatever frame the count happens to be on.
+      await other.waitForFunction(
+        () => document.querySelector('.besthero__numeral')?.textContent?.trim() === '80',
+        { timeout: 3000 },
+      );
+      const best = (await other.locator('.besthero__numeral').textContent())?.trim();
+      assert(best === '80', `the best game read ${best}`);
+      return `best game ${best} on the new device`;
     });
 
     await check('restoring the same file twice adds nothing', async () => {

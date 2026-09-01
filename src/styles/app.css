@@ -272,6 +272,64 @@ body {
 
 /* ── Solo home ─────────────────────────────────────────────────────────── */
 
+/* The dashboard's own rhythm. Blocks are siblings of the screen column, which
+   has no gap of its own, so each says how far it sits from the last. */
+.besthero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 15px 16px 14px;
+  background: linear-gradient(135deg, #2b2741 0%, var(--color-surface) 62%, var(--color-surface) 100%);
+  box-shadow: 0 0 0 1px var(--color-accent-800), 0 18px 40px -30px rgba(145, 132, 217, 0.8);
+  margin-bottom: 12px;
+}
+
+.besthero__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-accent-300);
+}
+
+.besthero__row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  margin-top: 5px;
+}
+
+.besthero__numeral {
+  font-size: 52px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  color: #efedff;
+}
+.besthero__of {
+  padding-bottom: 9px;
+  font-size: 12px;
+  color: var(--color-neutral-400);
+}
+
+.besthero__empty {
+  position: relative;
+  font-size: 19px;
+  margin-top: 6px;
+  color: var(--color-neutral-300);
+}
+
+.besthero__meta {
+  position: relative;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--color-neutral-400);
+}
+.besthero__dot { opacity: 0.4; margin: 0 6px; }
+
+/* The hero keeps the old `.hero-solo` shape available for anything still using
+   it; the dashboard itself no longer does. */
 .hero-solo {
   position: relative;
   overflow: hidden;
@@ -321,21 +379,150 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 11px;
+  margin-bottom: 12px;
 }
 .quickstat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   background: var(--color-surface);
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
-  padding: 11px 10px;
-  text-align: center;
+  padding: 12px 11px;
 }
-.quickstat__value { font-size: 21px; letter-spacing: -0.02em; }
+/* Only the icon takes the accent — the value is the thing being read, and a
+   tile tinted throughout would make three of them shout at once. */
+.quickstat > svg { color: var(--color-accent); }
+.quickstat__value {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
 .quickstat__label {
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--color-neutral-600);
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+
+/* The shortcut into your crew. A row rather than a button so it can carry the
+   standing and the unread count — the two things that decide whether it is
+   worth opening right now. */
+.crewcard {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-accent-800);
+  color: var(--color-neutral-500);
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  transition: box-shadow 0.18s ease;
+}
+.crewcard:hover,
+.crewcard:focus-visible { box-shadow: inset 0 0 0 1px var(--color-accent); }
+.crewcard__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.crewcard__sub {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+.crewcard__badge {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #191b26;
+  font-size: 10px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+/* A heading's trailing action — "All 24". Not a `.btn`: it sits on the
+   baseline of the heading beside it and must not carry a button's box. */
+.linkbtn {
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.linkbtn::after {
+  /* 44px to the thumb without painting 44px. */
+  content: '';
+  position: absolute;
+  inset: -12px -10px;
+}
+
+/* The dashboard's list of recent games. Tighter than `.stack`: these are five
+   cards read as one column, not five separate blocks. */
+.gamecards { display: flex; flex-direction: column; gap: 8px; }
+
+/* A recent game, on the dashboard and in the shared list. */
+.gamecard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+/* A long venue name would otherwise wrap and leave the list ragged, with rows
+   of two different heights depending on whether a game was scanned. */
+.gamecard__date,
+.gamecard__alley {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gamecard__date { font-size: 13px; font-weight: 500; }
+.gamecard__alley { font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; }
+.gamecard__tags { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.gamecard__right { flex: none; text-align: right; }
+.gamecard__score {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.gamecard__score--hot { color: var(--color-accent-200); }
+.gamecard__pins { display: block; font-size: 10px; color: var(--color-neutral-600); margin-top: 4px; }
+
+.tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--color-neutral-800);
+  color: var(--color-neutral-500);
+  white-space: nowrap;
 }
 
 .game-row {
@@ -354,8 +541,6 @@ body {
 }
 .game-row + .game-row { margin-top: 7px; }
 .game-row__score { font-size: 21px; letter-spacing: -0.02em; min-width: 46px; }
-/* A long venue name would otherwise wrap and leave the list ragged, with rows
-   of two different heights depending on whether a game was scanned. */
 .game-row__name,
 .game-row__sub {
   overflow: hidden;

@@ -7,7 +7,8 @@
 
 export type IconName =
   | 'home' | 'play' | 'history' | 'stats' | 'users' | 'settings'
-  | 'camera' | 'bell' | 'back' | 'chat' | 'ball' | 'check' | 'share';
+  | 'camera' | 'bell' | 'back' | 'chat' | 'ball' | 'check' | 'share'
+  | 'chevron' | 'plus' | 'trophy' | 'trend' | 'target' | 'grid';
 
 const PATHS: Record<IconName, string> = {
   home: 'M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5',
@@ -26,6 +27,14 @@ const PATHS: Record<IconName, string> = {
   ball: 'M12 4a8 8 0 100 16 8 8 0 000-16zM9.6 9.5h.01M13.4 8.8h.01M11.2 12.6h.01',
   check: 'M20 6L9 17l-5-5',
   share: 'M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v13',
+  chevron: 'M9 5l7 7-7 7',
+  plus: 'M12 5v14M5 12h14',
+  // Four subpaths in one `d`: cup, both handles, stem and base. They share a
+  // stroke, so splitting them into separate elements would only cost markup.
+  trophy: 'M8 4h8v4a4 4 0 01-8 0V4zM8 5H5.5a3 3 0 003 3M16 5h2.5a3 3 0 01-3 3M12 12v4M9 20h6l-.6-4h-4.8L9 20z',
+  trend: 'M4 18l5-7 4 4 7-9',
+  target: 'M12 3v18M3 12h18M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z',
+  grid: 'M5 5h14v14H5zM5 10h14M10 5v14',
 };
 
 interface Props {

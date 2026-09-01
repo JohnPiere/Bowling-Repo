@@ -25,6 +25,22 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Home dashboard ──
+  'of 300': '/ 300',
+  'Bowl a game or scan a sheet and it starts here.':
+    'ゲームを入力するかシートを撮影すると、ここに表示されます。',
+  'You’re {rank} of {size}': '{size}人中{rank}',
+  '{n}{suffix}': '{n}位',
+  '{n} new messages': '新着{n}件',
+  'Last 5 games': '直近5ゲーム',
+  'All {n}': 'すべて{n}件',
+  'View analytics': '分析を見る',
+  'No alley recorded': 'ボウリング場の記録なし',
+  '{n} X': '{n}X',
+  '{n} /': '{n}/',
+  'Since {date}': '{date}から',
+  'No games yet': 'まだゲームがありません',
+
   // ── Crew trend ──
   'Your form against the crew': 'クルーとの比較',
   'You': 'あなた',
@@ -492,4 +508,16 @@ export function useTranslation() {
 /** True when a string is missing its Japanese — used by the coverage test. */
 export function untranslated(texts: string[]): string[] {
   return texts.filter((text) => !(text in JA));
+}
+
+/**
+ * The language `t()` is currently using.
+ *
+ * Exposed so that formatters which are not string lookups — dates, times —
+ * can follow the app's own setting rather than the browser's. Someone whose
+ * phone is in English and who has set Lane Log to Japanese should not get
+ * "Aug 31" in the middle of a Japanese screen.
+ */
+export function currentLanguage(): Language {
+  return current;
 }

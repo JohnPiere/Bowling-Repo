@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon';
 import type { Game } from '../lib/db';
 import { groupByDay, searchGames, SORTS, type SortKey } from '../lib/history';
 import { scoreGame } from '../lib/scoring';
+import { dateLocale, formatTime, formatWeekday } from '../lib/datetime';
 
 /**
  * How many sessions to render at once.
@@ -88,14 +89,14 @@ export function HistoryScreen({
                 <span className="grow" style={{ minWidth: 0 }}>
                   <span className="row" style={{ gap: 7, alignItems: 'baseline' }}>
                     <span className="session__date">
-                      {new Date(day.at).toLocaleDateString(undefined, {
+                      {new Date(day.at).toLocaleDateString(dateLocale(), {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
                       })}
                     </span>
                     <span className="session__weekday">
-                      {new Date(day.at).toLocaleDateString(undefined, { weekday: 'short' })}
+                      {formatWeekday(day.at, 'short')}
                     </span>
                   </span>
                   <span className="session__meta">
@@ -158,10 +159,7 @@ function GameLine({
       <span className="gameline__no">
         <span className="gameline__index">Game {number}</span>
         <span className="gameline__time tnum">
-          {new Date(game.playedAt).toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {formatTime(game.playedAt)}
         </span>
       </span>
 

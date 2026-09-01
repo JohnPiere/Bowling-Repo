@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Achievements } from '../components/Achievements';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
@@ -29,6 +29,7 @@ import {
 } from '../lib/stats';
 import { badgeStatuses } from '../lib/badges';
 import { usePreferences } from '../lib/preferences';
+import { formatMonthYear } from '../lib/datetime';
 
 /**
  * Analytics.
@@ -310,9 +311,9 @@ function initials(name: string): string {
 
 /** The month a season started, for the profile line. */
 function since(games: { playedAt: number }[]): string {
-  if (games.length === 0) return 'No games yet';
+  if (games.length === 0) return t('No games yet');
   const first = Math.min(...games.map((g) => g.playedAt));
-  return `Since ${new Date(first).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
+  return tf('Since {date}', { date: formatMonthYear(first) });
 }
 
 function Pr({ value, label }: { value: number | string; label: string }) {

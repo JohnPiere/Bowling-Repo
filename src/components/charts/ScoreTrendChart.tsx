@@ -4,6 +4,7 @@ import type { MetricPoint } from '../../lib/stats';
 import { DataTable } from './DataTable';
 import { useHoverIndex } from './useHoverIndex';
 import { useTweenedPoints } from './useTweenedPoints';
+import { formatDay } from '../../lib/datetime';
 
 const W = 320;
 const H = 150;
@@ -337,5 +338,5 @@ function niceScale(low: number, high: number) {
 }
 
 function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return formatDay(timestamp);
 }

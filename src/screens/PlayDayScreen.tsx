@@ -5,6 +5,7 @@ import type { Game } from '../lib/db';
 import { dayKey, groupByDay, sessionSpan } from '../lib/history';
 import { scoreGame } from '../lib/scoring';
 import { ballOutcomes } from '../lib/stats';
+import { formatLongDate, formatTime, formatWeekday } from '../lib/datetime';
 
 /**
  * One night's bowling.
@@ -61,14 +62,10 @@ export function PlayDayScreen({
       <div className="profile" style={{ alignItems: 'flex-start' }}>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="profile__label">
-            {new Date(group.at).toLocaleDateString(undefined, { weekday: 'long' })}
+            {formatWeekday(group.at)}
           </div>
           <div className="day__date">
-            {new Date(group.at).toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
+            {formatLongDate(group.at)}
           </div>
           <div className="profile__meta tnum">
             {group.house ? `${group.house} · ` : ''}
@@ -107,9 +104,7 @@ export function PlayDayScreen({
               context={t('Game')}
               // One evening, so the axis wants clock times rather than the
               // same date written twice.
-              xLabel={(at) =>
-                new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-              }
+              xLabel={formatTime}
             />
           </div>
         </>
@@ -127,10 +122,7 @@ export function PlayDayScreen({
           <span className="gameline__no">
             <span className="gameline__index">Game {index + 1}</span>
             <span className="gameline__time tnum">
-              {new Date(game.playedAt).toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatTime(game.playedAt)}
             </span>
           </span>
           {/* The same shape the history rows show, so a game is recognisable

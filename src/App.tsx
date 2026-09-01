@@ -169,8 +169,12 @@ export function App() {
             games={games}
             onStartGame={() => nav.selectTab('play')}
             onOpenHistory={() => nav.selectTab('history')}
-            onOpenGroup={() => nav.selectTab('groups')}
-            onShareGame={(gameId) => nav.push({ name: 'game', gameId })}
+            onOpenStats={() => nav.selectTab('stats')}
+            // Straight into the crew's board. The list of groups is a tab of
+            // its own; a shortcut that only got you as far as the list would
+            // not have saved anybody a tap.
+            onOpenGroup={(groupId) => nav.push({ name: 'group', groupId })}
+            onOpenGame={(gameId) => nav.push({ name: 'game', gameId })}
           />
         )}
 

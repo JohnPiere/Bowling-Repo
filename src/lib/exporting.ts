@@ -16,6 +16,7 @@
 import type { Game } from './db';
 import type { DayGroup } from './history';
 import { frameMarks, scoreGame, FRAMES_PER_GAME } from './scoring';
+import { formatDateTime, formatLongDate } from './datetime';
 
 export function escapeHtml(value: string): string {
   return value
@@ -42,10 +43,7 @@ export function gameRowsHtml(game: Game): string {
 
 function gameBlock(game: Game, label: string): string {
   const card = scoreGame(game.rolls);
-  const when = new Date(game.playedAt).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const when = formatDateTime(game.playedAt);
 
   return `
     <section class="game">
@@ -100,7 +98,7 @@ ${body}
 }
 
 export function gameSheetHtml(game: Game): string {
-  const when = new Date(game.playedAt).toLocaleDateString(undefined, { dateStyle: 'long' });
+  const when = formatLongDate(game.playedAt);
   return page(
     `Lane Log — ${when}`,
     `<h1>Score sheet</h1><div class="sub">${escapeHtml(when)}</div>${gameBlock(game, 'Game')}`,
@@ -108,7 +106,7 @@ export function gameSheetHtml(game: Game): string {
 }
 
 export function daySheetHtml(group: DayGroup): string {
-  const when = new Date(group.at).toLocaleDateString(undefined, { dateStyle: 'long' });
+  const when = formatLongDate(group.at);
   const games = group.games.map((game, i) => gameBlock(game, `Game ${i + 1}`)).join('');
 
   return page(

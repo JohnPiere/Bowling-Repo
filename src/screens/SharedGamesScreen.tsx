@@ -5,7 +5,7 @@ import type { Group } from '../data/groups';
 import { SAMPLE_SHARED } from '../data/groups';
 import { gamesSharedWith, unshareGame, type Game } from '../lib/db';
 import { scoreGame } from '../lib/scoring';
-import { formatDay } from './HomeScreen';
+import { formatDay } from '../lib/datetime';
 
 /**
  * Games pushed to a crew.
