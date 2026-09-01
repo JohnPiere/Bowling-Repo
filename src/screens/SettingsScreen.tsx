@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
+import { useTranslation } from '../lib/i18n';
+import { AVATARS, usePreferences } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { putGames, type Game } from '../lib/db';
 import {
@@ -39,6 +41,9 @@ export function SettingsScreen({
   onOpenVideos?: () => void;
   onRestored?: () => void;
 }) {
+  const { t } = useTranslation();
+  const { preferences, update } = usePreferences();
+
   const [install, setInstall] = useState<InstallState>(getInstallState);
   const [push, setPush] = useState<PushStatus>('unavailable');
   const [busy, setBusy] = useState(false);
@@ -100,6 +105,79 @@ export function SettingsScreen({
 
   return (
     <>
+      <h2 className="section-title">{t('language')}</h2>
+      <div className="card">
+        <div className="chips" role="group" aria-label={t('language')}>
+          {(['en', 'ja'] as const).map((code) => (
+            <button
+              key={code}
+              type="button"
+              className="chip"
+              aria-pressed={preferences.language === code}
+              onClick={() => update({ language: code })}
+            >
+              {code === 'en' ? 'English' : '日本語'}
+            </button>
+          ))}
+        </div>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t('languageHint')}
+        </p>
+      </div>
+
+      <h2 className="section-title">{t('playerProfile')}</h2>
+      <div className="card">
+        <label style={{ display: 'block' }}>
+          <span className="hero__label">{t('playerName')}</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={preferences.playerName}
+            onChange={(event) => update({ playerName: event.target.value })}
+            maxLength={40}
+          />
+        </label>
+
+        <div className="hero__label" style={{ marginTop: 12 }}>
+          {t('profileIcon')}
+        </div>
+        <div className="chips" style={{ marginTop: 5 }} role="group" aria-label={t('profileIcon')}>
+          {AVATARS.map((glyph) => (
+            <button
+              key={glyph}
+              type="button"
+              className="chip"
+              aria-pressed={preferences.playerIcon === glyph}
+              onClick={() => update({ playerIcon: glyph })}
+            >
+              {glyph}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <h2 className="section-title">{t('sharing')}</h2>
+      <div className="card">
+        <div className="row row--between" style={{ gap: 12 }}>
+          <span className="grow" id="auto-share-label">
+            {t('autoShare')}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={preferences.autoShare}
+            aria-labelledby="auto-share-label"
+            className={`switch${preferences.autoShare ? ' switch--on' : ''}`}
+            onClick={() => update({ autoShare: !preferences.autoShare })}
+          >
+            <span className="switch__knob" />
+          </button>
+        </div>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t('autoShareHint')}
+        </p>
+      </div>
+
       <h2 className="section-title">Install</h2>
       <div className="card">
         {install.kind === 'installed' && (
@@ -209,6 +287,30 @@ export function SettingsScreen({
         <button type="button" className="btn-lg" onClick={onOpenVideos}>
           What it would take
         </button>
+      </div>
+
+      <h2 className="section-title">{t('about')}</h2>
+      <div className="card">
+        <div className="row row--between">
+          <span className="muted">{t('version')}</span>
+          <span className="tnum">{__APP_VERSION__}</span>
+        </div>
+        <p className="footnote" style={{ marginBottom: 0, marginTop: 10 }}>
+          Lane Log keeps everything on this device. There is no account, no server and nothing
+          uploaded — which is also why a backup file is the only way to move a season to another
+          phone.
+        </p>
+      </div>
+
+      <h2 className="section-title">{t('sync')}</h2>
+      <div className="card">
+        <div className="row row--between">
+          <span className="grow">{t('cloudSync')}</span>
+          <span className="tag tag--accent">Soon</span>
+        </div>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t('cloudDesc')}
+        </p>
       </div>
 
       <h2 className="section-title">Storage</h2>

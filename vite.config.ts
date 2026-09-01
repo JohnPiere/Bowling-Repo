@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json';
 
 /**
  * Where the app is served from.
@@ -15,6 +16,10 @@ const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
+  // The version is read from package.json at build time rather than written
+  // twice — a settings screen reporting a version nobody bumped is worse than
+  // no version at all.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [
     react(),
     VitePWA({

@@ -24,6 +24,7 @@ import {
   type RangeKey,
 } from '../lib/stats';
 import { badgeStatuses } from '../lib/badges';
+import { usePreferences } from '../lib/preferences';
 
 /**
  * Analytics.
@@ -37,6 +38,7 @@ import { badgeStatuses } from '../lib/badges';
  * periods.
  */
 export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSettings?: () => void }) {
+  const { preferences } = usePreferences();
   const [range, setRange] = useState<RangeKey>('all');
   const [metric, setMetric] = useState<MetricKey>('avg');
 
@@ -75,10 +77,10 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
     <div className="stats">
       {/* Who this season belongs to, and the one number that sums it up. */}
       <div className="profile">
-        <div className="profile__mark">YOU</div>
+        <div className="profile__mark">{preferences.playerIcon}</div>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="row" style={{ gap: 6 }}>
-            <span className="profile__name">You</span>
+            <span className="profile__name">{preferences.playerName}</span>
             {onOpenSettings && (
               <button
                 type="button"

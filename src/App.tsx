@@ -5,6 +5,8 @@ import { daySheetHtml, downloadHtml } from './lib/exporting';
 import { dayKey, groupByDay } from './lib/history';
 import { listGames, type Game } from './lib/db';
 import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/navigation';
+import { translate, useTranslation, type StringKey } from './lib/i18n';
+import type { Language } from './lib/preferences';
 import { useSession } from './lib/session';
 import { AuthScreen } from './screens/AuthScreen';
 import { ChatScreen } from './screens/ChatScreen';
@@ -26,12 +28,12 @@ import { SharedGamesScreen } from './screens/SharedGamesScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { VideosScreen } from './screens/VideosScreen';
 
-const TABS: { key: RouteName; label: string; icon: IconName }[] = [
-  { key: 'home', label: 'Home', icon: 'home' },
-  { key: 'play', label: 'Play', icon: 'play' },
-  { key: 'history', label: 'History', icon: 'history' },
-  { key: 'stats', label: 'Stats', icon: 'stats' },
-  { key: 'groups', label: 'Crew', icon: 'users' },
+const TABS: { key: RouteName; label: StringKey; icon: IconName }[] = [
+  { key: 'home', label: 'home', icon: 'home' },
+  { key: 'play', label: 'play', icon: 'play' },
+  { key: 'history', label: 'history', icon: 'history' },
+  { key: 'stats', label: 'stats', icon: 'stats' },
+  { key: 'groups', label: 'crew', icon: 'users' },
 ];
 
 /** A code from a ?join= link, read once at startup. */
@@ -40,6 +42,7 @@ const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '
 export function App() {
   const nav = useNavigation(initialRoute());
   const { session, signIn } = useSession();
+  const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
 
@@ -102,7 +105,7 @@ export function App() {
     route.name === 'shareGame' || route.name === 'game'
       ? games.find((g) => g.id === route.gameId)
       : undefined;
-  const { title, kicker, meta } = describe(route, group?.name);
+  const { title, kicker, meta } = describe(route, group?.name, language);
 
   // The chat pins its composer, so it manages its own scrolling.
   const isChat = route.name === 'chat';
@@ -111,7 +114,7 @@ export function App() {
     <div className="app">
       <header className="appbar">
         {nav.canGoBack && (
-          <button type="button" className="iconbtn" aria-label="Back" onClick={nav.back}>
+          <button type="button" className="iconbtn" aria-label={t('back')} onClick={nav.back}>
             <Icon name="back" size={18} />
           </button>
         )}
@@ -132,7 +135,7 @@ export function App() {
           <button
             type="button"
             className="iconbtn"
-            aria-label="Settings"
+            aria-label={t('settings')}
             onClick={() => nav.push({ name: 'settings' })}
           >
             <Icon name="settings" size={18} />
@@ -320,7 +323,7 @@ export function App() {
             onClick={() => nav.selectTab(tab.key)}
           >
             <Icon name={tab.icon} size={19} />
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </nav>
@@ -346,16 +349,18 @@ function isTabActive(tab: RouteName, route: Route): boolean {
   return false;
 }
 
-function describe(route: Route, groupName?: string) {
+function describe(route: Route, groupName: string | undefined, language: Language) {
+  const s = (key: StringKey) => translate(key, language);
+
   switch (route.name) {
-    case 'home': return { title: 'Lane Log', kicker: 'Your season', meta: '' };
-    case 'play': return { title: 'Play', kicker: 'Live scoring', meta: '' };
-    case 'scan': return { title: 'Scan a sheet', kicker: 'Import', meta: '' };
-    case 'history': return { title: 'History', kicker: 'Every game', meta: '' };
-    case 'stats': return { title: 'Stats', kicker: 'Analytics', meta: '' };
-    case 'settings': return { title: 'Settings', kicker: 'Preferences', meta: '' };
-    case 'day': return { title: 'Play day', kicker: 'Session', meta: '' };
-    case 'videos': return { title: 'Clips', kicker: 'Slow motion', meta: '' };
+    case 'home': return { title: s('titleHome'), kicker: s('kickerDashboard'), meta: '' };
+    case 'play': return { title: s('titlePlay'), kicker: s('kickerFrameEntry'), meta: '' };
+    case 'scan': return { title: s('titleScan'), kicker: s('kickerImport'), meta: '' };
+    case 'history': return { title: s('titleHistory'), kicker: s('kickerArchive'), meta: '' };
+    case 'stats': return { title: s('titleStats'), kicker: s('kickerAnalytics'), meta: '' };
+    case 'settings': return { title: s('titleSettings'), kicker: s('kickerPrefs'), meta: '' };
+    case 'day': return { title: s('titleDay'), kicker: s('kickerSession'), meta: '' };
+    case 'videos': return { title: s('titleVideos'), kicker: 'Slow motion', meta: '' };
     case 'auth': return { title: 'Sign in', kicker: 'Account', meta: '' };
     case 'groups': return { title: 'Groups', kicker: 'Social', meta: '' };
     case 'group': return { title: groupName ?? 'Group', kicker: 'Group', meta: '' };
@@ -364,7 +369,7 @@ function describe(route: Route, groupName?: string) {
     case 'groupSettings': return { title: 'Group settings', kicker: groupName ?? 'Group', meta: '' };
     case 'createGroup': return { title: 'Create a group', kicker: 'Groups', meta: '' };
     case 'joinGroup': return { title: 'Join a group', kicker: 'Invite', meta: '' };
-    case 'game': return { title: 'Game', kicker: 'Your season', meta: '' };
+    case 'game': return { title: s('titleGame'), kicker: s('kickerRecord'), meta: '' };
     case 'shareGame': return { title: 'Share this game', kicker: 'Game finished', meta: '' };
     case 'sharedGames': return { title: 'Shared games', kicker: groupName ?? 'Group', meta: '' };
   }

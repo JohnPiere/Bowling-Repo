@@ -1041,7 +1041,10 @@ async function main() {
         label: document.activeElement?.getAttribute('aria-label'),
       }));
       assert(after.tag === 'MAIN', `focus went to ${after.tag}`);
-      assert(after.label === 'Stats', `the screen announced itself as ${after.label}`);
+      // The tab is "Stats"; the screen it opens is titled "Analytics", which
+      // is the handoff's name for it. What matters is that <main> announces
+      // the screen rather than staying silent.
+      assert(after.label === 'Analytics', `the screen announced itself as ${after.label}`);
 
       return `body on load, then <main aria-label="${after.label}">`;
     });
