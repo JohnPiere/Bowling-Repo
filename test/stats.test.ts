@@ -6,6 +6,8 @@ import {
   bestStrikeRun,
   firstBallDistribution,
   leaveRecords,
+  metricChange,
+  metricSeries,
   scoreTrend,
   splitSummary,
   summarise,
@@ -250,5 +252,69 @@ describe('splitSummary', () => {
     expect(summary.faced).toBe(9);
     expect(summary.converted).toBe(5);
     expect(summary.rate).toBe(56);
+  });
+});
+
+describe('metricSeries', () => {
+  const at = (day: number) => new Date(2026, 0, day).getTime();
+  const g = (rolls: number[], total: number, day: number): Game => ({
+    id: `m${day}`,
+    bowler: 'You',
+    rolls,
+    total,
+    isComplete: true,
+    source: 'manual',
+    playedAt: at(day),
+    updatedAt: at(day),
+  });
+
+  const STRIKES = new Array(12).fill(10);
+  const OPENS = new Array(10).fill([4, 3]).flat();
+  const SPARES = [...new Array(10).fill([7, 3]).flat(), 7];
+
+  it('reads oldest first, whatever order the games arrive in', () => {
+    const series = metricSeries([g(OPENS, 70, 9), g(STRIKES, 300, 1)], 'avg');
+    expect(series.map((p) => p.value)).toEqual([300, 70]);
+  });
+
+  it('scores a perfect game as every frame struck', () => {
+    expect(metricSeries([g(STRIKES, 300, 1)], 'strike')[0].value).toBe(100);
+  });
+
+  it('does not count strikes as converted spares', () => {
+    // No spare was ever attempted, so conversion is vacuously complete rather
+    // than a reading of anything the bowler did.
+    expect(metricSeries([g(STRIKES, 300, 1)], 'spare')[0].value).toBe(100);
+    expect(metricSeries([g(SPARES, 130, 1)], 'spare')[0].value).toBe(100);
+    expect(metricSeries([g(OPENS, 70, 1)], 'spare')[0].value).toBe(0);
+  });
+
+  it('counts pins felled, which is not the score', () => {
+    // A perfect game fells 120 pins and scores 300.
+    expect(metricSeries([g(STRIKES, 300, 1)], 'pins')[0].value).toBe(120);
+  });
+
+  it('rolls the average over the window', () => {
+    const series = metricSeries([g(STRIKES, 300, 1), g(OPENS, 70, 2)], 'avg');
+    expect(series[1].rolling).toBe(185);
+  });
+
+  it('ignores a game still in progress', () => {
+    const partial = { ...g(OPENS, 40, 3), isComplete: false };
+    expect(metricSeries([g(STRIKES, 300, 1), partial], 'avg')).toHaveLength(1);
+  });
+});
+
+describe('metricChange', () => {
+  it('reports where a metric stands and how far it moved', () => {
+    const change = metricChange([
+      { playedAt: 1, value: 100, rolling: 100 },
+      { playedAt: 2, value: 160, rolling: 130 },
+    ]);
+    expect(change).toEqual({ now: 130, delta: 30 });
+  });
+
+  it('has nothing to say about an empty range', () => {
+    expect(metricChange([])).toBeNull();
   });
 });

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Achievements } from '../components/Achievements';
+import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
 import { SpareRing } from '../components/charts/SpareRing';
@@ -10,25 +12,45 @@ import {
   bestStrikeRun,
   firstBallDistribution,
   leaveRecords,
+  METRICS,
+  metricChange,
+  metricSeries,
+  personalRecords,
   RANGES,
-  scoreTrend,
+  spareBreakdown,
   splitSummary,
   summarise,
+  type MetricKey,
   type RangeKey,
 } from '../lib/stats';
+import { badgeStatuses } from '../lib/badges';
 
 /**
  * Analytics.
  *
- * Every chart reads the same range selector, so the screen answers one
- * question at a time rather than mixing periods.
+ * Two selectors over one chart, which is the handoff's shape: the tabs choose
+ * *what* is plotted and the chips choose *when*. Four separate charts would
+ * take four times the screen to answer questions that share an axis and are
+ * only ever asked one at a time.
+ *
+ * Everything below the chart reads the same range, so the screen never mixes
+ * periods.
  */
-export function StatsScreen({ games }: { games: Game[] }) {
+export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSettings?: () => void }) {
   const [range, setRange] = useState<RangeKey>('all');
+  const [metric, setMetric] = useState<MetricKey>('avg');
 
   const inRange = useMemo(() => applyRange(games, range), [games, range]);
   const summary = useMemo(() => summarise(inRange), [inRange]);
-  const trend = useMemo(() => scoreTrend(inRange), [inRange]);
+  const series = useMemo(() => metricSeries(inRange, metric), [inRange, metric]);
+  const change = useMemo(() => metricChange(series), [series]);
+  const records = useMemo(() => personalRecords(games), [games]);
+  const spares = useMemo(() => spareBreakdown(inRange), [inRange]);
+  // Badges are lifetime, not per range: a 200 game does not stop counting
+  // because the range moved past it.
+  const badges = useMemo(() => badgeStatuses(games), [games]);
+
+  const active = METRICS.find((m) => m.key === metric) ?? METRICS[0];
   const outcomes = useMemo(() => ballOutcomes(inRange.filter((g) => g.isComplete)), [inRange]);
   const firstBalls = useMemo(
     () => firstBallDistribution(inRange.filter((g) => g.isComplete)),
@@ -51,28 +73,125 @@ export function StatsScreen({ games }: { games: Game[] }) {
 
   return (
     <div className="stats">
+      {/* Who this season belongs to, and the one number that sums it up. */}
+      <div className="profile">
+        <div className="profile__mark">YOU</div>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="row" style={{ gap: 6 }}>
+            <span className="profile__name">You</span>
+            {onOpenSettings && (
+              <button
+                type="button"
+                className="profile__edit"
+                onClick={onOpenSettings}
+                aria-label="Settings"
+              >
+                <Icon name="settings" size={13} />
+              </button>
+            )}
+          </div>
+          <div className="profile__meta tnum">
+            {since(games)} · {summary.games} game{summary.games === 1 ? '' : 's'}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div className="profile__label">Best</div>
+          <div className="profile__best tnum">{records.high}</div>
+        </div>
+      </div>
+
+      <h2 className="section-title">Personal records</h2>
+      <div className="records">
+        <Pr value={records.high} label="High game" />
+        <Pr value={records.recentAverage} label="Average, last 10" />
+        <Pr value={records.longestStrikeRun} label="Longest strike run" />
+        <Pr value={`${records.sparePercent}%`} label="Spare conversion" />
+      </div>
+
+      {/* The tabs choose what is plotted; the chips choose over what. */}
+      <div className="tabs" role="tablist" aria-label="Metric">
+        {METRICS.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            role="tab"
+            aria-selected={m.key === metric}
+            className={`tabs__tab${m.key === metric ? ' tabs__tab--on' : ''}`}
+            onClick={() => setMetric(m.key)}
+          >
+            {m.short}
+          </button>
+        ))}
+      </div>
+
       <RangePicker range={range} onChange={setRange} />
 
-      {/* A KPI row, not a bar chart — these are headline numbers, not a series. */}
-      <div className="quickstats">
-        <Stat label="Average" value={summary.average} />
-        <Stat label="High game" value={summary.high} />
-        <Stat label="Strike rate" value={summary.strikeRate} suffix="%" />
-      </div>
-      <div className="quickstats">
-        <Stat label="Games" value={summary.games} />
-        <Stat label="Total pins" value={summary.totalPins?.toLocaleString()} />
-        <Stat label="Best run" value={bestRun} suffix="×" />
+      <div className="card">
+        <div className="row row--between" style={{ marginBottom: 10 }}>
+          <span className="grow">
+            <span className="hero__label">{active.label}</span>
+            <span className="metric__now tnum">
+              {change ? change.now : '—'}
+              {active.unit}
+            </span>
+          </span>
+          {change && series.length > 1 && (
+            <span className="grow" style={{ textAlign: 'right' }}>
+              <span className="hero__label">Change</span>
+              <span
+                className="metric__delta tnum"
+                style={{
+                  color: change.delta === 0 ? 'var(--color-neutral-400)' : undefined,
+                }}
+                data-direction={change.delta > 0 ? 'up' : change.delta < 0 ? 'down' : 'flat'}
+              >
+                {change.delta > 0 ? '+' : ''}
+                {change.delta}
+                {active.unit}
+              </span>
+            </span>
+          )}
+        </div>
+
+        <ScoreTrendChart
+          points={series}
+          unit={active.unit}
+          subject={`${active.short}, rolling`}
+          context={active.short}
+          scale={active.unit === '%' ? { min: 0, max: 100 } : undefined}
+        />
       </div>
 
-      <h2 className="section-title">Score trend</h2>
-      <div className="card">
-        <ScoreTrendChart points={trend} />
+      <div className="quickstats">
+        <Stat label="Average" value={summary.average} />
+        <Stat label="Games" value={summary.games} />
+        <Stat label="Best run" value={bestRun} suffix="×" />
       </div>
 
       <h2 className="section-title">Spare conversion</h2>
       <div className="card">
         <SpareRing outcomes={outcomes} />
+        {spares.total > 0 && (
+          <>
+            <div className="split-row">
+              <span className="grow">From one pin</span>
+              <span className="tnum">
+                {spares.single} · {Math.round((spares.single / spares.total) * 100)}%
+              </span>
+            </div>
+            <div className="split-row">
+              <span className="grow">From two or more</span>
+              <span className="tnum">
+                {spares.multi} · {Math.round((spares.multi / spares.total) * 100)}%
+              </span>
+            </div>
+            <p className="footnote">
+              {spares.total} spare{spares.total === 1 ? '' : 's'} where the pins left were
+              recorded. Games entered by count know a spare happened but not what it was taken
+              from, so they are not counted here.
+            </p>
+          </>
+        )}
       </div>
 
       <h2 className="section-title">How frames finish</h2>
@@ -141,6 +260,9 @@ export function StatsScreen({ games }: { games: Game[] }) {
         </>
       )}
 
+      <h2 className="section-title">Achievements</h2>
+      <Achievements badges={badges} />
+
       <h2 className="section-title">First ball</h2>
       <div className="card">
         <FirstBallChart counts={firstBalls} />
@@ -167,6 +289,22 @@ function RangePicker({ range, onChange }: { range: RangeKey; onChange: (r: Range
           {r.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The month a season started, for the profile line. */
+function since(games: { playedAt: number }[]): string {
+  if (games.length === 0) return 'No games yet';
+  const first = Math.min(...games.map((g) => g.playedAt));
+  return `Since ${new Date(first).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
+}
+
+function Pr({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div className="card records__card">
+      <div className="records__value tnum">{value}</div>
+      <div className="records__label">{label}</div>
     </div>
   );
 }

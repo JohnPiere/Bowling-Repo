@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { TrendPoint } from '../../lib/stats';
+import type { MetricPoint } from '../../lib/stats';
 import { DataTable } from './DataTable';
 import { useHoverIndex } from './useHoverIndex';
 import { useTweenedPoints } from './useTweenedPoints';
@@ -11,15 +11,32 @@ const PAD = { left: 30, right: 10, top: 12, bottom: 22 };
 /** Dots crowd into a smear past this many games; the line alone reads better. */
 const MAX_DOTS = 26;
 
+interface Props {
+  points: MetricPoint[];
+  /** Appended to every number shown, e.g. "%". */
+  unit?: string;
+  /** What the accented line is, and what the grey dots are. */
+  subject?: string;
+  context?: string;
+  /** Axis bounds, when the metric has natural ones — a percentage is 0..100. */
+  scale?: { min: number; max: number };
+}
+
 /**
- * Score over time.
+ * One metric over time.
  *
  * An emphasis chart, not a two-series one: the rolling average is the story
  * and takes the accent, while individual games are context in the
- * de-emphasis grey. Both are pin scores on one scale — a second axis would
- * be the easiest way to make this chart lie.
+ * de-emphasis grey. Both are the same measure on one scale — a second axis
+ * would be the easiest way to make this chart lie.
  */
-export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
+export function ScoreTrendChart({
+  points,
+  unit = '',
+  subject = 'Rolling average',
+  context = 'Each game',
+  scale,
+}: Props) {
   const hover = useHoverIndex(points.length, PAD.left, PAD.right);
 
   // Every hook runs on every render, so the scale is worked out before the
@@ -27,8 +44,10 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
   const geometry = useMemo(() => {
     if (points.length < 2) return null;
 
-    const values = points.flatMap((p) => [p.score, p.rolling]);
-    const { min, max, ticks } = niceScale(Math.min(...values), Math.max(...values));
+    const values = points.flatMap((p) => [p.value, p.rolling]);
+    const { min, max, ticks } = scale
+      ? fixedScale(scale.min, scale.max)
+      : niceScale(Math.min(...values), Math.max(...values));
 
     const plotW = W - PAD.left - PAD.right;
     const plotH = H - PAD.top - PAD.bottom;
@@ -47,7 +66,7 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
     [points, geometry],
   );
   const scoreTarget = useMemo(
-    () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.score) })) : []),
+    () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.value) })) : []),
     [points, geometry],
   );
 
@@ -77,7 +96,7 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
         className="viz__svg"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Score trend over ${points.length} games. Rolling average ends at ${last.rolling}.`}
+        aria-label={`${subject} over ${points.length} games, ending at ${last.rolling}${unit}.`}
         onPointerMove={hover.onMove}
         onPointerLeave={hover.onLeave}
       >
@@ -132,7 +151,7 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
             <circle
               className="viz__dot"
               cx={scores[hover.index]?.x ?? x(hover.index)}
-              cy={scores[hover.index]?.y ?? y(active.score)}
+              cy={scores[hover.index]?.y ?? y(active.value)}
               r={4}
               fill="var(--viz-context)"
             />
@@ -152,7 +171,7 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
           className="viz__tooltip"
           style={{
             left: `${(x(hover.index) / W) * 100}%`,
-            top: `${(y(Math.max(active.score, active.rolling)) / H) * 100}%`,
+            top: `${(y(Math.max(active.value, active.rolling)) / H) * 100}%`,
             // Centring on the point pushes the box out of the card at either
             // end, so the anchor follows the edge it is near.
             transform: `translate(${anchorX(hover.index, points.length)}, -100%)`,
@@ -160,10 +179,16 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
         >
           <div className="viz__tooltip-label">{formatDate(active.playedAt)}</div>
           <div className="tnum">
-            Game <strong>{active.score}</strong>
+            {context} <strong>
+              {active.value}
+              {unit}
+            </strong>
           </div>
           <div className="tnum" style={{ color: 'var(--color-accent-300)' }}>
-            Rolling avg <strong>{active.rolling}</strong>
+            {subject} <strong>
+              {active.rolling}
+              {unit}
+            </strong>
           </div>
         </div>
       )}
@@ -171,21 +196,25 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
       <div className="viz__legend">
         <span className="viz__legend-item">
           <span className="viz__swatch viz__swatch--line" style={{ background: 'var(--viz-subject)' }} />
-          Rolling average
+          {subject}
         </span>
         <span className="viz__legend-item">
           <span
             className="viz__swatch"
             style={{ background: 'var(--viz-context)', borderRadius: '50%', width: 8, height: 8 }}
           />
-          Each game
+          {context}
         </span>
       </div>
 
       <DataTable
-        caption="Score and rolling average per game"
-        columns={['Date', 'Game', 'Rolling avg']}
-        rows={points.map((p) => [formatDate(p.playedAt), p.score, p.rolling])}
+        caption={`${context} and ${subject.toLowerCase()} per game`}
+        columns={['Date', context, subject]}
+        rows={points.map((p) => [
+          formatDate(p.playedAt),
+          `${p.value}${unit}`,
+          `${p.rolling}${unit}`,
+        ])}
       />
     </div>
   );
@@ -197,6 +226,20 @@ function anchorX(index: number, count: number): string {
   if (position < 0.2) return '0%';
   if (position > 0.8) return '-100%';
   return '-50%';
+}
+
+/**
+ * An axis with bounds the metric itself imposes.
+ *
+ * A percentage runs 0 to 100 whatever the data does. Letting it auto-scale
+ * would turn a wobble between 61% and 64% into a mountain range, which is the
+ * most common way a true chart tells a lie.
+ */
+function fixedScale(min: number, max: number) {
+  const ticks: number[] = [];
+  const stride = (max - min) / 4;
+  for (let v = min; v <= max; v += stride) ticks.push(Math.round(v));
+  return { min, max, ticks };
 }
 
 /** Round an axis out to clean numbers so the ticks are readable values. */

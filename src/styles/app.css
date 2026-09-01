@@ -958,6 +958,175 @@ body {
   animation: growUp 0.5s cubic-bezier(0.3, 1.1, 0.5, 1) both;
 }
 
+/* ── Analytics: profile, records, metric tabs, badges ──────────────────── */
+
+/* The season's owner, and the one number that sums it up. */
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 14px;
+  padding: 16px;
+  background: linear-gradient(140deg, #2b2741, var(--color-surface));
+  box-shadow: 0 0 0 1px var(--color-accent-800);
+}
+.profile__mark {
+  width: 54px;
+  height: 54px;
+  flex: none;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent-800);
+  color: var(--color-accent-200);
+  font: 600 15px var(--font-heading);
+  letter-spacing: 0.04em;
+}
+.profile__name { font: 500 19px/1.2 var(--font-heading); }
+.profile__edit {
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  position: relative;
+}
+/* Painted at 17px, hit at 44 — the pencil is next to a name, not on its own. */
+.profile__edit::after { content: ''; position: absolute; inset: -14px; }
+.profile__meta {
+  font-size: 11px;
+  color: var(--color-neutral-500);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile__label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-300);
+}
+.profile__best { font: 600 26px/1 var(--font-heading); letter-spacing: -0.02em; }
+
+.records { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.records__card { gap: 4px; padding: 14px 12px; }
+.records__value {
+  font: 600 24px/1 var(--font-heading);
+  letter-spacing: -0.02em;
+  color: var(--color-accent-200);
+}
+.records__label { font-size: 11px; color: var(--color-neutral-500); }
+
+/* Tabs choose the metric; the chips below choose the range. Two rows because
+   they are two different questions — folding them into one row of chips makes
+   "Strike %" and "30 days" look like alternatives to each other. */
+.tabs {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-divider);
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs__tab {
+  flex: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0 0 9px;
+  font: 500 13px var(--font-heading);
+  color: var(--color-neutral-500);
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+/* The tab is 25px of text and underline; the thumb gets 44px centred on it,
+   the same trick the chips and icon buttons use. */
+.tabs__tab::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+.tabs__tab--on {
+  color: var(--color-accent-200);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.metric__now { display: block; font: 600 24px/1.1 var(--font-heading); margin-top: 2px; }
+.metric__delta { display: block; font: 500 14px var(--font-heading); margin-top: 5px; }
+.metric__delta[data-direction='up'] { color: var(--color-accent-300); }
+.metric__delta[data-direction='down'] { color: var(--negative); }
+
+.split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 11px 4px 9px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.badge__glyph {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-accent-800);
+  color: var(--color-accent-200);
+  font: 600 12px var(--font-heading);
+}
+.badge__name { font-size: 10px; text-align: center; line-height: 1.25; }
+.badge__meta { font-size: 9px; color: var(--color-neutral-600); }
+/* Locked badges are dimmed, not hidden: one you cannot see is not a goal. */
+.badge--locked { opacity: 0.55; }
+.badge--locked .badge__glyph { background: var(--color-neutral-900); color: var(--color-neutral-600); }
+.badge--open { box-shadow: 0 0 0 1px var(--color-accent), 0 8px 20px rgba(0, 0, 0, 0.45); }
+
+.badge-detail {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(140deg, var(--color-accent-900), var(--color-surface));
+  box-shadow: 0 0 0 1px var(--color-accent-700);
+  animation: fadeUp 0.26s ease both;
+}
+.badge-detail__name { font: 500 15px var(--font-heading); }
+.badge-detail__close {
+  background: transparent;
+  border: 0;
+  color: var(--color-neutral-400);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 2px;
+  position: relative;
+}
+.badge-detail__close::after { content: ''; position: absolute; inset: -14px -12px; }
+.badge-detail__crit { font-size: 13px; line-height: 1.5; color: var(--color-accent-100); margin: 0; }
+.badge-detail__status { font-size: 12px; color: var(--color-neutral-400); margin-top: 5px; }
+
 /* The analytics screen settles in rather than appearing all at once: each
    section arrives just behind the one above it. Capped, so a long screen does
    not leave the last card waiting a second and a half to show up. */

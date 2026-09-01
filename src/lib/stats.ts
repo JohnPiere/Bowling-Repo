@@ -16,8 +16,8 @@ export const RANGES: { key: RangeKey; label: string; games?: number; days?: numb
   { key: 'g5', label: 'Last 5', games: 5 },
   { key: 'd30', label: '30 days', days: 30 },
   { key: 'd90', label: '90 days', days: 90 },
-  { key: 'd180', label: '180 days', days: 180 },
-  { key: 'all', label: 'All time' },
+  { key: 'd180', label: '6 months', days: 180 },
+  { key: 'all', label: 'Lifetime' },
 ];
 
 /**
@@ -253,4 +253,149 @@ export function splitSummary(games: Game[]): SplitSummary {
     rate: faced === 0 ? null : Math.round((converted / faced) * 100),
     framesWithPins,
   };
+}
+
+
+/* ── The metric the trend chart plots ─────────────────────────────────────
+ *
+ * One chart, four readings of it. The handoff puts these in a tab row above
+ * the plot rather than drawing four charts: they share an x-axis and a range,
+ * and only one of them is the question being asked at any moment.
+ */
+
+export type MetricKey = 'avg' | 'strike' | 'spare' | 'pins';
+
+export const METRICS: { key: MetricKey; label: string; short: string; unit: string }[] = [
+  { key: 'avg', label: 'Average progression', short: 'Average', unit: '' },
+  { key: 'strike', label: 'Strike %', short: 'Strike %', unit: '%' },
+  { key: 'spare', label: 'Spare conversion', short: 'Spare %', unit: '%' },
+  { key: 'pins', label: 'Total pins per game', short: 'Pins', unit: '' },
+];
+
+export interface MetricPoint {
+  playedAt: number;
+  /** The game's own reading of the metric. */
+  value: number;
+  /** …and the ten-game rolling average of it, which is the line drawn. */
+  rolling: number;
+}
+
+/**
+ * One metric, game by game, oldest first.
+ *
+ * Spare conversion counts only frames where a spare was possible: a strike is
+ * not a missed spare, and counting it as a converted one would let a good
+ * striking night flatter a bad spare night.
+ */
+export function metricSeries(games: Game[], metric: MetricKey, window = 10): MetricPoint[] {
+  const played = [...games]
+    .filter((game) => game.isComplete)
+    .sort((a, b) => a.playedAt - b.playedAt);
+
+  const raw = played.map((game) => {
+    const card = scoreGame(game.rolls);
+    const frames = card.frames.slice(0, FRAMES_PER_GAME);
+
+    switch (metric) {
+      case 'strike': {
+        const strikes = frames.filter((f) => f.isStrike).length;
+        return { playedAt: game.playedAt, value: round1((strikes / FRAMES_PER_GAME) * 100) };
+      }
+      case 'spare': {
+        const attempts = frames.filter((f) => !f.isStrike).length;
+        const spares = frames.filter((f) => f.isSpare).length;
+        return {
+          playedAt: game.playedAt,
+          value: attempts === 0 ? 100 : round1((spares / attempts) * 100),
+        };
+      }
+      case 'pins':
+        return { playedAt: game.playedAt, value: game.rolls.reduce((a, b) => a + b, 0) };
+      default:
+        return { playedAt: game.playedAt, value: game.total };
+    }
+  });
+
+  return raw.map((point, i) => {
+    const from = Math.max(0, i - window + 1);
+    const slice = raw.slice(from, i + 1);
+    return {
+      ...point,
+      rolling: round1(slice.reduce((sum, p) => sum + p.value, 0) / slice.length),
+    };
+  });
+}
+
+/** Where a metric stands now, and how far it has come across the range. */
+export function metricChange(series: MetricPoint[]): { now: number; delta: number } | null {
+  if (series.length === 0) return null;
+  const now = series[series.length - 1].rolling;
+  return { now, delta: round1(now - series[0].rolling) };
+}
+
+export interface PersonalRecords {
+  high: number;
+  /** Average of the ten most recent games — the number most people mean. */
+  recentAverage: number;
+  longestStrikeRun: number;
+  sparePercent: number;
+}
+
+export function personalRecords(games: Game[]): PersonalRecords {
+  const played = games.filter((game) => game.isComplete);
+  if (played.length === 0) {
+    return { high: 0, recentAverage: 0, longestStrikeRun: 0, sparePercent: 0 };
+  }
+
+  // `games` arrives newest-first, so the ten most recent are the first ten.
+  const recent = played.slice(0, 10);
+  const outcomes = ballOutcomes(played);
+  const attempts = outcomes.spares + outcomes.opens;
+
+  return {
+    high: Math.max(...played.map((game) => game.total)),
+    recentAverage: round1(recent.reduce((sum, g) => sum + g.total, 0) / recent.length),
+    longestStrikeRun: bestStrikeRun(played),
+    sparePercent: attempts === 0 ? 0 : Math.round((outcomes.spares / attempts) * 100),
+  };
+}
+
+export interface SpareBreakdown {
+  /** Spares taken from a single pin — the ones that should always go. */
+  single: number;
+  /** …and from two or more, which is where the skill is. */
+  multi: number;
+  total: number;
+}
+
+/**
+ * How the spares were made, split by what was left standing.
+ *
+ * Needs pin data, so it only counts frames scored on the rack. A game entered
+ * by count knows a spare happened but not what it was taken from, and guessing
+ * would put a number on the screen that nothing measured.
+ */
+export function spareBreakdown(games: Game[]): SpareBreakdown {
+  let single = 0;
+  let multi = 0;
+
+  for (const game of games) {
+    if (!game.pinfalls) continue;
+    const card = scoreGame(game.rolls);
+    const leaves = leavesFromPinfalls(game.pinfalls);
+
+    card.frames.slice(0, FRAMES_PER_GAME).forEach((frame, i) => {
+      if (!frame.isSpare) return;
+      const left = leaves[i];
+      if (!left || left.length === 0) return;
+      if (left.length === 1) single += 1;
+      else multi += 1;
+    });
+  }
+
+  return { single, multi, total: single + multi };
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
 }

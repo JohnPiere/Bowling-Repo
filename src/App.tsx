@@ -183,7 +183,9 @@ export function App() {
             onShareGame={(gameId) => nav.push({ name: 'game', gameId })}
           />
         )}
-        {route.name === 'stats' && <StatsScreen games={games} />}
+        {route.name === 'stats' && (
+          <StatsScreen games={games} onOpenSettings={() => nav.push({ name: 'settings' })} />
+        )}
 
         {route.name === 'groups' && (
           <GroupsScreen
