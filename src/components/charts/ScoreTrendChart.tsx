@@ -79,7 +79,17 @@ export function ScoreTrendChart({
     () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.rolling) })) : []),
     [points, geometry],
   );
+  const tickTarget = useMemo(
+    () => (geometry ? geometry.ticks.map((tick) => ({ x: 0, y: geometry.y(tick) })) : []),
+    [geometry],
+  );
+
   const rolling = useTweenedPoints(rollingTarget);
+  // The gridlines travel with the curve. Snapping the frame while the line
+  // glides is what made switching metrics read as a jump: the axis arrives
+  // instantly at the new scale and the line appears to be catching up with a
+  // chart that has already changed.
+  const tickRows = useTweenedPoints(tickTarget);
 
   if (!geometry || points.length < 2) {
     return <p className="empty">{t('Two finished games and the trend starts here.')}</p>;
@@ -117,14 +127,19 @@ export function ScoreTrendChart({
         onPointerMove={hover.onMove}
         onPointerLeave={hover.onLeave}
       >
-        {ticks.map((tick) => (
-          <g key={tick}>
-            <line className="viz__grid" x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} />
-            <text className="viz__axis-text" x={PAD.left - 6} y={y(tick) + 3} textAnchor="end">
-              {tick}
-            </text>
-          </g>
-        ))}
+        {ticks.map((tick, i) => {
+          // Labels are the destination's values, carried at the interpolated
+          // position — the alternative is fractions counting up mid-flight.
+          const row = tickRows[i]?.y ?? y(tick);
+          return (
+            <g key={tick}>
+              <line className="viz__grid" x1={PAD.left} x2={W - PAD.right} y1={row} y2={row} />
+              <text className="viz__axis-text" x={PAD.left - 6} y={row + 3} textAnchor="end">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
 
         <defs>
           <linearGradient id="viz-trend-fill" x1="0" y1="0" x2="0" y2="1">

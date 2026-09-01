@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { PinKeypad } from '../components/PinKeypad';
 import { PinRack } from '../components/PinRack';
 import { Scorecard } from '../components/Scorecard';
@@ -54,6 +54,18 @@ export function PlayScreen({ onSaved, onScan }: Props) {
     setPending((current) =>
       current.includes(pin) ? current.filter((p) => p !== pin) : [...current, pin],
     );
+  }
+
+  /**
+   * Everything still standing, in one tap, committed immediately.
+   *
+   * Not "select all then commit": a strike is one decision, and leaving it
+   * pending would invite an eleventh tap to confirm what is already obvious.
+   */
+  function clearTheRack() {
+    setRolls((current) => [...current, standing.length]);
+    setPinfalls((current) => [...current, standing]);
+    setPending([]);
   }
 
   function commitBall() {
@@ -189,7 +201,20 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         <>
           <PinRack standing={standing} knocked={pending} onToggle={knockDown} />
 
-          <div className="row" style={{ gap: 8, marginTop: 14 }}>
+          {/* The commonest ball in bowling is the one that takes everything,
+              and tapping ten pins to say so is ten chances to hit the wrong
+              one. This is the same action the rack performs, in one tap. */}
+          <button
+            type="button"
+            className="btn-lg btn-lg--quick"
+            style={{ marginTop: 14 }}
+            onClick={clearTheRack}
+          >
+            <Icon name="ball" size={18} />
+            {standing.length === 10 ? t('All ten down') : t('Clear the rack')}
+          </button>
+
+          <div className="row" style={{ gap: 8, marginTop: 9 }}>
             <button
               type="button"
               className="btn-lg"
@@ -198,12 +223,15 @@ export function PlayScreen({ onSaved, onScan }: Props) {
             >
               {t('Undo')}
             </button>
+            {/* Says what the ball *was*, not how many pins it took: a cleared
+                deck is a strike or a spare, and reading "10" back at someone
+                who just struck is the app failing to notice. */}
             <button type="button" className="btn-lg btn-lg--primary" onClick={commitBall}>
               {pending.length === standing.length && standing.length === 10
-                ? 'Strike'
+                ? t('Strike')
                 : pending.length === standing.length
-                  ? 'Spare'
-                  : `Ball down · ${pending.length}`}
+                  ? t('Spare')
+                  : tf('Ball down · {n}', { n: pending.length })}
             </button>
           </div>
         </>

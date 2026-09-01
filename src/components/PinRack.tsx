@@ -1,5 +1,5 @@
 import { describeLeave, PIN_POSITIONS } from '../lib/pins';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 
 interface Props {
   /** Pins still up before this ball. */
@@ -9,6 +9,12 @@ interface Props {
   onToggle: (pin: number) => void;
   /** Read-only, for showing a leave that has already been bowled. */
   readOnly?: boolean;
+  /**
+   * A fixed pixel size. Left off, the rack fills the width it is given, which
+   * is what the entry screen wants: the whole point of tapping pins is hitting
+   * the right one, and at 200px each pin's target is 50px with no dead space
+   * between neighbours — aim a little off and you knock the wrong pin down.
+   */
   size?: number;
 }
 
@@ -23,7 +29,7 @@ const RADIUS = 3.6;
  * faintly rather than hidden, so the deck keeps its shape and the leave stays
  * recognisable — a 7-10 should look like a 7-10.
  */
-export function PinRack({ standing, knocked, onToggle, readOnly = false, size = 200 }: Props) {
+export function PinRack({ standing, knocked, onToggle, readOnly = false, size }: Props) {
   const up = new Set(standing);
   const down = new Set(knocked);
   const remaining = standing.filter((pin) => !down.has(pin));
@@ -39,7 +45,7 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false, size = 
         height={size}
         role="group"
         aria-label={t('Pin rack')}
-        className="rack__svg"
+        className={`rack__svg${size ? '' : ' rack__svg--fill'}`}
       >
         {Object.entries(PIN_POSITIONS).map(([key, pos]) => {
           const pin = Number(key);
@@ -101,15 +107,23 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false, size = 
       </svg>
 
       {/* describeLeave already says "split" where it is one, so there is no
-          separate flag — two words for the same fact reads as a stutter. */}
+          separate flag — two words for the same fact reads as a stutter.
+          Nothing tapped yet is not a gutter ball, it is a ball not thrown, so
+          the line waits rather than naming the full rack as a leave. */}
       <div className="rack__leave">
-        <span className="tnum" style={{ fontSize: 21 }}>
-          {down.size}
-        </span>{' '}
-        <span className="muted">
-          {down.size === 1 ? 'pin' : 'pins'}
-          {remaining.length > 0 && ` · leaves ${describeLeave(remaining)}`}
-        </span>
+        {down.size === 0 ? (
+          <span className="muted">{t('Tap the pins this ball took down')}</span>
+        ) : (
+          <>
+            <span className="tnum" style={{ fontSize: 21 }}>
+              {down.size}
+            </span>{' '}
+            <span className="muted">
+              {down.size === 1 ? t('pin') : t('pins')}
+              {remaining.length > 0 && ` · ${tf('leaves {leave}', { leave: describeLeave(remaining) })}`}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

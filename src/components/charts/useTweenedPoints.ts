@@ -5,8 +5,12 @@ export interface Point {
   y: number;
 }
 
-/** Matches the design handoff's motion table: charts move over 500–900ms. */
-const DURATION = 520;
+/**
+ * The handoff's motion table gives charts 500–900ms. Nearer the top of that
+ * range: switching metric moves the whole plot, and at half a second that much
+ * travel reads as a jump rather than a move.
+ */
+const DURATION = 720;
 
 /**
  * Ease the chart's geometry to its new shape instead of redrawing it.

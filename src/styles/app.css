@@ -1725,6 +1725,15 @@ body {
 }
 .roster__actions { padding: 0 12px 12px; }
 
+/* The shortcut above the rack. Accent-outlined rather than filled: it is the
+   fastest path, not the only one, and two filled buttons on one screen means
+   neither is the primary. */
+.btn-lg--quick {
+  color: var(--color-accent-200);
+  border-color: var(--color-accent-700);
+  background: rgba(145, 132, 217, 0.08);
+}
+
 .btn-lg--danger { color: var(--negative); border-color: rgba(224, 163, 182, 0.4); }
 
 /* The confirmation for the one action nothing can undo, marked as such. */
@@ -1734,6 +1743,13 @@ body {
 
 .rack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rack__svg { display: block; overflow: visible; }
+/*
+ * Fills the card. A rack is a grid of ten targets that abut with no gutter, so
+ * how big it is *is* how accurate tapping it is — at 200px each cell is 50px
+ * and a thumb landing a few pixels wide knocks down a neighbour. Capped so it
+ * does not become absurd on a tablet.
+ */
+.rack__svg--fill { width: 100%; height: auto; max-width: 340px; }
 
 .rack__pin {
   fill: var(--color-surface);
@@ -1748,7 +1764,7 @@ body {
 .rack__pin--gone { fill: transparent; stroke: var(--color-neutral-800); }
 
 .rack__number {
-  font-size: 3px;
+  font-size: 2.6px;
   fill: var(--color-neutral-500);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
