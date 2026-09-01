@@ -175,7 +175,9 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
           baseline={lifetime}
           unit={active.unit}
           subject={`${active.short} to date`}
-          context={active.short}
+          // The grey dots are one game's own reading, whatever the metric is —
+          // calling them "Average" would name the line, not them.
+          context="Each game" 
           scale={active.unit === '%' ? { min: 0, max: 100 } : undefined}
         />
       </div>

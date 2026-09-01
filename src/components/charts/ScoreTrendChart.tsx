@@ -11,8 +11,14 @@ const PAD = { left: 30, right: 10, top: 12, bottom: 22 };
 /** Dots crowd into a smear past this many games; the line alone reads better. */
 const MAX_DOTS = 26;
 
-/** Rings are bigger and sit on the curve, so they crowd sooner than the dots. */
-const MAX_RINGS = 14;
+/**
+ * The rings are the curve's joints and belong on it however many games there
+ * are, so they shrink rather than disappear. Below about two and a half pixels
+ * a ring stops reading as a ring, and at that point the line alone is honest.
+ */
+function ringRadius(spacing: number): number {
+  return Math.min(5, Math.max(0, spacing / 2.4));
+}
 
 interface Props {
   points: MetricPoint[];
@@ -94,6 +100,7 @@ export function ScoreTrendChart({
   const active = hover.index === null ? null : points[hover.index];
   const last = points[points.length - 1];
   const tip = rolling[rolling.length - 1];
+  const radius = ringRadius((W - PAD.left - PAD.right) / Math.max(1, rolling.length - 1));
 
   return (
     <div className="viz">
@@ -157,13 +164,25 @@ export function ScoreTrendChart({
         {/* Open rings on the line itself, big enough to tap. The handoff draws
             these rather than filled dots: a ring sits *on* the curve instead of
             hiding the piece of it underneath. */}
-        {rolling.length <= MAX_RINGS &&
+        {radius >= 2.5 &&
           rolling.map((p, i) => (
-            <circle key={`r${i}`} className="viz__ring-dot" cx={p.x} cy={p.y} r={5} />
+            <circle
+              key={`r${i}`}
+              className="viz__ring-dot"
+              cx={p.x}
+              cy={p.y}
+              r={radius}
+              strokeWidth={radius >= 4 ? 2 : 1.5}
+            />
           ))}
 
         {/* The endpoint is always drawn, however many games there are. */}
-        <circle className="viz__ring-dot viz__ring-dot--last" cx={tip.x} cy={tip.y} r={5.5} />
+        <circle
+          className="viz__ring-dot viz__ring-dot--last"
+          cx={tip.x}
+          cy={tip.y}
+          r={Math.max(4, radius + 0.5)}
+        />
 
         {hover.index !== null && active && (
           <>
