@@ -118,9 +118,8 @@ export function PlayScreen({ onSaved, onScan }: Props) {
           {t('Tap the pins you knocked down')}
         </button>
         <p className="muted" style={{ margin: '6px 0 14px' }}>
-          Records which pins fell, so a 10-pin and a 7-10 show up later as
-          themselves rather than as "9" and "8".
-        </p>
+          {t('Records which pins fell, so a 10-pin and a 7-10 show up later as themselves rather than as "9" and "8".')}
+</p>
 
         <button
           type="button"
@@ -133,18 +132,16 @@ export function PlayScreen({ onSaved, onScan }: Props) {
           {t('Just count the pins')}
         </button>
         <p className="muted" style={{ margin: '6px 0 14px' }}>
-          One tap a ball. Faster when you are keeping up with a league, but it
-          cannot tell you what you left.
-        </p>
+          {t('One tap a ball. Faster when you are keeping up with a league, but it cannot tell you what you left.')}
+</p>
 
         <button type="button" className="btn-lg" onClick={onScan}>
           <Icon name="camera" size={18} />
           {t('Scan a paper score sheet')}
         </button>
         <p className="muted" style={{ margin: '6px 0 0' }}>
-          Photograph a finished sheet and Lane Log reads the marks off it. Best for games already
-          bowled — you check every frame before it is saved.
-        </p>
+          {t('Photograph a finished sheet and Lane Log reads the marks off it. Best for games already bowled — you check every frame before it is saved.')}
+</p>
       </>
     );
   }

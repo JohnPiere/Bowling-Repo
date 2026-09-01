@@ -3,7 +3,7 @@ import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import type { Game } from '../lib/db';
 import { groupByDay, searchGames, SORTS, type SortKey } from '../lib/history';
-import { frameMarks, scoreGame } from '../lib/scoring';
+import { scoreGame } from '../lib/scoring';
 
 /**
  * How many sessions to render at once.
@@ -109,7 +109,9 @@ export function HistoryScreen({
                   <span className="session__series tnum">{day.series}</span>
                 </span>
 
-                <Icon name="back" size={15} />
+                {/* Points into the day, so it is rotated rather than a second
+                    near-identical glyph in the set. */}
+                <Icon name="back" size={15} className="session__chevron" />
               </button>
 
               {day.games.map((game, index) => (
@@ -146,15 +148,10 @@ function GameLine({
   isBest: boolean;
   onOpen: () => void;
 }) {
-  // The marks are the shape of the game — a row of X and / says more at a
-  // glance than the total does about how it was bowled.
-  const marks = useMemo(
-    () =>
-      scoreGame(game.rolls)
-        .frames.map((frame) => frameMarks(frame).join(''))
-        .join(' '),
-    [game.rolls],
-  );
+  // The shape of the game, one bar a frame, height by what that frame added.
+  // A row of marks says the same thing in more room and reads as a wall of
+  // text at a glance, which is all a list row ever gets.
+  const card = useMemo(() => scoreGame(game.rolls), [game.rolls]);
 
   return (
     <button type="button" className="gameline" onClick={onOpen}>
@@ -168,7 +165,19 @@ function GameLine({
         </span>
       </span>
 
-      <span className="gameline__marks tnum grow">{marks}</span>
+      <span className="spark grow" aria-hidden="true">
+        {card.frames.map((frame, i) => {
+          const previous = i === 0 ? 0 : (card.frames[i - 1].score ?? 0);
+          const gained = frame.score === null ? 0 : frame.score - previous;
+          return (
+            <span
+              key={frame.index}
+              className="spark__bar"
+              style={{ height: Math.max(2, (gained / 30) * 22) }}
+            />
+          );
+        })}
+      </span>
 
       {isBest && <span className="tag tag--accent">{t('Best')}</span>}
 

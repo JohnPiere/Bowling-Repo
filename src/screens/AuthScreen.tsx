@@ -54,9 +54,8 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
           {t('Keep your games, or just start bowling.')}
         </h2>
         <p className="hero__meta" style={{ marginTop: 8, marginBottom: 0 }}>
-          An account gets you groups, a shared board and cloud backup. Everything else works
-          without one.
-        </p>
+          {t('An account gets you groups, a shared board and cloud backup. Everything else works without one.')}
+</p>
       </section>
 
       <button type="button" className="btn-lg btn-lg--primary" onClick={() => start('google')}>
@@ -87,9 +86,8 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
       </div>
 
       <p className="footnote">
-        Neither provider is connected yet — signing in records the choice on this device so the
-        rest of the flow can be built against it.
-      </p>
+        {t('Neither provider is connected yet — signing in records the choice on this device so the rest of the flow can be built against it.')}
+</p>
     </>
   );
 }

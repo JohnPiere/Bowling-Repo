@@ -32,6 +32,8 @@ interface Props {
   context?: string;
   /** Axis bounds, when the metric has natural ones — a percentage is 0..100. */
   scale?: { min: number; max: number };
+  /** How to write the two end labels. A session wants times, a season dates. */
+  xLabel?: (at: number) => string;
 }
 
 /**
@@ -49,6 +51,7 @@ export function ScoreTrendChart({
   subject = 'Rolling average',
   context = 'Each game',
   scale,
+  xLabel = formatDate,
 }: Props) {
   const hover = useHoverIndex(points.length, PAD.left, PAD.right);
   const [picked, setPicked] = useState<number | null>(null);
@@ -108,6 +111,11 @@ export function ScoreTrendChart({
   const tip = rolling[rolling.length - 1];
   const radius = ringRadius((W - PAD.left - PAD.right) / Math.max(1, rolling.length - 1));
 
+  // A session plots each game against itself: the per-game reading and the
+  // line are the same number. Drawing both would put a grey dot under every
+  // ring and claim two series where there is one.
+  const hasContext = points.some((point) => point.value !== point.rolling);
+
   return (
     <div className="viz">
       <svg
@@ -153,7 +161,8 @@ export function ScoreTrendChart({
             rather than by game: the marker for slot 3 has to be the same
             element from one range to the next, or React replaces it and it
             appears at its new home instead of travelling there. */}
-        {points.length <= MAX_DOTS &&
+        {hasContext &&
+          points.length <= MAX_DOTS &&
           scores.map((p, i) => (
             <circle
               key={i}
@@ -227,10 +236,10 @@ export function ScoreTrendChart({
         )}
 
         <text className="viz__axis-text" x={PAD.left} y={H - 6}>
-          {formatDate(points[0].playedAt)}
+          {xLabel(points[0].playedAt)}
         </text>
         <text className="viz__axis-text" x={W - PAD.right} y={H - 6} textAnchor="end">
-          {formatDate(last.playedAt)}
+          {xLabel(last.playedAt)}
         </text>
       </svg>
 
@@ -240,13 +249,15 @@ export function ScoreTrendChart({
       {shown !== null && active && (
         <div className="viz__tip">
           <div className="viz__tip-label">{formatDate(active.playedAt)}</div>
-          <div className="row row--between tnum">
-            <span>{context}</span>
-            <strong>
-              {active.value}
-              {unit}
-            </strong>
-          </div>
+          {hasContext && (
+            <div className="row row--between tnum">
+              <span>{context}</span>
+              <strong>
+                {active.value}
+                {unit}
+              </strong>
+            </div>
+          )}
           <div className="row row--between tnum" style={{ color: 'var(--color-accent-300)' }}>
             <span>{subject}</span>
             <strong>
@@ -258,7 +269,9 @@ export function ScoreTrendChart({
       )}
 
       <p className="footnote" style={{ margin: '6px 0 0' }}>
-        {t('Dashed line = lifetime average. Tap a point for detail.')}
+        {baseline === null
+          ? t('Tap a point for detail.')
+          : t('Dashed line = lifetime average. Tap a point for detail.')}
       </p>
 
       <div className="viz__legend">
@@ -266,13 +279,15 @@ export function ScoreTrendChart({
           <span className="viz__swatch viz__swatch--line" style={{ background: 'var(--viz-subject)' }} />
           {subject}
         </span>
-        <span className="viz__legend-item">
-          <span
-            className="viz__swatch"
-            style={{ background: 'var(--viz-context)', borderRadius: '50%', width: 8, height: 8 }}
-          />
-          {context}
-        </span>
+        {hasContext && (
+          <span className="viz__legend-item">
+            <span
+              className="viz__swatch"
+              style={{ background: 'var(--viz-context)', borderRadius: '50%', width: 8, height: 8 }}
+            />
+            {context}
+          </span>
+        )}
       </div>
 
       <DataTable

@@ -144,9 +144,8 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
             {match && <span className="note note--good">{match.name} — invite valid.</span>}
             {isComplete && !match && (
               <span className="note note--bad">
-                No group uses that code. Check it against the message you were sent — codes expire
-                after 14 days.
-              </span>
+                {t('No group uses that code. Check it against the message you were sent — codes expire after 14 days.')}
+</span>
             )}
           </p>
 
@@ -196,9 +195,8 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
               <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
                 <QrCode value={joinUrl('TCRW31')} size={180} />
                 <p className="muted" style={{ marginTop: 12, marginBottom: 0, textAlign: 'center' }}>
-                  This one opens Tuesday Crew. A phone's own camera app reads it too — it is a
-                  link, not just a code.
-                </p>
+                  {t('This one opens Tuesday Crew. A phone\'s own camera app reads it too — it is a link, not just a code.')}
+</p>
               </div>
             </>
           )}

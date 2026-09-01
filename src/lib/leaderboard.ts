@@ -1,3 +1,5 @@
+import { t, tf } from './i18n';
+
 /**
  * Group leaderboard ranking.
  *
@@ -188,13 +190,27 @@ export function movementGlyph(movement: number, metricKey: MetricKey): string {
   return '–';
 }
 
-/** The sentence under the hero bar, describing where the bowler moved. */
+/**
+ * The sentence under the hero bar, describing where the bowler moved.
+ *
+ * Translated here rather than returning a fragment for the screen to assemble:
+ * Japanese does not put "3 places" and "vs rolling avg" in the same order as
+ * English, so the whole sentence has to be one string with the number dropped
+ * into it.
+ */
 export function movementSentence(movement: number, metricKey: MetricKey): string {
-  if (metricKey === 'avg') return "the group's default board";
-  const places = `place${Math.abs(movement) > 1 ? 's' : ''}`;
-  if (movement > 0) return `▲ ${movement} ${places} vs rolling avg`;
-  if (movement < 0) return `▼ ${-movement} ${places} vs rolling avg`;
-  return 'same place as the rolling avg';
+  if (metricKey === 'avg') return t("the group's default board");
+  // English needs the singular; Japanese does not mark plurals at all, so both
+  // keys point at the same sentence there.
+  const n = Math.abs(movement);
+  const one = n === 1;
+  if (movement > 0) {
+    return tf(one ? '▲ {n} place vs rolling avg' : '▲ {n} places vs rolling avg', { n });
+  }
+  if (movement < 0) {
+    return tf(one ? '▼ {n} place vs rolling avg' : '▼ {n} places vs rolling avg', { n });
+  }
+  return t('same place as the rolling avg');
 }
 
 

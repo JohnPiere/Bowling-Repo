@@ -3,6 +3,7 @@ import { t } from '../lib/i18n';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import { dayKey, groupByDay, sessionSpan } from '../lib/history';
+import { scoreGame } from '../lib/scoring';
 import { ballOutcomes } from '../lib/stats';
 
 /**
@@ -100,7 +101,16 @@ export function PlayDayScreen({
         <>
           <h2 className="section-title">{t('Across the session')}</h2>
           <div className="card">
-            <ScoreTrendChart points={series} subject="Score" context="Game" />
+            <ScoreTrendChart
+              points={series}
+              subject={t('Score')}
+              context={t('Game')}
+              // One evening, so the axis wants clock times rather than the
+              // same date written twice.
+              xLabel={(at) =>
+                new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+              }
+            />
           </div>
         </>
       )}
@@ -123,7 +133,21 @@ export function PlayDayScreen({
               })}
             </span>
           </span>
-          <span className="grow" />
+          {/* The same shape the history rows show, so a game is recognisable
+              from either list. */}
+          <span className="spark grow" aria-hidden="true">
+            {scoreGame(game.rolls).frames.map((frame, i, all) => {
+              const previous = i === 0 ? 0 : (all[i - 1].score ?? 0);
+              const gained = frame.score === null ? 0 : frame.score - previous;
+              return (
+                <span
+                  key={frame.index}
+                  className="spark__bar"
+                  style={{ height: Math.max(2, (gained / 30) * 22) }}
+                />
+              );
+            })}
+          </span>
           {game.total === group.high && group.games.length > 1 && (
             <span className="tag tag--accent">{t('Best')}</span>
           )}

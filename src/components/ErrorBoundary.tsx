@@ -76,9 +76,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <h2 className="section-title">{t('What happened')}</h2>
           <pre className="rawtext">{this.state.error.message}</pre>
           <p className="footnote">
-            If this keeps happening, export your games from Settings before doing anything else —
-            that file is the only copy there is.
-          </p>
+            {t('If this keeps happening, export your games from Settings before doing anything else — that file is the only copy there is.')}
+</p>
         </main>
       </div>
     );

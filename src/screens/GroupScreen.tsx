@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CrewTrendChart } from '../components/charts/CrewTrendChart';
-import { t } from '../lib/i18n';
+import { t , tf } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { SAMPLE_FEED } from '../data/roster';
@@ -62,8 +62,9 @@ export function GroupScreen({
           <div className="grow">
             <div className="hero__name">{group.name}</div>
             <div className="hero__meta">
-              {roster.length} members · {group.isOpen ? 'open' : 'invite-only'}
-              {group.yourRole === 'owner' ? ' · you own it' : ''}
+              {tf('{n} members', { n: roster.length })} ·{' '}
+              {t(group.isOpen ? 'open' : 'invite-only')}
+              {group.yourRole === 'owner' ? ` · ${t('you own it')}` : ''}
             </div>
           </div>
           <button
@@ -94,7 +95,7 @@ export function GroupScreen({
 
           <div className="grow">
             <div className="row row--between">
-              <span className="hero__meta">{metric.label}</span>
+              <span className="hero__meta">{t(metric.label)}</span>
               <span className="tnum" style={{ fontSize: 21, letterSpacing: '-0.02em' }}>
                 {mine.formatted}
               </span>
@@ -121,9 +122,9 @@ export function GroupScreen({
 
         <div className="hero__pulse">
           {[
-            { label: 'Group avg', value: groupAverage },
-            { label: 'Games this week', value: gamesThisWeek(roster) },
-            { label: 'Pins in August', value: `${(totalPins / 1000).toFixed(1)}k` },
+            { label: t('Group avg'), value: groupAverage },
+            { label: t('Games this week'), value: gamesThisWeek(roster) },
+            { label: t('Pins in August'), value: `${(totalPins / 1000).toFixed(1)}k` },
           ].map((cell) => (
             <div key={cell.label}>
               <div className="hero__pulse-value tnum">{cell.value}</div>
@@ -142,13 +143,13 @@ export function GroupScreen({
             aria-pressed={m.key === metricKey}
             onClick={() => setMetricKey(m.key)}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
 
       <p className="muted" style={{ margin: '0 0 12px' }}>
-        {metric.note}
+        {t(metric.note)}
       </p>
 
       <div className="podium">
@@ -215,9 +216,8 @@ export function GroupScreen({
       </div>
 
       <p className="footnote">
-        Switching the metric re-ranks in place — rows slide to their new position. Tap anyone to see
-        their season.
-      </p>
+        {t('Switching the metric re-ranks in place — rows slide to their new position. Tap anyone to see their season.')}
+</p>
 
       <button
         type="button"
@@ -253,7 +253,7 @@ export function GroupScreen({
               }}
             />
             <span className="grow" style={{ fontSize: 12 }}>
-              {item.text}
+              {t(item.text)}
             </span>
             <span className="muted tnum">{item.time}</span>
           </div>
@@ -310,7 +310,7 @@ function BoardRow({
             {member.name}
           </span>
           <span className="board__sub tnum">
-            {member.games} games · high {member.high}
+            {tf('{games} games · high {high}', { games: member.games, high: member.high })}
           </span>
         </span>
 
@@ -342,7 +342,7 @@ function BoardRow({
             style={{ color: member.imp > 0 ? 'var(--color-accent-300)' : 'var(--negative)' }}
           >
             {member.imp > 0 ? '+' : ''}
-            {member.imp} vs base
+            {tf('{n} vs base', { n: member.imp })}
           </span>
         </span>
       </span>

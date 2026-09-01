@@ -152,10 +152,8 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
       {stage === 'choose' && (
         <>
           <p className="muted" style={{ margin: '0 0 14px' }}>
-            One game at a time. Point the camera at your sheet and slide it until the game you want
-            lies inside the bar, the way you would scan a barcode — only that strip is read. Nothing
-            is saved until you have seen the score and can fix it.
-          </p>
+            {t('One game at a time. Point the camera at your sheet and slide it until the game you want lies inside the bar, the way you would scan a barcode — only that strip is read. Nothing is saved until you have seen the score and can fix it.')}
+</p>
 
           {supportsLiveCamera() && (
             <button type="button" className="btn-lg btn-lg--primary" onClick={openCamera}>
@@ -173,9 +171,8 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             {t('Use a photo instead')}
           </button>
           <p className="footnote" style={{ marginTop: 7 }}>
-            You draw the box around one game yourself, so a sheet of six reads as easily as a sheet
-            of one.
-          </p>
+            {t('You draw the box around one game yourself, so a sheet of six reads as easily as a sheet of one.')}
+</p>
 
           {/* `capture` opens the camera app directly on a phone; without it the
               same input still offers the photo roll, which is the fallback when

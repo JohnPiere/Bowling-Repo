@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { t } from '../../lib/i18n';
 
 interface Props {
   caption: string;
@@ -26,7 +27,7 @@ export function DataTable({ caption, columns, rows }: Props) {
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? 'Hide the numbers' : 'Show the numbers'}
+        {open ? t('Hide the numbers') : t('Show the numbers')}
       </button>
 
       <div id={id} hidden={!open}>

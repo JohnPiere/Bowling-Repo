@@ -32,11 +32,14 @@ interface Props {
   name: IconName;
   size?: number;
   strokeWidth?: number;
+  /** For the odd case that needs to flip or tint one. */
+  className?: string;
 }
 
-export function Icon({ name, size = 19, strokeWidth = 1.7 }: Props) {
+export function Icon({ name, size = 19, strokeWidth = 1.7, className }: Props) {
   return (
     <svg
+      className={className}
       width={size}
       height={size}
       viewBox="0 0 24 24"

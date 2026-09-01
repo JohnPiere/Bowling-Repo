@@ -85,9 +85,8 @@ export function GroupsScreen({ session, onOpenGroup, onCreate, onJoin, onLinkAcc
       </button>
 
       <p className="footnote">
-        Groups are invite-only. Nobody finds one by searching — you get in with a code or a QR
-        somebody sent you.
-      </p>
+        {t('Groups are invite-only. Nobody finds one by searching — you get in with a code or a QR somebody sent you.')}
+</p>
     </>
   );
 }

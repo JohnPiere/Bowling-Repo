@@ -148,9 +148,8 @@ export function App() {
           <div className="note note--bad" style={{ marginBottom: 0 }}>
             <strong>{storageError}</strong>
             <p style={{ margin: '6px 0 0' }}>
-              Nothing has been deleted — Lane Log simply cannot read or write here. A private
-              window, or a browser set to block site data, will do this.
-            </p>
+              {t('Nothing has been deleted — Lane Log simply cannot read or write here. A private window, or a browser set to block site data, will do this.')}
+</p>
           </div>
         </div>
       )}

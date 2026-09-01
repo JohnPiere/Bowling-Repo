@@ -248,9 +248,8 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
         {t('Export this game')}
       </button>
       <p className="footnote">
-        A printable score sheet, saved to this device. Open it and print to save it as a PDF —
-        which is how a phone makes one.
-      </p>
+        {t('A printable score sheet, saved to this device. Open it and print to save it as a PDF — which is how a phone makes one.')}
+</p>
 
       <h2 className="section-title">{t('Correct it')}</h2>
       <button type="button" className="btn-lg" onClick={startEditing}>

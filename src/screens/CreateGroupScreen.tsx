@@ -88,9 +88,8 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
         </button>
 
         <p className="footnote">
-          Rotating the code later cuts off anyone still holding this one. That is in group
-          settings.
-        </p>
+          {t('Rotating the code later cuts off anyone still holding this one. That is in group settings.')}
+</p>
       </>
     );
   }

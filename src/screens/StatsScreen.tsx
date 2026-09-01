@@ -269,9 +269,8 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
       <div className="card">
         <FirstBallChart counts={firstBalls} />
         <p className="footnote" style={{ marginBottom: 0 }}>
-          Counts the ball thrown at a full rack in each frame. The tenth frame's bonus balls are
-          left out — they would flatter the distribution.
-        </p>
+          {t('Counts the ball thrown at a full rack in each frame. The tenth frame\'s bonus balls are left out — they would flatter the distribution.')}
+</p>
       </div>
     </div>
   );

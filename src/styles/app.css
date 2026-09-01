@@ -987,6 +987,8 @@ body {
   color: var(--color-text);
 }
 .session__head > svg { flex: none; margin-bottom: 3px; color: var(--color-neutral-600); }
+/* The back glyph, turned to point into the day rather than out of it. */
+.session__chevron { transform: rotate(180deg); }
 .session__date { font: 500 15px var(--font-heading); letter-spacing: -0.01em; }
 .session__weekday { font-size: 11px; color: var(--color-neutral-600); }
 .session__meta {
@@ -1033,15 +1035,9 @@ body {
 .gameline__no { width: 52px; flex: none; }
 .gameline__index { display: block; font: 500 11px var(--font-heading); color: var(--color-neutral-300); }
 .gameline__time { display: block; font-size: 10px; color: var(--color-neutral-600); margin-top: 2px; }
-.gameline__marks {
-  font-size: 11px;
-  color: var(--color-neutral-500);
-  letter-spacing: 0.04em;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* Spread across whatever room the row has, rather than bunching at the left. */
+.gameline .spark { min-width: 0; justify-content: space-between; gap: 2px; }
+.gameline .spark__bar { flex: 1; max-width: 6px; }
 .gameline__score {
   flex: none;
   font: 600 22px/1 var(--font-heading);
@@ -1380,6 +1376,33 @@ body {
 /* The analytics screen settles in rather than appearing all at once: each
    section arrives just behind the one above it. Capped, so a long screen does
    not leave the last card waiting a second and a half to show up. */
+/*
+ * One rhythm for the whole column.
+ *
+ * These screens stack cards, grids and headings, and only some of those carry
+ * a margin of their own — a `.card` does, a grid of stat tiles does not — so
+ * without a gap here the profile card sat flush against the tiles below it and
+ * one session ran straight into the next. The gap owns the spacing; the
+ * children give theirs up, except a heading, which keeps a little above so it
+ * hugs the thing it labels rather than floating between two.
+ */
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stats > .card { margin-bottom: 0; }
+/*
+ * `.chips` pulls itself up by 11px to cancel the padding that gives its chips
+ * a 44px hit area. That trick keeps the spacing right in a margin-based
+ * layout and fights a flex gap, which is why the metric tabs and the range
+ * chips ended up a pixel apart. Inside this column the gap owns the spacing,
+ * so only the horizontal bleed is kept.
+ */
+.stats > .chips { margin-top: 0; margin-bottom: -10px; }
+.stats > .section-title { margin: 6px 0 0; }
+.stats > .section-title:first-child { margin-top: 0; }
+
 .stats > * { animation: fadeUp 0.32s ease both; }
 .stats > :nth-child(2) { animation-delay: 0.04s; }
 .stats > :nth-child(3) { animation-delay: 0.08s; }
