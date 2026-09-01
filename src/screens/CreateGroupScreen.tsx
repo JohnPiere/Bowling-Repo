@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { QrCode, joinUrl } from '../components/QrCode';
+import { describeBackendFailure } from '../lib/backend';
+import { createGroup } from '../lib/social';
+import type { Group } from '../data/groups';
+import type { Session } from '../lib/session';
 
 interface Props {
+  session: Session;
   onOpenGroup: (groupId: string) => void;
   onCancel: () => void;
 }
@@ -26,20 +31,36 @@ const VISIBILITY: { key: Visibility; label: string; note: string; soon: boolean 
 ];
 
 /** Name a group, keep it invite-only, hand over a code. */
-export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
+export function CreateGroupScreen({ session, onOpenGroup, onCancel }: Props) {
   const [name, setName] = useState('');
   const [alley, setAlley] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('invite');
-  const [created, setCreated] = useState(false);
+  /** The crew once the server has made it — and its real invite code. */
+  const [created, setCreated] = useState<Group | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
-  const title = name.trim() || 'Tuesday Crew';
-  const code = inviteCode(title);
+  const title = name.trim();
+
+  async function create() {
+    if (!title || creating) return;
+    setCreating(true);
+    setError(null);
+    try {
+      setCreated(await createGroup(title, alley.trim() || undefined, session.id));
+    } catch (err) {
+      setError(describeBackendFailure(err));
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function copy() {
+    if (!created) return;
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(created.inviteCode);
       setCopied(true);
     } catch {
       // Clipboard access is refused outside a secure context or without a
@@ -52,28 +73,29 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
     return (
       <>
         <div className="note note--good">
-          <strong>{title}</strong> is live. Send this code to the people you want in it.
+          <strong>{created.name}</strong>{' '}
+          {t('is live. Send this code to the people you want in it.')}
         </div>
 
         <div className="card" style={{ textAlign: 'center' }}>
           <div className="hero__label">{t('Invite code')}</div>
           <div className="code" style={{ margin: '8px 0 4px' }}>
-            {code}
+            {created.inviteCode}
           </div>
-          <div className="muted">expires in 14 days</div>
+          <div className="muted">{tf('expires in {n} days', { n: created.codeExpiresInDays })}</div>
 
           {showQr && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-              <QrCode value={joinUrl(code)} />
+              <QrCode value={joinUrl(created.inviteCode)} />
             </div>
           )}
 
           <div className="row" style={{ marginTop: 14, gap: 8 }}>
             <button type="button" className="btn-lg" onClick={copy}>
-              {copied ? 'Code copied' : 'Copy code'}
+              {copied ? t('Code copied') : t('Copy code')}
             </button>
             <button type="button" className="btn-lg" onClick={() => setShowQr((v) => !v)}>
-              {showQr ? 'Hide QR' : 'Show QR'}
+              {showQr ? t('Hide QR') : t('Show QR')}
             </button>
           </div>
         </div>
@@ -81,15 +103,17 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
         <button
           type="button"
           className="btn-lg btn-lg--primary"
-          onClick={() => onOpenGroup('tuesday-crew')}
+          onClick={() => onOpenGroup(created.id)}
         >
           <Icon name="users" size={18} />
           {t('Open the group')}
         </button>
 
         <p className="footnote">
-          {t('Rotating the code later cuts off anyone still holding this one. That is in group settings.')}
-</p>
+          {t(
+            'Rotating the code later cuts off anyone still holding this one. That is in group settings.',
+          )}
+        </p>
       </>
     );
   }
@@ -105,6 +129,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Tuesday Crew"
           maxLength={40}
+          required
         />
       </label>
 
@@ -133,37 +158,31 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
           <span className="grow">
             <span className="choice__label">
               {option.label}
-              {option.soon && <span className="pill" style={{ marginLeft: 8 }}>{t('Soon')}</span>}
+              {option.soon && (
+                <span className="pill" style={{ marginLeft: 8 }}>
+                  {t('Soon')}
+                </span>
+              )}
             </span>
             <span className="choice__note">{option.note}</span>
           </span>
         </button>
       ))}
 
+      {error && <div className="note note--bad">{error}</div>}
+
       <button
         type="button"
         className="btn-lg btn-lg--primary"
         style={{ marginTop: 14 }}
-        onClick={() => setCreated(true)}
+        onClick={create}
+        disabled={!title || creating}
       >
-        {t('Create the group')}
+        {creating ? t('Creating…') : t('Create the group')}
       </button>
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCancel}>
         {t('Cancel')}
       </button>
     </>
   );
-}
-
-/** A readable code derived from the name, so it is not a random string. */
-function inviteCode(name: string): string {
-  const letters = name
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 4)
-    .padEnd(4, 'X');
-
-  let sum = 0;
-  for (const char of name) sum += char.charCodeAt(0);
-  return `${letters}${String(sum % 100).padStart(2, '0')}`;
 }

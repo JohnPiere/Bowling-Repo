@@ -5,7 +5,6 @@
  * both about what happens when someone edits a screen months from now: the
  * source of a string and its use are the same thing, so they cannot drift
  * apart; and anything missing from the dictionary renders as English, which is
- * a screen a bowler can still use. A key-based table fails the other way —
  * rename a key and the screen shows `settings.storage.title` to a real person.
  *
  * The Japanese comes from the design handoff's own string table where it had
@@ -25,6 +24,24 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Crews ──
+  'Loading your crews…': 'クルーを読み込み中…',
+  'Loading the crew…': 'クルーを読み込み中…',
+  'No crews yet. Create one, or join with a code somebody sent you.':
+    'まだクルーがありません。作成するか、受け取ったコードで参加してください。',
+  'That crew is not one of yours, or no longer exists.':
+    'そのクルーには参加していないか、すでに存在しません。',
+  'is live. Send this code to the people you want in it.':
+    'を作成しました。参加してほしい人にこのコードを送ってください。',
+  'expires in {n} days': '有効期限：あと{n}日',
+  'Code copied': 'コードをコピーしました',
+  'Copy code': 'コードをコピー',
+  'Show QR': 'QRを表示',
+  'Hide QR': 'QRを隠す',
+  'Creating…': '作成中…',
+  'Joining…': '参加中…',
+  'Join the crew': 'クルーに参加',
+
   // ── Signing in ──
   'Handing over to your provider': '認証プロバイダに移動中',
   'This leaves Lane Log and comes back signed in.':

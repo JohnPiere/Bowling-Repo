@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
-import { findGroup } from './data/groups';
 import { daySheetHtml, downloadHtml } from './lib/exporting';
 import { dayKey, groupByDay } from './lib/history';
 import { listGames, type Game } from './lib/db';
@@ -8,6 +7,7 @@ import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/nav
 import { translate, useTranslation } from './lib/i18n';
 import type { Language } from './lib/preferences';
 import { useSession } from './lib/session';
+import { useCrews, useCrew } from './lib/crews';
 import { AuthScreen } from './screens/AuthScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { CreateGroupScreen } from './screens/CreateGroupScreen';
@@ -41,8 +41,7 @@ const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '
 
 export function App() {
   const nav = useNavigation(initialRoute());
-  const { session, restoring, signIn, signInState, signInError, dismissSignInError } =
-    useSession();
+  const { session, restoring, signIn, signInState, signInError, dismissSignInError } = useSession();
   const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -82,7 +81,12 @@ export function App() {
   );
 
   const { route } = nav;
-  const group = 'groupId' in route ? findGroup(route.groupId) : undefined;
+  const crews = useCrews(session);
+  // The crew a nested screen is looking at. Fetched on its own rather than
+  // picked out of the list: the list carries rosters but not the shared games
+  // a board is drawn from, and a link opened cold has no list yet at all.
+  const openCrew = useCrew('groupId' in route ? route.groupId : '', session);
+  const group = 'groupId' in route ? (openCrew.data ?? undefined) : undefined;
 
   /**
    * Move focus to the new screen when navigating.
@@ -127,11 +131,11 @@ export function App() {
         </div>
 
         {/*
-          * Settings lives in the header rather than a sixth tab, per the
-          * handoff. The group dashboard is the exception: its hero card
-          * already carries a settings button for the group itself, and two
-          * identical gears in view at once is a coin toss for the reader.
-          */}
+         * Settings lives in the header rather than a sixth tab, per the
+         * handoff. The group dashboard is the exception: its hero card
+         * already carries a settings button for the group itself, and two
+         * identical gears in view at once is a coin toss for the reader.
+         */}
         {route.name !== 'settings' && route.name !== 'group' && (
           <button
             type="button"
@@ -149,8 +153,10 @@ export function App() {
           <div className="note note--bad" style={{ marginBottom: 0 }}>
             <strong>{storageError}</strong>
             <p style={{ margin: '6px 0 0' }}>
-              {t('Nothing has been deleted — Lane Log simply cannot read or write here. A private window, or a browser set to block site data, will do this.')}
-</p>
+              {t(
+                'Nothing has been deleted — Lane Log simply cannot read or write here. A private window, or a browser set to block site data, will do this.',
+              )}
+            </p>
           </div>
         </div>
       )}
@@ -168,6 +174,7 @@ export function App() {
         {route.name === 'home' && (
           <HomeScreen
             games={games}
+            crews={crews.data}
             onStartGame={() => nav.selectTab('play')}
             onOpenHistory={() => nav.selectTab('history')}
             onOpenStats={() => nav.selectTab('stats')}
@@ -183,9 +190,7 @@ export function App() {
           <PlayScreen onSaved={finishGame} onScan={() => nav.push({ name: 'scan' })} />
         )}
 
-        {route.name === 'scan' && (
-          <ScanScreen onImported={finishGame} />
-        )}
+        {route.name === 'scan' && <ScanScreen onImported={finishGame} />}
 
         {route.name === 'history' && (
           <HistoryScreen
@@ -219,6 +224,10 @@ export function App() {
           <GroupsScreen
             session={session}
             restoring={restoring}
+            crews={crews.data}
+            loading={crews.loading}
+            error={crews.error}
+            onRetry={crews.reload}
             onOpenGroup={(groupId) => nav.push({ name: 'group', groupId })}
             onCreate={() => nav.push({ name: 'createGroup' })}
             onJoin={() => nav.push({ name: 'joinGroup' })}
@@ -239,6 +248,14 @@ export function App() {
             onSignIn={signIn}
             onPlayAsGuest={nav.back}
           />
+        )}
+
+        {'groupId' in route && !group && (
+          <p className="empty">
+            {openCrew.loading
+              ? t('Loading the crew…')
+              : (openCrew.error ?? t('That crew is not one of yours, or no longer exists.'))}
+          </p>
         )}
 
         {route.name === 'group' && group && (
@@ -263,15 +280,22 @@ export function App() {
 
         {route.name === 'createGroup' && (
           <CreateGroupScreen
+            session={session}
             onCancel={nav.back}
-            onOpenGroup={(groupId) => nav.replace({ name: 'group', groupId })}
+            onOpenGroup={(groupId) => {
+              crews.reload();
+              nav.replace({ name: 'group', groupId });
+            }}
           />
         )}
 
         {route.name === 'joinGroup' && (
           <JoinGroupScreen
             initialCode={invitedCode}
-            onJoined={(groupId) => nav.replace({ name: 'group', groupId })}
+            onJoined={(groupId) => {
+              crews.reload();
+              nav.replace({ name: 'group', groupId });
+            }}
           />
         )}
 
@@ -308,9 +332,7 @@ export function App() {
           <p className="empty">{t('That game is no longer on this device.')}</p>
         )}
 
-        {route.name === 'videos' && (
-          <VideosScreen onScan={() => nav.push({ name: 'scan' })} />
-        )}
+        {route.name === 'videos' && <VideosScreen onScan={() => nav.push({ name: 'scan' })} />}
 
         {route.name === 'settings' && (
           <SettingsScreen
@@ -361,25 +383,44 @@ function describe(route: Route, groupName: string | undefined, language: Languag
   const s = (text: string) => translate(text, language);
 
   switch (route.name) {
-    case 'home': return { title: s('Lane Log'), kicker: s('Dashboard'), meta: '' };
-    case 'play': return { title: s('New game'), kicker: s('Frame entry'), meta: '' };
-    case 'scan': return { title: s('Scan a sheet'), kicker: s('Import'), meta: '' };
-    case 'history': return { title: s('Match history'), kicker: s('Archive'), meta: '' };
-    case 'stats': return { title: s('Analytics'), kicker: s('Analytics'), meta: '' };
-    case 'settings': return { title: s('Settings'), kicker: s('Preferences'), meta: '' };
-    case 'day': return { title: s('Play day'), kicker: s('Session'), meta: '' };
-    case 'videos': return { title: s('Video gallery'), kicker: s('Slow motion'), meta: '' };
-    case 'auth': return { title: s('Sign in'), kicker: s('Account'), meta: '' };
-    case 'groups': return { title: s('Groups'), kicker: s('Social'), meta: '' };
-    case 'group': return { title: groupName ?? s('Group'), kicker: s('Group'), meta: '' };
-    case 'chat': return { title: s('Group chat'), kicker: groupName ?? s('Group'), meta: '' };
-    case 'member': return { title: s('Bowler'), kicker: groupName ?? s('Group'), meta: '' };
-    case 'groupSettings': return { title: s('Group settings'), kicker: groupName ?? s('Group'), meta: '' };
-    case 'createGroup': return { title: s('Create a group'), kicker: s('Groups'), meta: '' };
-    case 'joinGroup': return { title: s('Join a group'), kicker: s('Invite'), meta: '' };
-    case 'game': return { title: s('Game record'), kicker: s('Game record'), meta: '' };
-    case 'shareGame': return { title: s('Share this game'), kicker: s('Game finished'), meta: '' };
-    case 'sharedGames': return { title: s('Shared games'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'home':
+      return { title: s('Lane Log'), kicker: s('Dashboard'), meta: '' };
+    case 'play':
+      return { title: s('New game'), kicker: s('Frame entry'), meta: '' };
+    case 'scan':
+      return { title: s('Scan a sheet'), kicker: s('Import'), meta: '' };
+    case 'history':
+      return { title: s('Match history'), kicker: s('Archive'), meta: '' };
+    case 'stats':
+      return { title: s('Analytics'), kicker: s('Analytics'), meta: '' };
+    case 'settings':
+      return { title: s('Settings'), kicker: s('Preferences'), meta: '' };
+    case 'day':
+      return { title: s('Play day'), kicker: s('Session'), meta: '' };
+    case 'videos':
+      return { title: s('Video gallery'), kicker: s('Slow motion'), meta: '' };
+    case 'auth':
+      return { title: s('Sign in'), kicker: s('Account'), meta: '' };
+    case 'groups':
+      return { title: s('Groups'), kicker: s('Social'), meta: '' };
+    case 'group':
+      return { title: groupName ?? s('Group'), kicker: s('Group'), meta: '' };
+    case 'chat':
+      return { title: s('Group chat'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'member':
+      return { title: s('Bowler'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'groupSettings':
+      return { title: s('Group settings'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'createGroup':
+      return { title: s('Create a group'), kicker: s('Groups'), meta: '' };
+    case 'joinGroup':
+      return { title: s('Join a group'), kicker: s('Invite'), meta: '' };
+    case 'game':
+      return { title: s('Game record'), kicker: s('Game record'), meta: '' };
+    case 'shareGame':
+      return { title: s('Share this game'), kicker: s('Game finished'), meta: '' };
+    case 'sharedGames':
+      return { title: s('Shared games'), kicker: groupName ?? s('Group'), meta: '' };
   }
 }
 

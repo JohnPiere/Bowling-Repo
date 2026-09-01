@@ -5,10 +5,12 @@ import { t, tf } from '../lib/i18n';
 import { formatDay } from '../lib/datetime';
 import { crewGlance, dashboard, gameShape } from '../lib/dashboard';
 import type { Game } from '../lib/db';
-import { GROUPS } from '../data/groups';
+import type { Group } from '../data/groups';
 
 interface Props {
   games: Game[];
+  /** The crews this bowler is in. Empty for a guest, and the card is not drawn. */
+  crews: Group[];
   onStartGame: () => void;
   onOpenHistory: () => void;
   onOpenStats: () => void;
@@ -27,6 +29,7 @@ interface Props {
  */
 export function HomeScreen({
   games,
+  crews,
   onStartGame,
   onOpenHistory,
   onOpenStats,
@@ -34,7 +37,7 @@ export function HomeScreen({
   onOpenGame,
 }: Props) {
   const { best, average, strikeRate, played, recent } = dashboard(games);
-  const crew = crewGlance(GROUPS);
+  const crew = crewGlance(crews);
 
   return (
     <>

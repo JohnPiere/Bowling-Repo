@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { QrCode, joinUrl } from '../components/QrCode';
-import { GROUPS } from '../data/groups';
+import { describeBackendFailure } from '../lib/backend';
+import { joinGroup } from '../lib/social';
 import { startRearCamera, stopStream, supportsLiveCamera } from '../lib/camera';
 import { inviteCodeFrom, scanFrames } from '../lib/qr';
 
@@ -21,6 +22,8 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [ignored, setIgnored] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -81,9 +84,33 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
   }
 
   // Codes are typed off a screen or a scrap of paper, so normalise hard.
-  const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
-  const match = GROUPS.find((group) => group.inviteCode === code);
+  const code = raw
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, CODE_LENGTH);
   const isComplete = code.length === CODE_LENGTH;
+
+  /**
+   * Try the code. There is no checking it first.
+   *
+   * A "is this code real?" endpoint would be an endpoint for discovering
+   * crews one guess at a time, which is the thing invite-only is for. So the
+   * only way to find out is to join, and a wrong code and an expired one come
+   * back as the same sentence on purpose — telling them apart would confirm
+   * that a code was once real.
+   */
+  async function join() {
+    if (!isComplete || joining) return;
+    setJoining(true);
+    setJoinError(null);
+    try {
+      onJoined(await joinGroup(code));
+    } catch (err) {
+      setJoinError(describeBackendFailure(err));
+    } finally {
+      setJoining(false);
+    }
+  }
 
   return (
     <>
@@ -99,7 +126,12 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
         >
           {t('Invite code')}
         </button>
-        <button type="button" className="chip" aria-pressed={tab === 'qr'} onClick={() => setTab('qr')}>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={tab === 'qr'}
+          onClick={() => setTab('qr')}
+        >
           {t('QR code')}
         </button>
       </div>
@@ -141,21 +173,16 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
           </div>
 
           <p id="join-status" role="status" style={{ minHeight: 20 }}>
-            {match && <span className="note note--good">{match.name} — invite valid.</span>}
-            {isComplete && !match && (
-              <span className="note note--bad">
-                {t('No group uses that code. Check it against the message you were sent — codes expire after 14 days.')}
-</span>
-            )}
+            {joinError && <span className="note note--bad">{joinError}</span>}
           </p>
 
           <button
             type="button"
             className="btn-lg btn-lg--primary"
-            disabled={!match}
-            onClick={() => match && onJoined(match.id)}
+            disabled={!isComplete || joining}
+            onClick={join}
           >
-            Join {match ? match.name : 'the group'}
+            {joining ? t('Joining…') : t('Join the crew')}
           </button>
         </>
       ) : (
@@ -194,9 +221,14 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
               <h2 className="section-title">{t('Or show yours')}</h2>
               <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
                 <QrCode value={joinUrl('TCRW31')} size={180} />
-                <p className="muted" style={{ marginTop: 12, marginBottom: 0, textAlign: 'center' }}>
-                  {t('This one opens Tuesday Crew. A phone\'s own camera app reads it too — it is a link, not just a code.')}
-</p>
+                <p
+                  className="muted"
+                  style={{ marginTop: 12, marginBottom: 0, textAlign: 'center' }}
+                >
+                  {t(
+                    "This one opens Tuesday Crew. A phone's own camera app reads it too — it is a link, not just a code.",
+                  )}
+                </p>
               </div>
             </>
           )}

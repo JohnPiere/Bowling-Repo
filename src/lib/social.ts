@@ -374,14 +374,25 @@ export async function loadGroup(groupId: string, me: string): Promise<Group | nu
   );
 }
 
-export async function createGroup(name: string, homeAlley?: string): Promise<string> {
+/**
+ * Make a crew and return it, invite code and all.
+ *
+ * The RPC hands back an id, and the screen that called it immediately needs
+ * the code to show — so the read happens here rather than leaving every caller
+ * to remember it. `loadGroup` cannot return null for a group this account just
+ * created and is by definition the owner of.
+ */
+export async function createGroup(name: string, homeAlley?: string, me = ''): Promise<Group> {
   const db = await backend();
   const { data, error } = await db.rpc('create_group', {
     group_name: name,
     alley: homeAlley ?? null,
   });
   if (error) throw error;
-  return data as string;
+
+  const group = await loadGroup(data as string, me);
+  if (!group) throw new Error('The crew was created but could not be read back.');
+  return group;
 }
 
 export async function joinGroup(code: string): Promise<string> {

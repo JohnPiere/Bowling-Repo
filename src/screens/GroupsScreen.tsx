@@ -1,13 +1,17 @@
 import { Avatar } from '../components/Avatar';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
-import { GROUPS } from '../data/groups';
+import type { Group } from '../data/groups';
 import type { Session } from '../lib/session';
 
 interface Props {
   session: Session;
   /** True while the stored account is still being worked out. */
   restoring?: boolean;
+  crews: Group[];
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onOpenGroup: (groupId: string) => void;
   onCreate: () => void;
   onJoin: () => void;
@@ -18,6 +22,10 @@ interface Props {
 export function GroupsScreen({
   session,
   restoring = false,
+  crews,
+  loading = false,
+  error = null,
+  onRetry,
   onOpenGroup,
   onCreate,
   onJoin,
@@ -36,8 +44,9 @@ export function GroupsScreen({
         <div className="note note--info">
           <strong>{t('Groups need an account.')}</strong>
           <p style={{ margin: '6px 0 0' }}>
-            A group is shared with other people, so it cannot live only on this phone. Your games
-            stay exactly where they are — linking adds an account, it does not move anything.
+            {t(
+              'A group is shared with other people, so it cannot live only on this phone. Your games stay exactly where they are — linking an account does not move them.',
+            )}
           </p>
         </div>
         <button type="button" className="btn-lg btn-lg--primary" onClick={onLinkAccount}>
@@ -50,41 +59,56 @@ export function GroupsScreen({
   return (
     <>
       <h2 className="section-title">{t('Your groups')}</h2>
-      {GROUPS.map((group) => (
+
+      {/* An error replaces nothing: whatever loaded last stays on screen under
+          it, because a failed refresh should not cost you the list you were
+          just reading. */}
+      {error && (
+        <div className="note note--bad">
+          {error}
+          {onRetry && (
+            <button
+              type="button"
+              className="linkbtn"
+              style={{ display: 'block', marginTop: 6 }}
+              onClick={onRetry}
+            >
+              {t('Try again')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {loading && crews.length === 0 && <p className="empty">{t('Loading your crews…')}</p>}
+
+      {!loading && !error && crews.length === 0 && (
+        <p className="empty">
+          {t('No crews yet. Create one, or join with a code somebody sent you.')}
+        </p>
+      )}
+
+      {crews.map((group) => (
         <button
           key={group.id}
           type="button"
           className="game-row"
           onClick={() => onOpenGroup(group.id)}
         >
-          <span
-            className="avatar"
-            aria-hidden="true"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 13,
-              fontSize: 14,
-              background: group.warmTile ? 'rgba(214, 0, 108, 0.10)' : 'var(--color-accent-900)',
-              color: group.warmTile ? '#e6a5bf' : '#b5abfc',
-              boxShadow: `inset 0 0 0 1px ${
-                group.warmTile ? 'rgba(214, 0, 108, 0.30)' : 'var(--color-accent-700)'
-              }`,
-            }}
-          >
-            {group.initials}
-          </span>
+          <Avatar initials={group.initials} size={44} isMe square />
 
           <span className="grow">
             <span className="game-row__name" style={{ display: 'block' }}>
               {group.name}
             </span>
             <span className="game-row__sub" style={{ display: 'block' }}>
-              {group.members.length} members · {group.lastActivity}
+              {tf('{n} members', { n: group.members.length })}
+              {group.homeAlley ? ` · ${group.homeAlley}` : ''}
             </span>
-            <span className="game-row__sub" style={{ display: 'block', marginTop: 2 }}>
-              {group.lastMessage}
-            </span>
+            {group.lastMessage && (
+              <span className="game-row__sub" style={{ display: 'block', marginTop: 2 }}>
+                {group.lastMessage}
+              </span>
+            )}
           </span>
 
           {group.unread > 0 && <span className="unread tnum">{group.unread}</span>}
@@ -101,8 +125,10 @@ export function GroupsScreen({
       </button>
 
       <p className="footnote">
-        {t('Groups are invite-only. Nobody finds one by searching — you get in with a code or a QR somebody sent you.')}
-</p>
+        {t(
+          'Groups are invite-only. Nobody finds one by searching — you get in with a code or a QR somebody sent you.',
+        )}
+      </p>
     </>
   );
 }
