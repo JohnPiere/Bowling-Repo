@@ -25,6 +25,35 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Signing in ──
+  'Handing over to your provider': '認証プロバイダに移動中',
+  'This leaves Lane Log and comes back signed in.':
+    'レーンログを一度離れ、サインイン後に戻ります。',
+  'Your {n} games stay on this device either way.':
+    'どちらの場合も、この端末の{n}ゲームはそのまま残ります。',
+  'or': 'または',
+  'Checking your account…': 'アカウントを確認中…',
+  'No groups, no chat, no shared games': 'グループ・チャット・共有ゲームは使えません',
+  'Nothing is backed up — a lost phone is a lost season':
+    'バックアップされません。端末をなくすとシーズンごと失われます',
+  'Everything else works: scoring, scanning, history and analytics':
+    'それ以外はすべて使えます。スコア入力・撮影・履歴・分析',
+  'Google works. Apple needs a paid Apple developer account before it can be switched on, so that button will tell you so.':
+    'Googleは利用できます。AppleはApple Developer Program（有料）の登録が必要なため、そのボタンはその旨を表示します。',
+  'Apple sign-in is not switched on for this app yet. It needs a paid Apple developer account; use Google for now.':
+    'Appleサインインはまだ有効ではありません。有料のApple Developer登録が必要です。当面はGoogleをご利用ください。',
+  'Google sign-in is not switched on for this project yet.':
+    'Googleサインインはまだ有効になっていません。',
+  'This build has no server configured, so there is nothing to sign in to.':
+    'このビルドにはサーバーが設定されていないため、サインインできません。',
+  'Cannot reach the server. Your games are safe on this device — only the crew screens need a connection.':
+    'サーバーに接続できません。ゲームはこの端末に安全に保存されています。接続が必要なのはクルー画面だけです。',
+  'That session has expired. Sign in again to reach your crews.':
+    'セッションの有効期限が切れました。もう一度サインインしてください。',
+  'You are not in that crew, so there is nothing to show.':
+    'そのクルーに参加していないため、表示できるものがありません。',
+  'Something went wrong reaching the server.': 'サーバーへの接続で問題が発生しました。',
+
   // ── Play: the frame strip and the rack ──
   'Frames': 'フレーム',
   'Frame {n} of 10': '第{n}フレーム / 全10',

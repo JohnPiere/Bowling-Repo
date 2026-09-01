@@ -175,8 +175,29 @@ nothing would look amiss.
 - The design handoff wins over general guidance where they disagree. Say so in
   a comment when they do.
 
+## The social layer
+
+Supabase, free tier — see `docs/BACKEND.md` for the schema, the RLS reasoning
+and the three dashboard steps it needs. Two rules hold here:
+
+**The publishable key in `lib/backend.ts` is public and committed.** A static
+site has no server to keep a secret in, so the key ships in the bundle whatever
+you do. RLS is the security model; the policies are the review. The
+`service_role` key and the database password must never appear in `src/`.
+
+**The SDK is dynamically imported and kept out of the precache.** It is 56 KB
+gzipped for screens that cannot work offline anyway, and the app it is bolted
+onto scores games with no account at all. `hasStoredSession()` reads the token
+key straight from localStorage so a guest never fetches the chunk to be told
+they are a guest.
+
+Standings — average, handicap, improvement — are computed in `lib/social.ts`,
+not in SQL. One definition of what an average means; a Postgres view would be a
+second copy of it, free to drift.
+
 ## Not built
 
-No backend at all. Groups, rosters, chat and shared posts are sample data in
-`src/data/` — obviously fictional, and the one place to replace. Also absent:
-real Google and Apple OAuth, and video.
+Groups, rosters, chat and shared posts still render the sample data in
+`src/data/` — auth is real, the tables exist, and swapping those screens onto
+`lib/social.ts` is the next step. Also absent: Apple OAuth (it needs a paid
+Apple developer account), cloud backup of games, and video.

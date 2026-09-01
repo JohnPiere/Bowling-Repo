@@ -22,6 +22,7 @@
     "serve:headers": "node scripts/serve-with-headers.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
     "idb": "^8.0.3",
     "jsqr": "^1.4.0",
     "qrcode-generator": "^2.0.4",

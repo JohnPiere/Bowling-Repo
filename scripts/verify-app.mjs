@@ -100,13 +100,49 @@ async function bowlPerfectGame(page) {
   }
 }
 
+/**
+ * Put the browser in the state a signed-in one is actually in.
+ *
+ * Clicking "Continue with Google" now leaves the page for a real provider, so
+ * a check cannot drive it — and pretending otherwise would leave every check
+ * after this one running against a half-redirected page.
+ *
+ * What a signed-in browser *has* is a session in localStorage under a key named
+ * for the project, which supabase-js reads back without touching the network so
+ * long as it has not expired. Seeding that is not a backdoor: it is the same
+ * bytes a real sign-in leaves behind, and nothing in `src/` knows it is a test.
+ *
+ * Queries made with it would be refused — the token is not signed by anything.
+ * That is the honest limit of what can be checked here, and the crew screens
+ * that make real queries say so rather than being asserted against.
+ */
 async function signIn(page) {
+  await page.evaluate(() => {
+    const ref = 'npdpdfrgbirvopqvvjdd';
+    const hour = Math.floor(Date.now() / 1000) + 3600;
+    localStorage.setItem(
+      `sb-${ref}-auth-token`,
+      JSON.stringify({
+        access_token: 'verify.not.a.real.token',
+        refresh_token: 'verify',
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: hour,
+        user: {
+          id: '00000000-0000-4000-8000-000000000001',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: 'verify@example.test',
+          app_metadata: { provider: 'google' },
+          user_metadata: { full_name: 'Verify Bowler' },
+          created_at: new Date().toISOString(),
+        },
+      }),
+    );
+  });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Crew', exact: true }).click();
-  const link = page.getByRole('button', { name: 'Link an account' });
-  if (await link.count()) {
-    await link.click();
-    await page.getByRole('button', { name: 'Continue with Google' }).click();
-  }
   await page.waitForSelector('text=Your groups');
 }
 

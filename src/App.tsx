@@ -41,7 +41,8 @@ const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '
 
 export function App() {
   const nav = useNavigation(initialRoute());
-  const { session, signIn } = useSession();
+  const { session, restoring, signIn, signInState, signInError, dismissSignInError } =
+    useSession();
   const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -217,6 +218,7 @@ export function App() {
         {route.name === 'groups' && (
           <GroupsScreen
             session={session}
+            restoring={restoring}
             onOpenGroup={(groupId) => nav.push({ name: 'group', groupId })}
             onCreate={() => nav.push({ name: 'createGroup' })}
             onJoin={() => nav.push({ name: 'joinGroup' })}
@@ -228,10 +230,13 @@ export function App() {
           <AuthScreen
             isLinking={session.isGuest}
             guestGames={games.length}
-            onSignIn={(provider) => {
-              signIn(provider);
-              nav.back();
-            }}
+            state={signInState}
+            error={signInError}
+            onDismissError={dismissSignInError}
+            // No `nav.back()` here: signing in leaves the page for the
+            // provider and returns as a fresh load, and navigating away first
+            // would only flash a screen nobody sees.
+            onSignIn={signIn}
             onPlayAsGuest={nav.back}
           />
         )}

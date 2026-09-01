@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { t } from '../lib/i18n';
-import type { Provider } from '../lib/session';
+import { t, tf } from '../lib/i18n';
+import type { Provider, SignInState } from '../lib/session';
 
 interface Props {
   onSignIn: (provider: Provider) => void;
@@ -8,6 +7,10 @@ interface Props {
   /** True when a guest is linking rather than starting fresh. */
   isLinking?: boolean;
   guestGames?: number;
+  /** Handing off to the provider, or having failed to. */
+  state?: SignInState;
+  error?: string | null;
+  onDismissError?: () => void;
 }
 
 const GUEST_LIMITS = [
@@ -22,25 +25,28 @@ const GUEST_LIMITS = [
  * Guest play is the default entry and the dashed button is deliberately not a
  * lesser option — nothing asks for an account until the bowler touches shared
  * content.
+ *
+ * There is no success state on this screen. Signing in leaves the page for the
+ * provider and comes back as a fresh load, so the only outcome worth drawing
+ * here is the failure to leave at all.
  */
-export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGames = 0 }: Props) {
-  const [pending, setPending] = useState<Provider | null>(null);
-
-  function start(provider: Provider) {
-    setPending(provider);
-    // No OAuth is wired up yet; the delay stands in for the redirect so the
-    // pending state is real rather than decorative.
-    setTimeout(() => onSignIn(provider), 900);
-  }
-
-  if (pending) {
+export function AuthScreen({
+  onSignIn,
+  onPlayAsGuest,
+  isLinking = false,
+  guestGames = 0,
+  state = 'idle',
+  error = null,
+  onDismissError,
+}: Props) {
+  if (state === 'redirecting') {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '32px 16px' }}>
-        <div className="hero__label">Signing in with {pending === 'google' ? 'Google' : 'Apple'}</div>
+        <div className="hero__label">{t('Handing over to your provider')}</div>
         <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
           {isLinking
-            ? `Linking this device's ${guestGames} game${guestGames === 1 ? '' : 's'} to the new account.`
-            : 'Creating your profile and checking for existing groups.'}
+            ? tf('Your {n} games stay on this device either way.', { n: guestGames })
+            : t('This leaves Lane Log and comes back signed in.')}
         </p>
       </div>
     );
@@ -54,23 +60,41 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
           {t('Keep your games, or just start bowling.')}
         </h2>
         <p className="hero__meta" style={{ marginTop: 8, marginBottom: 0 }}>
-          {t('An account gets you groups, a shared board and cloud backup. Everything else works without one.')}
-</p>
+          {t(
+            'An account gets you groups, a shared board and cloud backup. Everything else works without one.',
+          )}
+        </p>
       </section>
 
-      <button type="button" className="btn-lg btn-lg--primary" onClick={() => start('google')}>
+      {error && (
+        <div className="note note--bad" style={{ marginTop: 12 }}>
+          {error}
+          {onDismissError && (
+            <button
+              type="button"
+              className="linkbtn"
+              style={{ display: 'block', marginTop: 6 }}
+              onClick={onDismissError}
+            >
+              {t('Try again')}
+            </button>
+          )}
+        </div>
+      )}
+
+      <button type="button" className="btn-lg btn-lg--primary" onClick={() => onSignIn('google')}>
         {t('Continue with Google')}
       </button>
       <button
         type="button"
         className="btn-lg"
         style={{ marginTop: 11 }}
-        onClick={() => start('apple')}
+        onClick={() => onSignIn('apple')}
       >
         {t('Continue with Apple')}
       </button>
 
-      <div className="rule-or">or</div>
+      <div className="rule-or">{t('or')}</div>
 
       <button type="button" className="btn-lg btn-lg--dashed" onClick={onPlayAsGuest}>
         {t('Play as a guest')}
@@ -80,14 +104,19 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
         <strong>{t('What a guest gives up')}</strong>
         <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
           {GUEST_LIMITS.map((limit) => (
-            <li key={limit}>{limit}</li>
+            <li key={limit}>{t(limit)}</li>
           ))}
         </ul>
       </div>
 
+      {/* Apple sign-in needs a paid developer account to issue the key, which
+          is a bill rather than a line of code — so the button is honest about
+          being unfinished instead of failing at the provider. */}
       <p className="footnote">
-        {t('Neither provider is connected yet — signing in records the choice on this device so the rest of the flow can be built against it.')}
-</p>
+        {t(
+          'Google works. Apple needs a paid Apple developer account before it can be switched on, so that button will tell you so.',
+        )}
+      </p>
     </>
   );
 }

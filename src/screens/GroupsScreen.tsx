@@ -6,6 +6,8 @@ import type { Session } from '../lib/session';
 
 interface Props {
   session: Session;
+  /** True while the stored account is still being worked out. */
+  restoring?: boolean;
   onOpenGroup: (groupId: string) => void;
   onCreate: () => void;
   onJoin: () => void;
@@ -13,7 +15,21 @@ interface Props {
 }
 
 /** The bowler's groups, or the reason there aren't any. */
-export function GroupsScreen({ session, onOpenGroup, onCreate, onJoin, onLinkAccount }: Props) {
+export function GroupsScreen({
+  session,
+  restoring = false,
+  onOpenGroup,
+  onCreate,
+  onJoin,
+  onLinkAccount,
+}: Props) {
+  // Restoring a session can take a round trip to refresh its token, and until
+  // it lands "guest" is a guess. Showing the sign-in card to somebody who is
+  // already signed in, then snatching it away, is worse than a blank moment.
+  if (restoring) {
+    return <p className="empty">{t('Checking your account…')}</p>;
+  }
+
   if (session.isGuest) {
     return (
       <>

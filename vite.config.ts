@@ -20,6 +20,17 @@ export default defineConfig({
   // twice — a settings screen reporting a version nobody bumped is worse than
   // no version at all.
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  build: {
+    rollupOptions: {
+      output: {
+        // Named so the service worker's precache ignore can find it. Left to
+        // Rollup it comes out as `index-<hash>.js`, indistinguishable from the
+        // app's own entry.
+        manualChunks: (id) => (id.includes('@supabase') ? 'supabase' : undefined),
+      },
+    },
+  },
+
   plugins: [
     react(),
     VitePWA({
@@ -31,11 +42,16 @@ export default defineConfig({
       registerType: 'prompt',
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // The OCR engine is vendored same-origin but deliberately not
-        // precached: it is several megabytes the bowler should not pay for at
-        // install time. The service worker's CacheFirst route keeps it after
-        // the first scan instead.
-        globIgnores: ['**/tesseract/**'],
+        // Two things are deliberately not precached.
+        //
+        // The OCR engine is several megabytes the bowler should not pay for at
+        // install time; the worker's CacheFirst route keeps it after the first
+        // scan instead.
+        //
+        // The Supabase chunk is 56 KB in aid of screens that cannot work
+        // offline anyway — precaching it would spend install bandwidth on a
+        // feature that needs the network to do anything at all.
+        globIgnores: ['**/tesseract/**', '**/supabase-*.js'],
       },
       devOptions: {
         // Lets the push and offline paths be exercised with `npm run dev`.
