@@ -147,13 +147,18 @@ export function ScoreTrendChart({
           />
         )}
 
-        {/* Context first, so the subject line sits above it. Keyed by position
-            rather than by game: the marker for slot 3 has to be the same
-            element from one range to the next, or React replaces it and it
-            appears at its new home instead of travelling there. */}
-        {/* Open rings on the line itself, big enough to tap. The handoff draws
-            these rather than filled dots: a ring sits *on* the curve instead of
-            hiding the piece of it underneath. */}
+        <path
+          className="viz__line viz__line--draw"
+          d={line}
+          stroke="var(--viz-subject)"
+          pathLength={1}
+        />
+
+        {/* Open rings on the line itself, big enough to tap, and keyed by
+            position rather than by game: the marker for slot 3 has to be the
+            same element from one range to the next, or React replaces it and
+            it appears at its new home instead of travelling there. A ring sits
+            *on* the curve instead of hiding the piece of it underneath. */}
         {rolling.map((p, i) => {
           const on = shown === i;
           const drawn = radius >= 2.5 || on;
