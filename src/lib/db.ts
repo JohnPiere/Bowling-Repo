@@ -239,6 +239,32 @@ export async function deleteGame(id: string): Promise<void> {
 }
 
 /** Games that have never been pushed to a server, oldest first. */
+/**
+ * Remove every game and every stored sheet photo.
+ *
+ * One transaction over both stores, so it cannot half-succeed and leave photos
+ * orphaned from games that no longer exist. The push subscription is left
+ * alone: it belongs to the device's relationship with the browser, not to the
+ * season, and clearing it would silently unsubscribe someone who only meant to
+ * start their scores again.
+ *
+ * Returns how many games went, so the screen can say what it did rather than
+ * claiming success in the abstract.
+ */
+export async function clearAllGames(): Promise<number> {
+  const database = await db();
+  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+
+  const games = tx.objectStore('games');
+  const count = await games.count();
+
+  await games.clear();
+  await tx.objectStore('sheets').clear();
+  await tx.done;
+
+  return count;
+}
+
 export async function unsyncedGames(): Promise<Game[]> {
   const all = await (await db()).getAllFromIndex('games', 'by-playedAt');
   return all.filter((game) => game.syncedAt === undefined);

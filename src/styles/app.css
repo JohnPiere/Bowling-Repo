@@ -1727,6 +1727,9 @@ body {
 
 .btn-lg--danger { color: var(--negative); border-color: rgba(224, 163, 182, 0.4); }
 
+/* The confirmation for the one action nothing can undo, marked as such. */
+.card--danger { box-shadow: 0 0 0 1px rgba(224, 163, 182, 0.45); }
+
 /* ── Pin rack ──────────────────────────────────────────────────────────── */
 
 .rack { display: flex; flex-direction: column; align-items: center; gap: 10px; }

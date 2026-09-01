@@ -37,6 +37,22 @@ export const JA: Record<string, string> = {
   'Your average against the crew over {n} weeks.': '直近{n}週間のあなたとクルー平均の比較。',
   'Each game': '各ゲーム',
 
+  // ── Clearing everything ──
+  'Data': 'データ',
+  'Clear all data': 'すべてのデータを消去',
+  'Clear all data?': 'すべてのデータを消去しますか？',
+  'Yes, delete everything': 'はい、すべて削除する',
+  'Keep my games': '削除しない',
+  'Clearing…': '消去中…',
+  'Removes every game and every scanned sheet on this device. Your preferences and this device’s notification setting are left alone.':
+    'この端末のゲームと撮影したシートをすべて削除します。設定と通知の許可はそのまま残ります。',
+  '{n} games and {sheets} scanned sheets will be deleted from this device.':
+    'この端末から{n}ゲームと{sheets}枚のシートを削除します。',
+  'There is no account and no server, so this cannot be undone. Export a backup first if you want one.':
+    'アカウントもサーバーもないため、元に戻せません。控えが必要な場合は先にバックアップを書き出してください。',
+  '{n} games removed. Nothing is left to undo it with.': '{n}ゲームを削除しました。元に戻す手段はありません。',
+  'There is nothing stored on this device yet.': 'この端末にはまだ何も保存されていません。',
+
   // ── Explanations ──
   'Nothing has been deleted — Lane Log simply cannot read or write here. A private window, or a browser set to block site data, will do this.': 'データは削除されていません。このブラウザで読み書きができないだけです。プライベートウィンドウや、サイトデータをブロックする設定が原因です。',
   'If this keeps happening, export your games from Settings before doing anything else — that file is the only copy there is.': '繰り返す場合は、まず設定からゲームを書き出してください。そのファイルが唯一の控えです。',

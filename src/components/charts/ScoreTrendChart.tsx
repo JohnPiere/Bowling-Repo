@@ -9,9 +9,6 @@ const W = 320;
 const H = 150;
 const PAD = { left: 30, right: 10, top: 12, bottom: 22 };
 
-/** Dots crowd into a smear past this many games; the line alone reads better. */
-const MAX_DOTS = 26;
-
 /**
  * The rings are the curve's joints and belong on it however many games there
  * are, so they shrink rather than disappear. Below about two and a half pixels
@@ -82,13 +79,7 @@ export function ScoreTrendChart({
     () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.rolling) })) : []),
     [points, geometry],
   );
-  const scoreTarget = useMemo(
-    () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.value) })) : []),
-    [points, geometry],
-  );
-
   const rolling = useTweenedPoints(rollingTarget);
-  const scores = useTweenedPoints(scoreTarget);
 
   if (!geometry || points.length < 2) {
     return <p className="empty">{t('Two finished games and the trend starts here.')}</p>;
@@ -111,9 +102,8 @@ export function ScoreTrendChart({
   const tip = rolling[rolling.length - 1];
   const radius = ringRadius((W - PAD.left - PAD.right) / Math.max(1, rolling.length - 1));
 
-  // A session plots each game against itself: the per-game reading and the
-  // line are the same number. Drawing both would put a grey dot under every
-  // ring and claim two series where there is one.
+  // Whether a game's own reading differs from the line at all. On a session
+  // each game is plotted against itself, so there is nothing extra to say.
   const hasContext = points.some((point) => point.value !== point.rolling);
 
   return (
@@ -161,21 +151,6 @@ export function ScoreTrendChart({
             rather than by game: the marker for slot 3 has to be the same
             element from one range to the next, or React replaces it and it
             appears at its new home instead of travelling there. */}
-        {hasContext &&
-          points.length <= MAX_DOTS &&
-          scores.map((p, i) => (
-            <circle
-              key={i}
-              className="viz__dot"
-              cx={p.x}
-              cy={p.y}
-              r={3.5}
-              fill="var(--viz-context)"
-            />
-          ))}
-
-        <path className="viz__line viz__line--draw" d={line} stroke="var(--viz-subject)" pathLength={1} />
-
         {/* Open rings on the line itself, big enough to tap. The handoff draws
             these rather than filled dots: a ring sits *on* the curve instead of
             hiding the piece of it underneath. */}
@@ -225,13 +200,7 @@ export function ScoreTrendChart({
               y1={PAD.top}
               y2={PAD.top + plotH}
             />
-            <circle
-              className="viz__dot"
-              cx={scores[shown]?.x ?? x(shown)}
-              cy={scores[shown]?.y ?? y(active.value)}
-              r={4}
-              fill="var(--viz-context)"
-            />
+
           </>
         )}
 
@@ -273,22 +242,6 @@ export function ScoreTrendChart({
           ? t('Tap a point for detail.')
           : t('Dashed line = lifetime average. Tap a point for detail.')}
       </p>
-
-      <div className="viz__legend">
-        <span className="viz__legend-item">
-          <span className="viz__swatch viz__swatch--line" style={{ background: 'var(--viz-subject)' }} />
-          {subject}
-        </span>
-        {hasContext && (
-          <span className="viz__legend-item">
-            <span
-              className="viz__swatch"
-              style={{ background: 'var(--viz-context)', borderRadius: '50%', width: 8, height: 8 }}
-            />
-            {context}
-          </span>
-        )}
-      </div>
 
       <DataTable
         caption={`${context} and ${subject.toLowerCase()} per game`}

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
-import { useTranslation } from '../lib/i18n';
+import { tf, useTranslation } from '../lib/i18n';
 import { AVATARS, usePreferences } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
-import { putGames, type Game } from '../lib/db';
+import { clearAllGames, putGames, type Game } from '../lib/db';
 import {
   getInstallState,
   IOS_INSTALL_STEPS,
@@ -43,6 +43,9 @@ export function SettingsScreen({
 }) {
   const { t } = useTranslation();
   const { preferences, update } = usePreferences();
+
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
   const [push, setPush] = useState<PushStatus>('unavailable');
@@ -103,11 +106,26 @@ export function SettingsScreen({
     }
   }
 
+  async function clearEverything() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const removed = await clearAllGames();
+      setCleared(removed);
+      setConfirmClear(false);
+      onRestored?.();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
-      <h2 className="section-title">{t('language')}</h2>
+      <h2 className="section-title">{t('Language')}</h2>
       <div className="card">
-        <div className="chips" role="group" aria-label={t('language')}>
+        <div className="chips" role="group" aria-label={t('Language')}>
           {(['en', 'ja'] as const).map((code) => (
             <button
               key={code}
@@ -121,14 +139,14 @@ export function SettingsScreen({
           ))}
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('languageHint')}
+          {t('Titles and navigation switch instantly.')}
         </p>
       </div>
 
-      <h2 className="section-title">{t('playerProfile')}</h2>
+      <h2 className="section-title">{t('Player profile')}</h2>
       <div className="card">
         <label style={{ display: 'block' }}>
-          <span className="hero__label">{t('playerName')}</span>
+          <span className="hero__label">{t('Player name')}</span>
           <input
             className="input"
             style={{ marginTop: 5 }}
@@ -139,9 +157,9 @@ export function SettingsScreen({
         </label>
 
         <div className="hero__label" style={{ marginTop: 12 }}>
-          {t('profileIcon')}
+          {t('Profile icon')}
         </div>
-        <div className="chips" style={{ marginTop: 5 }} role="group" aria-label={t('profileIcon')}>
+        <div className="chips" style={{ marginTop: 5 }} role="group" aria-label={t('Profile icon')}>
           {AVATARS.map((glyph) => (
             <button
               key={glyph}
@@ -156,11 +174,11 @@ export function SettingsScreen({
         </div>
       </div>
 
-      <h2 className="section-title">{t('sharing')}</h2>
+      <h2 className="section-title">{t('Sharing')}</h2>
       <div className="card">
         <div className="row row--between" style={{ gap: 12 }}>
           <span className="grow" id="auto-share-label">
-            {t('autoShare')}
+            {t('Share finished games with your crew')}
           </span>
           <button
             type="button"
@@ -174,7 +192,7 @@ export function SettingsScreen({
           </button>
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('autoShareHint')}
+          {t('Off by default. Turn it on and every game you save is posted to the crew as soon as it is finished.')}
         </p>
       </div>
 
@@ -288,10 +306,10 @@ export function SettingsScreen({
         </button>
       </div>
 
-      <h2 className="section-title">{t('about')}</h2>
+      <h2 className="section-title">{t('About')}</h2>
       <div className="card">
         <div className="row row--between">
-          <span className="muted">{t('version')}</span>
+          <span className="muted">{t('Version')}</span>
           <span className="tnum">{__APP_VERSION__}</span>
         </div>
         <p className="footnote" style={{ marginBottom: 0, marginTop: 10 }}>
@@ -299,16 +317,85 @@ export function SettingsScreen({
 </p>
       </div>
 
-      <h2 className="section-title">{t('sync')}</h2>
+      <h2 className="section-title">{t('Sync')}</h2>
       <div className="card">
         <div className="row row--between">
-          <span className="grow">{t('cloudSync')}</span>
+          <span className="grow">{t('Cloud sync')}</span>
           <span className="tag tag--accent">{t('Soon')}</span>
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('cloudDesc')}
+          {t('Back up games and share stats with friends. Coming soon.')}
         </p>
       </div>
+
+      <h2 className="section-title">{t('Data')}</h2>
+      <div className="card">
+        <p className="muted" style={{ margin: '0 0 11px' }}>
+          {t(
+            'Removes every game and every scanned sheet on this device. Your preferences and this device’s notification setting are left alone.',
+          )}
+        </p>
+
+        {cleared === null ? (
+          <button
+            type="button"
+            className="btn-lg btn-lg--danger"
+            onClick={() => setConfirmClear(true)}
+            disabled={games.length === 0}
+          >
+            {t('Clear all data')}
+          </button>
+        ) : (
+          <div className="note note--info" style={{ marginBottom: 0 }}>
+            {tf('{n} games removed. Nothing is left to undo it with.', { n: cleared })}
+          </div>
+        )}
+
+        {games.length === 0 && cleared === null && (
+          <p className="footnote" style={{ marginBottom: 0 }}>
+            {t('There is nothing stored on this device yet.')}
+          </p>
+        )}
+      </div>
+
+      {/* A second step rather than a confirm(): the browser dialog cannot say
+          what is about to go, and this is the one action in the app that
+          nothing can undo. */}
+      {confirmClear && (
+        <div className="card card--danger">
+          <div className="hero__label" style={{ marginBottom: 6 }}>
+            {t('Clear all data?')}
+          </div>
+          <p style={{ margin: '0 0 4px' }}>
+            {tf('{n} games and {sheets} scanned sheets will be deleted from this device.', {
+              n: games.length,
+              sheets: games.filter((game) => game.hasSheet).length,
+            })}
+          </p>
+          <p className="footnote">
+            {t(
+              'There is no account and no server, so this cannot be undone. Export a backup first if you want one.',
+            )}
+          </p>
+
+          <button
+            type="button"
+            className="btn-lg btn-lg--danger"
+            disabled={busy}
+            onClick={() => void clearEverything()}
+          >
+            {busy ? t('Clearing…') : t('Yes, delete everything')}
+          </button>
+          <button
+            type="button"
+            className="btn-lg"
+            style={{ marginTop: 9 }}
+            onClick={() => setConfirmClear(false)}
+          >
+            {t('Keep my games')}
+          </button>
+        </div>
+      )}
 
       <h2 className="section-title">{t('Storage')}</h2>
       <div className="card">
