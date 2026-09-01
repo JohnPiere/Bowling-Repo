@@ -79,9 +79,14 @@ Strip, status line, rack, two buttons — nothing scrolls, because the screen is
 used a ball at a time with one hand while somebody else is bowling. It wants
 about 720px and an SE-sized phone gives 545, so `app.css` carries two
 height media queries that give back what an ordinary phone does not need to.
-Targets stay at 44px through all of them; what goes is explanation. Anything
-added here has to earn its height against something already there —
-`scrollHeight - clientHeight` on `.screen` is the test.
+Two things are held fixed through all of them: targets stay at 44px, and the
+strip stays **five frames across**. Ten across fits the height and was tried;
+a phone is not wide, and at 37px a cell the pin diagram is the first thing to
+become unreadable, which is the reason the strip is drawn at all. What gives
+instead is explanation — the legend, the leave caption, the axis labels, the
+tenth's note, in that order. Anything added here has to earn its height
+against something already there; `scrollHeight - clientHeight` on `.screen` is
+the test.
 
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a

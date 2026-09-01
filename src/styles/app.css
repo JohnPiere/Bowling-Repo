@@ -2169,23 +2169,32 @@ body {
 /*
  * Short screens.
  *
- * The scoring step wants about 720px and an SE-sized phone gives 545. Targets
- * stay at 44px — shrinking those is the one thing that would make the screen
- * worse to use — so what goes is the part that explains rather than accepts
- * input: the legend, the leave caption, and the strip's second row, which
- * becomes one row of ten. Everything still fits, and a frame is still a frame.
+ * The scoring step wants about 720px and an SE-sized phone gives 545. Two
+ * things are held fixed through all of it: targets stay at 44px, and the strip
+ * stays five frames across. Ten across fits the height and is the wrong trade
+ * — a phone is not wide, and at 37px a cell the pin diagram is the thing that
+ * suffers, which is the reason the strip is drawn at all.
+ *
+ * So what gives is the part that explains rather than accepts input — the
+ * legend, then the leave caption — and the lines that can say the same thing
+ * in less room.
  */
 @media (max-height: 780px) {
-  .play { gap: 7px; }
-  .strip { grid-template-columns: repeat(10, 1fr); gap: 3px; }
-  .strip__cell { padding: 3px 2px; gap: 2px; }
-  .strip__pin { width: 4px; height: 4px; }
+  .play,
+  .play--tenth { gap: 6px; }
+  .strip { gap: 4px; }
+  .strip__cell { padding: 2px; gap: 2px; }
+  .strip__pin { width: 3.5px; height: 3.5px; }
   .strip__pinrow { gap: 1.5px; }
-  .strip__box { min-height: 12px; font-size: 8px; }
+  .strip__box { min-height: 11px; font-size: 8px; }
   .strip__num { font-size: 8px; }
   .strip__total { font-size: 10px; }
 
-  .playline__ball { font-size: 13px; }
+  /* The labels go, not the values. Which frame it is the strip already shows
+     by highlighting it, and a 24px accented number beside a rack is not going
+     to be mistaken for anything but the score. */
+  .playline .hero__label { display: none; }
+  .playline__ball { font-size: 13px; margin-top: 0; }
   .playline__total { font-size: 24px; }
 
   .rack { padding: 8px 12px 6px; gap: 5px; }
@@ -2193,19 +2202,26 @@ body {
   .rack__row { gap: 9px; }
   .rack__pin { width: 44px; height: 44px; }
   .rack__legend { display: none; }
-  .rack__leave { min-height: 14px; font-size: 10px; }
+  /* The leave caption goes before the strip does. It names what you left,
+     which is worth keeping — but not at the price of ten frames drawn 37px
+     wide, where the pin diagram is the first thing to become unreadable. */
+  .rack__leave { display: none; }
 
   .play__commit .btn-lg { min-height: 46px; }
-  .linkbtn--centred { padding: 4px 0; }
+  .linkbtn--centred { padding: 2px 0; font-size: 11px; }
 }
 
 /*
- * Shorter still — a 640px phone. The leave caption goes too. It is the last
- * thing worth losing, because it names what you left, but a rack you have to
- * scroll to reach is worse than a rack that does not say "7-10".
+ * Shorter still — a 640px phone. The tenth's note goes: the accented box says
+ * the same thing to anyone who has reached the tenth twice, and by then the
+ * alternative is scrolling to reach the rack.
  */
 @media (max-height: 660px) {
-  .rack__leave { display: none; }
+  .play,
+  .play--tenth { gap: 5px; }
+  .strip { gap: 3px; }
+  .play__note { display: none; }
+  .rack__deck { gap: 4px; }
   .play__commit .btn-lg { min-height: 44px; }
 }
 
