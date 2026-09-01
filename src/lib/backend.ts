@@ -147,3 +147,53 @@ export function describeBackendFailure(error: unknown): string {
   }
   return message || 'Something went wrong reaching the server.';
 }
+
+/**
+ * Which sign-in providers the project actually has switched on.
+ *
+ * Worth a request because of how `signInWithOAuth` fails. It does not ask the
+ * server anything — it builds an `/authorize` URL and sets `location.href` — so
+ * a provider that is switched off is not an error the app can catch. The
+ * browser leaves, and Supabase answers the navigation with
+ * `{"error_code":"validation_failed","msg":"Unsupported provider: provider is
+ * not enabled"}` as a bare JSON page. The bowler is then looking at a stack
+ * trace's worth of nothing, on a different origin, with no way back but the
+ * back button.
+ *
+ * `/auth/v1/settings` is public, unauthenticated and small, and answers the one
+ * question that avoids all of that.
+ */
+let providers: Promise<Record<string, boolean> | null> | null = null;
+
+export function enabledProviders(): Promise<Record<string, boolean> | null> {
+  if (providers) return providers;
+
+  providers = fetch(`${BACKEND_URL}/auth/v1/settings`, {
+    headers: { apikey: BACKEND_KEY },
+  })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((body: { external?: Record<string, boolean> } | null) => body?.external ?? null)
+    .catch(() => null);
+
+  return providers;
+}
+
+/**
+ * Why this provider cannot be used, or null if it can.
+ *
+ * `external` being null means the question could not be asked — an unreachable
+ * server, or a paused project. That is deliberately *not* a refusal: blocking
+ * sign-in because a pre-flight check failed would turn one flaky request into a
+ * locked door, and the redirect itself will report the real problem.
+ */
+export function providerUnavailable(
+  provider: 'google' | 'apple',
+  external: Record<string, boolean> | null,
+): string | null {
+  if (external === null) return null;
+  if (external[provider]) return null;
+
+  return provider === 'apple'
+    ? 'Apple sign-in is not switched on for this project. It needs a paid Apple developer account before it can be; use Google for now.'
+    : 'Google sign-in is not switched on for this project yet. Switch it on in the Supabase dashboard under Authentication → Sign In / Providers.';
+}

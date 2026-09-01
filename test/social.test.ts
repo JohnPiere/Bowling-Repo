@@ -15,6 +15,7 @@ import {
   type ProfileRow,
   type SharedGameRow,
 } from '../src/lib/social';
+import { providerUnavailable } from '../src/lib/backend';
 
 const profile = (id: string, name: string): ProfileRow => ({ id, name, initials: '' });
 
@@ -302,5 +303,31 @@ describe('countUnread', () => {
   it('keeps a read marker per crew', () => {
     markRead('g1', Date.UTC(2026, 7, 14, 19, 30));
     expect(countUnread([said('kenji', '2026-08-14T19:00:00Z')], 'other', 'me')).toBe(1);
+  });
+});
+
+describe('providerUnavailable', () => {
+  it('lets a switched-on provider through', () => {
+    expect(providerUnavailable('google', { google: true, apple: false })).toBeNull();
+  });
+
+  it('names the dashboard switch for Google', () => {
+    const why = providerUnavailable('google', { google: false, apple: false });
+    expect(why).toMatch(/not switched on/i);
+    expect(why).toMatch(/Supabase dashboard/i);
+  });
+
+  it('says why Apple is different', () => {
+    // A bill rather than a switch, so "turn it on" would be wrong advice.
+    expect(providerUnavailable('apple', { google: true, apple: false })).toMatch(
+      /paid Apple developer account/i,
+    );
+  });
+
+  it('does not refuse when the question could not be asked', () => {
+    // An unreachable server must not become a locked door: the redirect itself
+    // will report the real problem, and blocking here would turn one flaky
+    // request into "you cannot sign in".
+    expect(providerUnavailable('google', null)).toBeNull();
   });
 });

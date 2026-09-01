@@ -16,8 +16,10 @@ import type { Session as AuthSession } from '@supabase/supabase-js';
 import {
   backend,
   describeBackendFailure,
+  enabledProviders,
   hasStoredSession,
   isBackendConfigured,
+  providerUnavailable,
   redirectUrl,
 } from './backend';
 
@@ -154,10 +156,16 @@ export function useSession() {
   /**
    * Hand off to the provider.
    *
-   * This navigates away, so there is no success path to handle here — the
-   * bowler comes back to a fresh page load and `onAuthStateChange` picks it up.
-   * Only the failure to *leave* is reported, which is the case worth naming:
-   * a provider that has not been enabled on the project fails right here.
+   * There is no success path here: this navigates away, and the bowler comes
+   * back to a fresh page load that `onAuthStateChange` picks up. The only
+   * outcome worth handling is failing to leave at all.
+   *
+   * The provider check has to happen *before* the redirect, because
+   * `signInWithOAuth` does not ask the server anything — it builds a URL and
+   * sets `location.href`, so a provider that is switched off is not an error
+   * this code ever sees. Without the check the bowler lands on a bare JSON
+   * error page on another origin, which is what happens rather than what the
+   * screen says.
    */
   const signIn = useCallback(async (provider: Provider) => {
     if (!isBackendConfigured()) {
@@ -169,6 +177,13 @@ export function useSession() {
     setSignInState('redirecting');
     setSignInError(null);
 
+    const unavailable = providerUnavailable(provider, await enabledProviders());
+    if (unavailable) {
+      setSignInState('failed');
+      setSignInError(unavailable);
+      return;
+    }
+
     const db = await backend();
     const { error } = await db.auth.signInWithOAuth({
       provider,
@@ -177,13 +192,7 @@ export function useSession() {
 
     if (error) {
       setSignInState('failed');
-      setSignInError(
-        /provider is not enabled/i.test(error.message)
-          ? provider === 'apple'
-            ? 'Apple sign-in is not switched on for this app yet. It needs a paid Apple developer account; use Google for now.'
-            : 'Google sign-in is not switched on for this project yet.'
-          : describeBackendFailure(error),
-      );
+      setSignInError(describeBackendFailure(error));
     }
   }, []);
 
