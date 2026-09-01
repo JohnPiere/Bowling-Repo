@@ -63,6 +63,10 @@ export function FirstBallChart({ counts }: { counts: number[] }) {
               />
               {count > 0 && (
                 <path
+                  className="viz__bar"
+                  // Stagger so the bars arrive as a run rather than a block,
+                  // left to right, the way the pins are counted.
+                  style={{ animationDelay: `${pins * 24}ms` }}
                   d={columnPath(x, y, barW, Math.max(2, height))}
                   fill={isStrike ? 'var(--viz-step-1)' : 'var(--viz-subject)'}
                   opacity={hover === null || hover === pins ? 1 : 0.45}

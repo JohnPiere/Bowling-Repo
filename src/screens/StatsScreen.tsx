@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
+import { SpareRing } from '../components/charts/SpareRing';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import {
@@ -49,7 +50,7 @@ export function StatsScreen({ games }: { games: Game[] }) {
   }
 
   return (
-    <>
+    <div className="stats">
       <RangePicker range={range} onChange={setRange} />
 
       {/* A KPI row, not a bar chart — these are headline numbers, not a series. */}
@@ -67,6 +68,11 @@ export function StatsScreen({ games }: { games: Game[] }) {
       <h2 className="section-title">Score trend</h2>
       <div className="card">
         <ScoreTrendChart points={trend} />
+      </div>
+
+      <h2 className="section-title">Spare conversion</h2>
+      <div className="card">
+        <SpareRing outcomes={outcomes} />
       </div>
 
       <h2 className="section-title">How frames finish</h2>
@@ -143,7 +149,7 @@ export function StatsScreen({ games }: { games: Game[] }) {
           left out — they would flatter the distribution.
         </p>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import type { TrendPoint } from '../../lib/stats';
 import { DataTable } from './DataTable';
 import { useHoverIndex } from './useHoverIndex';
+import { useTweenedPoints } from './useTweenedPoints';
 
 const W = 320;
 const H = 150;
@@ -20,24 +22,53 @@ const MAX_DOTS = 26;
 export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
   const hover = useHoverIndex(points.length, PAD.left, PAD.right);
 
-  if (points.length < 2) {
+  // Every hook runs on every render, so the scale is worked out before the
+  // "not enough games yet" case rather than after it.
+  const geometry = useMemo(() => {
+    if (points.length < 2) return null;
+
+    const values = points.flatMap((p) => [p.score, p.rolling]);
+    const { min, max, ticks } = niceScale(Math.min(...values), Math.max(...values));
+
+    const plotW = W - PAD.left - PAD.right;
+    const plotH = H - PAD.top - PAD.bottom;
+    const step = plotW / (points.length - 1);
+
+    return {
+      ticks,
+      plotH,
+      x: (i: number) => PAD.left + i * step,
+      y: (v: number) => PAD.top + plotH - ((v - min) / (max - min)) * plotH,
+    };
+  }, [points]);
+
+  const rollingTarget = useMemo(
+    () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.rolling) })) : []),
+    [points, geometry],
+  );
+  const scoreTarget = useMemo(
+    () => (geometry ? points.map((p, i) => ({ x: geometry.x(i), y: geometry.y(p.score) })) : []),
+    [points, geometry],
+  );
+
+  const rolling = useTweenedPoints(rollingTarget);
+  const scores = useTweenedPoints(scoreTarget);
+
+  if (!geometry || points.length < 2) {
     return <p className="empty">Two finished games and the trend starts here.</p>;
   }
 
-  const values = points.flatMap((p) => [p.score, p.rolling]);
-  const { min, max, ticks } = niceScale(Math.min(...values), Math.max(...values));
+  const { ticks, x, y, plotH } = geometry;
+  const baseline = PAD.top + plotH;
 
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
-  const step = plotW / (points.length - 1);
-
-  const x = (i: number) => PAD.left + i * step;
-  const y = (v: number) => PAD.top + plotH - ((v - min) / (max - min)) * plotH;
-
-  const rollingPath = points.map((p, i) => `${i ? 'L' : 'M'}${x(i)} ${y(p.rolling)}`).join(' ');
+  const line = rolling.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+  // The same line, closed down to the axis: the handoff fills under it, and the
+  // fill is what makes a rise read as a rise rather than as a wandering line.
+  const area = `${line} L${rolling[rolling.length - 1].x} ${baseline} L${rolling[0].x} ${baseline} Z`;
 
   const active = hover.index === null ? null : points[hover.index];
   const last = points[points.length - 1];
+  const tip = rolling[rolling.length - 1];
 
   return (
     <div className="viz">
@@ -59,29 +90,35 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
           </g>
         ))}
 
-        {/* Context first, so the subject line sits above it. */}
+        <defs>
+          <linearGradient id="viz-trend-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--viz-subject)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--viz-subject)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        <path d={area} fill="url(#viz-trend-fill)" stroke="none" />
+
+        {/* Context first, so the subject line sits above it. Keyed by position
+            rather than by game: the marker for slot 3 has to be the same
+            element from one range to the next, or React replaces it and it
+            appears at its new home instead of travelling there. */}
         {points.length <= MAX_DOTS &&
-          points.map((p, i) => (
+          scores.map((p, i) => (
             <circle
-              key={p.playedAt}
+              key={i}
               className="viz__dot"
-              cx={x(i)}
-              cy={y(p.score)}
+              cx={p.x}
+              cy={p.y}
               r={3.5}
               fill="var(--viz-context)"
             />
           ))}
 
-        <path className="viz__line" d={rollingPath} stroke="var(--viz-subject)" />
+        <path className="viz__line viz__line--draw" d={line} stroke="var(--viz-subject)" pathLength={1} />
 
         {/* Only the endpoint is labelled — a number on every point goes unread. */}
-        <circle
-          className="viz__dot"
-          cx={x(points.length - 1)}
-          cy={y(last.rolling)}
-          r={4}
-          fill="var(--viz-subject)"
-        />
+        <circle className="viz__dot" cx={tip.x} cy={tip.y} r={4} fill="var(--viz-subject)" />
 
         {hover.index !== null && active && (
           <>
@@ -94,8 +131,8 @@ export function ScoreTrendChart({ points }: { points: TrendPoint[] }) {
             />
             <circle
               className="viz__dot"
-              cx={x(hover.index)}
-              cy={y(active.score)}
+              cx={scores[hover.index]?.x ?? x(hover.index)}
+              cy={scores[hover.index]?.y ?? y(active.score)}
               r={4}
               fill="var(--viz-context)"
             />

@@ -912,11 +912,79 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .viz__line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The line draws itself the first time it appears. `pathLength=1` normalises
+   the dash to the path's own length, so this works whatever the plot's size —
+   the handoff's literal 1200 is the length of its own line and nothing else.
+   It runs once per element: changing the range keeps the same <path>, and the
+   geometry tween in useTweenedPoints carries it from there. */
+.viz__line--draw {
+  stroke-dasharray: 1;
+  animation: drawIn 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes drawIn {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Bars grow out of the axis rather than appearing at full height. The slight
+   overshoot in the curve is the handoff's; it is what stops it reading as a
+   bar chart being resized. */
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* The spare ring fills clockwise from the top, like a watch hand coming round.
+   `--viz-sweep-from` is the whole circumference and `--viz-sweep-to` where this
+   particular reading stops. */
+@keyframes sweep {
+  from { stroke-dashoffset: var(--viz-sweep-from); }
+  to { stroke-dashoffset: var(--viz-sweep-to); }
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: scale(1); }
+}
 /* The ring is surface-coloured so dots stay legible where they cross the line. */
 .viz__dot { stroke: var(--viz-surface); stroke-width: 2; }
+
+/* `transform-box: fill-box` makes the origin the bar's own box rather than the
+   whole SVG's, which is what lets it scale up from where it stands. */
+.viz__bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: growUp 0.5s cubic-bezier(0.3, 1.1, 0.5, 1) both;
+}
+
+/* The analytics screen settles in rather than appearing all at once: each
+   section arrives just behind the one above it. Capped, so a long screen does
+   not leave the last card waiting a second and a half to show up. */
+.stats > * { animation: fadeUp 0.32s ease both; }
+.stats > :nth-child(2) { animation-delay: 0.04s; }
+.stats > :nth-child(3) { animation-delay: 0.08s; }
+.stats > :nth-child(4) { animation-delay: 0.12s; }
+.stats > :nth-child(n + 5) { animation-delay: 0.16s; }
+
+.viz__ring-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+/* Rotated so the sweep starts at twelve o'clock rather than at three. */
+.viz__ring { transform: rotate(-90deg); transform-origin: center; flex: none; }
+.viz__ring-label { display: flex; flex-direction: column; gap: 2px; }
+.viz__ring-label strong { font-size: 30px; letter-spacing: -0.03em; line-height: 1.1; }
+.viz__ring-label span { font-size: 12px; color: var(--color-neutral-500); }
+.viz__ring-value {
+  animation: sweep 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+  stroke-linecap: round;
+}
 .viz__crosshair { stroke: var(--color-neutral-600); stroke-width: 1; }
 
 .viz__tooltip {
+  animation: pop 0.2s ease both;
   position: absolute;
   z-index: 2;
   pointer-events: none;
