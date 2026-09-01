@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { RegionPicker } from '../components/RegionPicker';
 import { RowFinder } from '../components/RowFinder';
@@ -159,7 +160,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           {supportsLiveCamera() && (
             <button type="button" className="btn-lg btn-lg--primary" onClick={openCamera}>
               <Icon name="camera" size={18} />
-              Open the camera
+              {t('Open the camera')}
             </button>
           )}
 
@@ -169,7 +170,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             style={{ marginTop: 11 }}
             onClick={() => fileRef.current?.click()}
           >
-            Use a photo instead
+            {t('Use a photo instead')}
           </button>
           <p className="footnote" style={{ marginTop: 7 }}>
             You draw the box around one game yourself, so a sheet of six reads as easily as a sheet
@@ -227,13 +228,13 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
       {stage === 'reading' && (
         <div className="card">
           <div className="hero__label" style={{ marginBottom: 8 }}>
-            Reading the sheet
+            {t('Reading the sheet')}
           </div>
           <div className="progress">
             <div className="progress__fill" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
           <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
-            Recognition runs on this device — the photo is not uploaded anywhere.
+            {t('Recognition runs on this device — the photo is not uploaded anywhere.')}
           </p>
         </div>
       )}
@@ -253,7 +254,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           {corrected && !('error' in corrected) && (
             <div className="card">
               <div className="row row--between" style={{ marginBottom: 10 }}>
-                <span className="hero__label">Scanned game</span>
+                <span className="hero__label">{t('Scanned game')}</span>
                 <span className="tnum" style={{ fontSize: 28, letterSpacing: '-0.03em' }}>
                   {scoreGame(corrected.rolls).total}
                 </span>
@@ -268,7 +269,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
 
           {review.otherRows && review.otherRows.length > 0 && (
             <>
-              <h2 className="section-title">Which row is yours</h2>
+              <h2 className="section-title">{t('Which row is yours')}</h2>
               {[review.rawText, ...review.otherRows].map((row, index) => {
                 const parsed = tryParseMarks(row);
                 const total = 'rolls' in parsed ? scoreGame(parsed.rolls).total : null;
@@ -296,7 +297,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           )}
 
           <label style={{ display: 'block', marginBottom: 11 }}>
-            <span className="hero__label">Marks — correct anything the scan got wrong</span>
+            <span className="hero__label">{t('Marks — correct anything the scan got wrong')}</span>
             <input
               className="input tnum"
               style={{ marginTop: 5, letterSpacing: '0.08em' }}
@@ -309,12 +310,12 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
             />
           </label>
           <p className="muted" style={{ margin: '-6px 0 12px' }}>
-            One group a frame. X for a strike, / for a spare, - for a miss.
+            {t('One group a frame. X for a strike, / for a spare, - for a miss.')}
           </p>
 
           <div className="row" style={{ gap: 11, marginBottom: 11 }}>
             <label className="grow">
-              <span className="hero__label">Date</span>
+              <span className="hero__label">{t('Date')}</span>
               <input
                 className="input tnum"
                 style={{ marginTop: 5 }}
@@ -324,7 +325,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
               />
             </label>
             <label className="grow">
-              <span className="hero__label">Time</span>
+              <span className="hero__label">{t('Time')}</span>
               <input
                 className="input tnum"
                 style={{ marginTop: 5 }}
@@ -337,12 +338,12 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
 
           {playedAt === null && (
             <div className="note note--warn">
-              That date is not one the calendar has — check it before saving.
+              {t('That date is not one the calendar has — check it before saving.')}
             </div>
           )}
 
           <label style={{ display: 'block', marginBottom: 11 }}>
-            <span className="hero__label">Where you bowled</span>
+            <span className="hero__label">{t('Where you bowled')}</span>
             <input
               className="input"
               style={{ marginTop: 5 }}
@@ -356,7 +357,7 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
 
           {dropPhoto && (
             <div className="note note--info">
-              The photo will not be kept with this game. The score sheet itself is unaffected.
+              {t('The photo will not be kept with this game. The score sheet itself is unaffected.')}
             </div>
           )}
 
@@ -371,10 +372,10 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           </button>
 
           <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={reset}>
-            Scan a different sheet
+            {t('Scan a different sheet')}
           </button>
 
-          <h2 className="section-title">What the scan read</h2>
+          <h2 className="section-title">{t('What the scan read')}</h2>
           <pre className="rawtext">{review.rawText.trim() || '(nothing legible)'}</pre>
           <p className="footnote">
             {review.strategy === 'per-frame'

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from './Icon';
 import { captureRegion, grabGrayFrame, type CaptureResult, type Region } from '../lib/camera';
 import { coverFit, projectRect, unprojectPoint, type Rect, type Size } from '../lib/cover';
@@ -196,11 +197,11 @@ export function RowFinder({
 
       <button type="button" className="btn-lg btn-lg--primary" onClick={() => void shoot()}>
         <Icon name="camera" size={18} />
-        Scan this row
+        {t('Scan this row')}
       </button>
 
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCancel}>
-        Cancel
+        {t('Cancel')}
       </button>
     </>
   );

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { t } from '../../lib/i18n';
 import type { MetricPoint } from '../../lib/stats';
 import { DataTable } from './DataTable';
 import { useHoverIndex } from './useHoverIndex';
@@ -86,7 +87,7 @@ export function ScoreTrendChart({
   const scores = useTweenedPoints(scoreTarget);
 
   if (!geometry || points.length < 2) {
-    return <p className="empty">Two finished games and the trend starts here.</p>;
+    return <p className="empty">{t('Two finished games and the trend starts here.')}</p>;
   }
 
   const { ticks, x, y, plotH } = geometry;
@@ -239,7 +240,7 @@ export function ScoreTrendChart({
       )}
 
       <p className="footnote" style={{ margin: '6px 0 0' }}>
-        Dashed line = lifetime average. Tap a point for detail.
+        {t('Dashed line = lifetime average. Tap a point for detail.')}
       </p>
 
       <div className="viz__legend">

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../lib/i18n';
 
 interface Props {
   children: ReactNode;
@@ -39,16 +40,16 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="app">
         <header className="appbar">
           <div className="grow">
-            <div className="appbar__kicker">Something broke</div>
-            <h1 className="appbar__title">Sorry</h1>
+            <div className="appbar__kicker">{t('Something broke')}</div>
+            <h1 className="appbar__title">{t('Sorry')}</h1>
           </div>
         </header>
 
         <main className="screen">
           <div className="note note--bad">
-            <strong>This screen could not be drawn.</strong>
+            <strong>{t('This screen could not be drawn.')}</strong>
             <p style={{ margin: '6px 0 0' }}>
-              Your games are still on this device — nothing has been lost.
+              {t('Your games are still on this device — nothing has been lost.')}
             </p>
           </div>
 
@@ -57,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="btn-lg btn-lg--primary"
             onClick={() => this.setState({ error: null })}
           >
-            Try again
+            {t('Try again')}
           </button>
           <button
             type="button"
@@ -69,10 +70,10 @@ export class ErrorBoundary extends Component<Props, State> {
               window.location.href = '/';
             }}
           >
-            Go back to the start
+            {t('Go back to the start')}
           </button>
 
-          <h2 className="section-title">What happened</h2>
+          <h2 className="section-title">{t('What happened')}</h2>
           <pre className="rawtext">{this.state.error.message}</pre>
           <p className="footnote">
             If this keeps happening, export your games from Settings before doing anything else —

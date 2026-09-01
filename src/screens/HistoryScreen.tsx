@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import type { Game } from '../lib/db';
 import { groupByDay, searchGames, SORTS, type SortKey } from '../lib/history';
@@ -39,7 +40,7 @@ export function HistoryScreen({
 
   return (
     <div className="stats">
-      <div className="chips" role="group" aria-label="Order">
+      <div className="chips" role="group" aria-label={t('Order')}>
         {SORTS.map((option) => (
           <button
             key={option.key}
@@ -48,7 +49,7 @@ export function HistoryScreen({
             aria-pressed={option.key === sort}
             onClick={() => setSort(option.key)}
           >
-            {option.label}
+            {t(option.label)}
           </button>
         ))}
       </div>
@@ -60,8 +61,8 @@ export function HistoryScreen({
             className="input search__field"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search house or date"
-            aria-label="Search games"
+            placeholder={t('Search house or date')}
+            aria-label={t('Search games')}
             autoCorrect="off"
             spellCheck={false}
           />
@@ -72,7 +73,7 @@ export function HistoryScreen({
       </div>
 
       <p className="footnote" style={{ margin: 0 }}>
-        Grouped by the day you bowled. Tap a day for the whole session.
+        {t('Grouped by the day you bowled. Tap a day for the whole session.')}
       </p>
 
       {days.length === 0 ? (
@@ -104,7 +105,7 @@ export function HistoryScreen({
                 </span>
 
                 <span style={{ textAlign: 'right', flex: 'none' }}>
-                  <span className="session__label">Series</span>
+                  <span className="session__label">{t('Series')}</span>
                   <span className="session__series tnum">{day.series}</span>
                 </span>
 
@@ -169,7 +170,7 @@ function GameLine({
 
       <span className="gameline__marks tnum grow">{marks}</span>
 
-      {isBest && <span className="tag tag--accent">Best</span>}
+      {isBest && <span className="tag tag--accent">{t('Best')}</span>}
 
       {/* A 200 game is the one score worth picking out of a column. */}
       <span className={`gameline__score tnum${game.total >= 200 ? ' gameline__score--big' : ''}`}>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { t } from '../lib/i18n';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import { dayKey, groupByDay, sessionSpan } from '../lib/history';
@@ -48,7 +49,7 @@ export function PlayDayScreen({
   );
 
   if (!group) {
-    return <p className="empty">That day has no games on it.</p>;
+    return <p className="empty">{t('That day has no games on it.')}</p>;
   }
 
   const frames = outcomes ? outcomes.strikes + outcomes.spares + outcomes.opens : 0;
@@ -75,7 +76,7 @@ export function PlayDayScreen({
         </div>
 
         <div style={{ textAlign: 'right', flex: 'none' }}>
-          <div className="day__label">Series total</div>
+          <div className="day__label">{t('Series total')}</div>
           <div className="day__series tnum">{group.series}</div>
           <div className="profile__meta tnum">
             {group.games.length} game{group.games.length === 1 ? '' : 's'}
@@ -97,14 +98,14 @@ export function PlayDayScreen({
 
       {group.games.length > 1 && (
         <>
-          <h2 className="section-title">Across the session</h2>
+          <h2 className="section-title">{t('Across the session')}</h2>
           <div className="card">
             <ScoreTrendChart points={series} subject="Score" context="Game" />
           </div>
         </>
       )}
 
-      <h2 className="section-title">Per game</h2>
+      <h2 className="section-title">{t('Per game')}</h2>
       {group.games.map((game, index) => (
         <button
           key={game.id}
@@ -124,7 +125,7 @@ export function PlayDayScreen({
           </span>
           <span className="grow" />
           {game.total === group.high && group.games.length > 1 && (
-            <span className="tag tag--accent">Best</span>
+            <span className="tag tag--accent">{t('Best')}</span>
           )}
           <span
             className={`gameline__score tnum${game.total >= 200 ? ' gameline__score--big' : ''}`}
@@ -135,7 +136,7 @@ export function PlayDayScreen({
       ))}
 
       <button type="button" className="btn-lg" style={{ marginTop: 4 }} onClick={onExport}>
-        Export this day
+        {t('Export this day')}
       </button>
 
       <p className="footnote">

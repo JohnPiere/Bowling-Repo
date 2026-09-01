@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { QrCode, joinUrl } from '../components/QrCode';
 
@@ -55,7 +56,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
         </div>
 
         <div className="card" style={{ textAlign: 'center' }}>
-          <div className="hero__label">Invite code</div>
+          <div className="hero__label">{t('Invite code')}</div>
           <div className="code" style={{ margin: '8px 0 4px' }}>
             {code}
           </div>
@@ -83,7 +84,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
           onClick={() => onOpenGroup('tuesday-crew')}
         >
           <Icon name="users" size={18} />
-          Open the group
+          {t('Open the group')}
         </button>
 
         <p className="footnote">
@@ -97,7 +98,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
   return (
     <>
       <label style={{ display: 'block', marginBottom: 11 }}>
-        <span className="hero__label">Group name</span>
+        <span className="hero__label">{t('Group name')}</span>
         <input
           className="input"
           style={{ marginTop: 5 }}
@@ -109,7 +110,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
       </label>
 
       <label style={{ display: 'block', marginBottom: 14 }}>
-        <span className="hero__label">Home alley (optional)</span>
+        <span className="hero__label">{t('Home alley (optional)')}</span>
         <input
           className="input"
           style={{ marginTop: 5 }}
@@ -120,7 +121,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
         />
       </label>
 
-      <h2 className="section-title">Who can get in</h2>
+      <h2 className="section-title">{t('Who can get in')}</h2>
       {VISIBILITY.map((option) => (
         <button
           key={option.key}
@@ -133,7 +134,7 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
           <span className="grow">
             <span className="choice__label">
               {option.label}
-              {option.soon && <span className="pill" style={{ marginLeft: 8 }}>Soon</span>}
+              {option.soon && <span className="pill" style={{ marginLeft: 8 }}>{t('Soon')}</span>}
             </span>
             <span className="choice__note">{option.note}</span>
           </span>
@@ -146,10 +147,10 @@ export function CreateGroupScreen({ onOpenGroup, onCancel }: Props) {
         style={{ marginTop: 14 }}
         onClick={() => setCreated(true)}
       >
-        Create the group
+        {t('Create the group')}
       </button>
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCancel}>
-        Cancel
+        {t('Cancel')}
       </button>
     </>
   );

@@ -1,4 +1,5 @@
 import type { ConversionByType, SpareBreakdown } from '../../lib/stats';
+import { t } from '../../lib/i18n';
 import { DataTable } from './DataTable';
 
 const R = 40;
@@ -28,7 +29,7 @@ export function SpareAnalysis({
   if (breakdown.total === 0) {
     return (
       <p className="empty">
-        No spares with pin data in this range. Score a game on the rack and the split appears here.
+        {t('No spares with pin data in this range. Score a game on the rack and the split appears here.')}
       </p>
     );
   }
@@ -103,7 +104,7 @@ export function SpareAnalysis({
         <GoalBar label="Multi pin" rate={multi} attempts={conversion.multi.attempts} />
 
         <DataTable
-          caption="Spare attempts and conversions by what was left"
+          caption={t('Spare attempts and conversions by what was left')}
           columns={['Left', 'Attempts', 'Converted']}
           rows={[
             ['One pin', conversion.single.attempts, conversion.single.converted],

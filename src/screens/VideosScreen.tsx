@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon';
+import { t } from '../lib/i18n';
 import { formatBytes } from '../lib/storage';
 
 /**
@@ -18,20 +19,20 @@ export function VideosScreen({ onScan }: { onScan: () => void }) {
   return (
     <>
       <div className="note note--info">
-        <strong>Clips are not built yet.</strong>
+        <strong>{t('Clips are not built yet.')}</strong>
         <p style={{ margin: '6px 0 0' }}>
-          Video is the one feature that cannot live on the device. This is where it will go.
+          {t('Video is the one feature that cannot live on the device. This is where it will go.')}
         </p>
       </div>
 
-      <h2 className="section-title">Why it needs a backend first</h2>
+      <h2 className="section-title">{t('Why it needs a backend first')}</h2>
       <div className="card">
         <div className="row row--between">
-          <span className="muted">One throw at 1080p</span>
+          <span className="muted">{t('One throw at 1080p')}</span>
           <span className="tnum">{formatBytes(perThrow)}</span>
         </div>
         <div className="row row--between" style={{ marginTop: 6 }}>
-          <span className="muted">A full game</span>
+          <span className="muted">{t('A full game')}</span>
           <span className="tnum">{formatBytes(perThrow * throwsPerGame)}</span>
         </div>
         <div className="row row--between" style={{ marginTop: 6 }}>
@@ -45,7 +46,7 @@ export function VideosScreen({ onScan }: { onScan: () => void }) {
         </p>
       </div>
 
-      <h2 className="section-title">What works today</h2>
+      <h2 className="section-title">{t('What works today')}</h2>
       <div className="card">
         <p className="muted" style={{ marginTop: 0 }}>
           Score sheets, though. Photograph a finished sheet and the frames are read off it — a few
@@ -53,7 +54,7 @@ export function VideosScreen({ onScan }: { onScan: () => void }) {
         </p>
         <button type="button" className="btn-lg btn-lg--primary" onClick={onScan}>
           <Icon name="camera" size={18} />
-          Scan a score sheet
+          {t('Scan a score sheet')}
         </button>
       </div>
     </>

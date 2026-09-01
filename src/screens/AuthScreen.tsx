@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import type { Provider } from '../lib/session';
 
 interface Props {
@@ -50,7 +51,7 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
       <section className="hero-solo">
         <div className="orb" />
         <h2 style={{ fontSize: 23, lineHeight: 1.2, letterSpacing: '-0.02em', margin: 0 }}>
-          Keep your games, or just start bowling.
+          {t('Keep your games, or just start bowling.')}
         </h2>
         <p className="hero__meta" style={{ marginTop: 8, marginBottom: 0 }}>
           An account gets you groups, a shared board and cloud backup. Everything else works
@@ -59,7 +60,7 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
       </section>
 
       <button type="button" className="btn-lg btn-lg--primary" onClick={() => start('google')}>
-        Continue with Google
+        {t('Continue with Google')}
       </button>
       <button
         type="button"
@@ -67,17 +68,17 @@ export function AuthScreen({ onSignIn, onPlayAsGuest, isLinking = false, guestGa
         style={{ marginTop: 11 }}
         onClick={() => start('apple')}
       >
-        Continue with Apple
+        {t('Continue with Apple')}
       </button>
 
       <div className="rule-or">or</div>
 
       <button type="button" className="btn-lg btn-lg--dashed" onClick={onPlayAsGuest}>
-        Play as a guest
+        {t('Play as a guest')}
       </button>
 
       <div className="note note--info" style={{ marginTop: 14 }}>
-        <strong>What a guest gives up</strong>
+        <strong>{t('What a guest gives up')}</strong>
         <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
           {GUEST_LIMITS.map((limit) => (
             <li key={limit}>{limit}</li>

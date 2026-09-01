@@ -178,25 +178,25 @@ export function SettingsScreen({
         </p>
       </div>
 
-      <h2 className="section-title">Install</h2>
+      <h2 className="section-title">{t('Install')}</h2>
       <div className="card">
         {install.kind === 'installed' && (
           <p style={{ margin: 0 }}>
-            <Icon name="check" size={16} /> Lane Log is installed on this device.
+            <Icon name="check" size={16} /> {t('Lane Log is installed on this device.')}
           </p>
         )}
 
         {install.kind === 'prompt-available' && (
           <>
             <p className="card__hint muted" style={{ marginTop: 0 }}>
-              Add Lane Log to your Home Screen so it opens full-screen and works offline.
+              {t('Add Lane Log to your Home Screen so it opens full-screen and works offline.')}
             </p>
             <button
               type="button"
               className="btn-lg btn-lg--primary"
               onClick={() => void promptInstall()}
             >
-              Add to Home Screen
+              {t('Add to Home Screen')}
             </button>
           </>
         )}
@@ -224,7 +224,7 @@ export function SettingsScreen({
         )}
       </div>
 
-      <h2 className="section-title">Notifications</h2>
+      <h2 className="section-title">{t('Notifications')}</h2>
       <div className="card">
         {availability.state !== 'ready' ? (
           <div className={`note ${availability.state === 'needs-install' ? 'note--info' : 'note--warn'}`}
@@ -235,7 +235,7 @@ export function SettingsScreen({
           <>
             <div className="row row--between" style={{ marginBottom: 11 }}>
               <span>
-                <span style={{ display: 'block' }}>Push notifications</span>
+                <span style={{ display: 'block' }}>{t('Push notifications')}</span>
                 <span className="muted">{describe(push)}</span>
               </span>
               <Icon name="bell" size={19} />
@@ -264,7 +264,7 @@ export function SettingsScreen({
                     style={{ marginTop: 11 }}
                     onClick={() => void showLocalTestNotification()}
                   >
-                    Send a test notification
+                    {t('Send a test notification')}
                   </button>
                 )}
               </>
@@ -279,13 +279,13 @@ export function SettingsScreen({
         )}
       </div>
 
-      <h2 className="section-title">Clips</h2>
+      <h2 className="section-title">{t('Clips')}</h2>
       <div className="card">
         <p className="muted" style={{ marginTop: 0 }}>
-          Video is not built yet — it is the one feature that needs a backend.
+          {t('Video is not built yet — it is the one feature that needs a backend.')}
         </p>
         <button type="button" className="btn-lg" onClick={onOpenVideos}>
-          What it would take
+          {t('What it would take')}
         </button>
       </div>
 
@@ -306,28 +306,28 @@ export function SettingsScreen({
       <div className="card">
         <div className="row row--between">
           <span className="grow">{t('cloudSync')}</span>
-          <span className="tag tag--accent">Soon</span>
+          <span className="tag tag--accent">{t('Soon')}</span>
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
           {t('cloudDesc')}
         </p>
       </div>
 
-      <h2 className="section-title">Storage</h2>
+      <h2 className="section-title">{t('Storage')}</h2>
       <div className="card">
         <div className="row row--between">
-          <span className="muted">Games on this device</span>
+          <span className="muted">{t('Games on this device')}</span>
           <span className="tnum">{games.length}</span>
         </div>
         <div className="row row--between" style={{ marginTop: 6 }}>
-          <span className="muted">Scanned sheets kept</span>
+          <span className="muted">{t('Scanned sheets kept')}</span>
           <span className="tnum">{games.filter((g) => g.hasSheet).length}</span>
         </div>
 
         {storage?.usage !== null && storage !== null && (
           <>
             <div className="row row--between" style={{ marginTop: 6 }}>
-              <span className="muted">Used</span>
+              <span className="muted">{t('Used')}</span>
               <span className="tnum">
                 {formatBytes(storage.usage)}
                 {storage.quota ? ` of ${formatBytes(storage.quota)}` : ''}
@@ -372,7 +372,7 @@ export function SettingsScreen({
                 );
               }}
             >
-              Ask the browser to keep this data
+              {t('Ask the browser to keep this data')}
             </button>
             <p className="footnote" style={{ marginBottom: 0 }}>
               Without this, a browser short of space may clear your games. Installing the app
@@ -398,7 +398,7 @@ export function SettingsScreen({
           style={{ marginTop: 11 }}
           onClick={() => backupRef.current?.click()}
         >
-          Restore from a file
+          {t('Restore from a file')}
         </button>
         <input
           ref={backupRef}
@@ -442,7 +442,7 @@ export function SettingsScreen({
             </p>
             <div className="row" style={{ gap: 8, marginTop: 10 }}>
               <button type="button" className="btn-lg" onClick={() => setPlan(null)}>
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 type="button"
@@ -450,7 +450,7 @@ export function SettingsScreen({
                 onClick={applyRestore}
                 disabled={plan.toAdd.length === 0}
               >
-                Restore
+                {t('Restore')}
               </button>
             </div>
           </div>

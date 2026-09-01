@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import { PinKeypad } from '../components/PinKeypad';
 import { PinRack } from '../components/PinRack';
 import { Scorecard } from '../components/Scorecard';
@@ -103,7 +104,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
   if (!started) {
     return (
       <>
-        <h2 className="section-title">How are you scoring this game?</h2>
+        <h2 className="section-title">{t('How are you scoring this game?')}</h2>
 
         <button
           type="button"
@@ -114,7 +115,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
           }}
         >
           <Icon name="play" size={18} />
-          Tap the pins you knocked down
+          {t('Tap the pins you knocked down')}
         </button>
         <p className="muted" style={{ margin: '6px 0 14px' }}>
           Records which pins fell, so a 10-pin and a 7-10 show up later as
@@ -129,7 +130,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
             setStarted(true);
           }}
         >
-          Just count the pins
+          {t('Just count the pins')}
         </button>
         <p className="muted" style={{ margin: '6px 0 14px' }}>
           One tap a ball. Faster when you are keeping up with a league, but it
@@ -138,7 +139,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
 
         <button type="button" className="btn-lg" onClick={onScan}>
           <Icon name="camera" size={18} />
-          Scan a paper score sheet
+          {t('Scan a paper score sheet')}
         </button>
         <p className="muted" style={{ margin: '6px 0 0' }}>
           Photograph a finished sheet and Lane Log reads the marks off it. Best for games already
@@ -166,7 +167,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
             Game finished — {card.total} pins. Add the house if you want it on the record.
           </div>
           <label className="field" style={{ display: 'block', marginBottom: 11 }}>
-            <span className="hero__label">Where you bowled</span>
+            <span className="hero__label">{t('Where you bowled')}</span>
             <input
               className="input"
               style={{ marginTop: 5 }}
@@ -198,7 +199,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
               onClick={undo}
               disabled={rolls.length === 0 && pending.length === 0}
             >
-              Undo
+              {t('Undo')}
             </button>
             <button type="button" className="btn-lg btn-lg--primary" onClick={commitBall}>
               {pending.length === standing.length && standing.length === 10
@@ -228,7 +229,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
           setStarted(false);
         }}
       >
-        Discard this game
+        {t('Discard this game')}
       </button>
     </>
   );

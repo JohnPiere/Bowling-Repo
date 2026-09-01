@@ -5,7 +5,7 @@ import { daySheetHtml, downloadHtml } from './lib/exporting';
 import { dayKey, groupByDay } from './lib/history';
 import { listGames, type Game } from './lib/db';
 import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/navigation';
-import { translate, useTranslation, type StringKey } from './lib/i18n';
+import { translate, useTranslation } from './lib/i18n';
 import type { Language } from './lib/preferences';
 import { useSession } from './lib/session';
 import { AuthScreen } from './screens/AuthScreen';
@@ -28,12 +28,12 @@ import { SharedGamesScreen } from './screens/SharedGamesScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { VideosScreen } from './screens/VideosScreen';
 
-const TABS: { key: RouteName; label: StringKey; icon: IconName }[] = [
-  { key: 'home', label: 'home', icon: 'home' },
-  { key: 'play', label: 'play', icon: 'play' },
-  { key: 'history', label: 'history', icon: 'history' },
-  { key: 'stats', label: 'stats', icon: 'stats' },
-  { key: 'groups', label: 'crew', icon: 'users' },
+const TABS: { key: RouteName; label: string; icon: IconName }[] = [
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'play', label: 'Play', icon: 'play' },
+  { key: 'history', label: 'History', icon: 'history' },
+  { key: 'stats', label: 'Stats', icon: 'stats' },
+  { key: 'groups', label: 'Crew', icon: 'users' },
 ];
 
 /** A code from a ?join= link, read once at startup. */
@@ -114,7 +114,7 @@ export function App() {
     <div className="app">
       <header className="appbar">
         {nav.canGoBack && (
-          <button type="button" className="iconbtn" aria-label={t('back')} onClick={nav.back}>
+          <button type="button" className="iconbtn" aria-label={t('Back')} onClick={nav.back}>
             <Icon name="back" size={18} />
           </button>
         )}
@@ -135,7 +135,7 @@ export function App() {
           <button
             type="button"
             className="iconbtn"
-            aria-label={t('settings')}
+            aria-label={t('Settings')}
             onClick={() => nav.push({ name: 'settings' })}
           >
             <Icon name="settings" size={18} />
@@ -282,7 +282,7 @@ export function App() {
         )}
 
         {route.name === 'game' && !gameInView && (
-          <p className="empty">That game is no longer on this device.</p>
+          <p className="empty">{t('That game is no longer on this device.')}</p>
         )}
 
         {route.name === 'shareGame' && gameInView && (
@@ -297,7 +297,7 @@ export function App() {
         )}
 
         {route.name === 'shareGame' && !gameInView && (
-          <p className="empty">That game is no longer on this device.</p>
+          <p className="empty">{t('That game is no longer on this device.')}</p>
         )}
 
         {route.name === 'videos' && (
@@ -350,28 +350,28 @@ function isTabActive(tab: RouteName, route: Route): boolean {
 }
 
 function describe(route: Route, groupName: string | undefined, language: Language) {
-  const s = (key: StringKey) => translate(key, language);
+  const s = (text: string) => translate(text, language);
 
   switch (route.name) {
-    case 'home': return { title: s('titleHome'), kicker: s('kickerDashboard'), meta: '' };
-    case 'play': return { title: s('titlePlay'), kicker: s('kickerFrameEntry'), meta: '' };
-    case 'scan': return { title: s('titleScan'), kicker: s('kickerImport'), meta: '' };
-    case 'history': return { title: s('titleHistory'), kicker: s('kickerArchive'), meta: '' };
-    case 'stats': return { title: s('titleStats'), kicker: s('kickerAnalytics'), meta: '' };
-    case 'settings': return { title: s('titleSettings'), kicker: s('kickerPrefs'), meta: '' };
-    case 'day': return { title: s('titleDay'), kicker: s('kickerSession'), meta: '' };
-    case 'videos': return { title: s('titleVideos'), kicker: 'Slow motion', meta: '' };
-    case 'auth': return { title: 'Sign in', kicker: 'Account', meta: '' };
-    case 'groups': return { title: 'Groups', kicker: 'Social', meta: '' };
-    case 'group': return { title: groupName ?? 'Group', kicker: 'Group', meta: '' };
-    case 'chat': return { title: 'Group chat', kicker: groupName ?? 'Group', meta: '' };
-    case 'member': return { title: 'Member', kicker: groupName ?? 'Group', meta: '' };
-    case 'groupSettings': return { title: 'Group settings', kicker: groupName ?? 'Group', meta: '' };
-    case 'createGroup': return { title: 'Create a group', kicker: 'Groups', meta: '' };
-    case 'joinGroup': return { title: 'Join a group', kicker: 'Invite', meta: '' };
-    case 'game': return { title: s('titleGame'), kicker: s('kickerRecord'), meta: '' };
-    case 'shareGame': return { title: 'Share this game', kicker: 'Game finished', meta: '' };
-    case 'sharedGames': return { title: 'Shared games', kicker: groupName ?? 'Group', meta: '' };
+    case 'home': return { title: s('Lane Log'), kicker: s('Dashboard'), meta: '' };
+    case 'play': return { title: s('New game'), kicker: s('Frame entry'), meta: '' };
+    case 'scan': return { title: s('Scan a sheet'), kicker: s('Import'), meta: '' };
+    case 'history': return { title: s('Match history'), kicker: s('Archive'), meta: '' };
+    case 'stats': return { title: s('Analytics'), kicker: s('Analytics'), meta: '' };
+    case 'settings': return { title: s('Settings'), kicker: s('Preferences'), meta: '' };
+    case 'day': return { title: s('Play day'), kicker: s('Session'), meta: '' };
+    case 'videos': return { title: s('Video gallery'), kicker: s('Slow motion'), meta: '' };
+    case 'auth': return { title: s('Sign in'), kicker: s('Account'), meta: '' };
+    case 'groups': return { title: s('Groups'), kicker: s('Social'), meta: '' };
+    case 'group': return { title: groupName ?? s('Group'), kicker: s('Group'), meta: '' };
+    case 'chat': return { title: s('Group chat'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'member': return { title: s('Bowler'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'groupSettings': return { title: s('Group settings'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'createGroup': return { title: s('Create a group'), kicker: s('Groups'), meta: '' };
+    case 'joinGroup': return { title: s('Join a group'), kicker: s('Invite'), meta: '' };
+    case 'game': return { title: s('Game record'), kicker: s('Game record'), meta: '' };
+    case 'shareGame': return { title: s('Share this game'), kicker: s('Game finished'), meta: '' };
+    case 'sharedGames': return { title: s('Shared games'), kicker: groupName ?? s('Group'), meta: '' };
   }
 }
 

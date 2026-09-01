@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import type { Group } from '../data/groups';
 import { SAMPLE_SHARED } from '../data/groups';
@@ -34,10 +35,10 @@ export function SharedGamesScreen({ group }: { group: Group }) {
 
   return (
     <>
-      <h2 className="section-title">Shared by you</h2>
+      <h2 className="section-title">{t('Shared by you')}</h2>
       {mine.length === 0 ? (
         <p className="empty">
-          Nothing of yours is on this board. Share a game from your history.
+          {t('Nothing of yours is on this board. Share a game from your history.')}
         </p>
       ) : (
         mine.map((game) => {
@@ -58,7 +59,7 @@ export function SharedGamesScreen({ group }: { group: Group }) {
                     {strikes} strikes · {spares} spares
                   </span>
                 </span>
-                {game.sharedWithSheet && <span className="pill">Photo</span>}
+                {game.sharedWithSheet && <span className="pill">{t('Photo')}</span>}
               </div>
               <button
                 type="button"
@@ -66,16 +67,16 @@ export function SharedGamesScreen({ group }: { group: Group }) {
                 style={{ marginTop: 10 }}
                 onClick={() => retract(game.id)}
               >
-                Unshare
+                {t('Unshare')}
               </button>
             </div>
           );
         })
       )}
 
-      <h2 className="section-title">Shared by the crew</h2>
+      <h2 className="section-title">{t('Shared by the crew')}</h2>
       {theirs.length === 0 ? (
-        <p className="empty">Nobody else has shared a game here yet.</p>
+        <p className="empty">{t('Nobody else has shared a game here yet.')}</p>
       ) : (
         theirs.map((post) => (
           <div key={post.id} className="game-row" style={{ cursor: 'default' }}>

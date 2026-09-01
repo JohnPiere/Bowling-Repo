@@ -1,4 +1,5 @@
 import { Avatar } from '../components/Avatar';
+import { t } from '../lib/i18n';
 import type { Group } from '../data/groups';
 import { SAMPLE_SHARED } from '../data/groups';
 import { METRICS, rankRoster } from '../lib/leaderboard';
@@ -42,7 +43,7 @@ export function MemberScreen({ group, memberId }: Props) {
         <Cell label="Games" value={member.games} />
       </div>
 
-      <h2 className="section-title">Across every board</h2>
+      <h2 className="section-title">{t('Across every board')}</h2>
       <div className="card">
         {METRICS.map((metric) => {
           const board = rankRoster(group.members, metric.key);
@@ -74,7 +75,7 @@ export function MemberScreen({ group, memberId }: Props) {
         })}
       </div>
 
-      <h2 className="section-title">Shared with this group</h2>
+      <h2 className="section-title">{t('Shared with this group')}</h2>
       {shared.length === 0 ? (
         <p className="empty">
           {member.isMe ? 'You have' : `${member.name.split(' ')[0]} has`} not shared a game here

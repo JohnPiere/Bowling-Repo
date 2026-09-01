@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import type { Group } from '../data/groups';
 
@@ -58,9 +59,9 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
           : 'You can moderate posts and members, but not delete the group.'}
       </div>
 
-      <h2 className="section-title">Details</h2>
+      <h2 className="section-title">{t('Details')}</h2>
       <label style={{ display: 'block', marginBottom: 11 }}>
-        <span className="hero__label">Group name</span>
+        <span className="hero__label">{t('Group name')}</span>
         <input
           className="input"
           style={{ marginTop: 5 }}
@@ -70,7 +71,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
         />
       </label>
       <label style={{ display: 'block', marginBottom: 4 }}>
-        <span className="hero__label">Home alley</span>
+        <span className="hero__label">{t('Home alley')}</span>
         <input
           className="input"
           style={{ marginTop: 5 }}
@@ -80,7 +81,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
         />
       </label>
 
-      <h2 className="section-title">The doors</h2>
+      <h2 className="section-title">{t('The doors')}</h2>
       <div className="card">
         <div className="row row--between">
           <span className="grow">
@@ -97,7 +98,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
             type="button"
             role="switch"
             aria-checked={doorsOpen}
-            aria-label="Doors open"
+            aria-label={t('Doors open')}
             className={`switch${doorsOpen ? ' switch--on' : ''}`}
             onClick={() => setDoorsOpen((v) => !v)}
           >
@@ -106,7 +107,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
         </div>
       </div>
 
-      <h2 className="section-title">Invite code</h2>
+      <h2 className="section-title">{t('Invite code')}</h2>
       <div className="card" style={{ textAlign: 'center' }}>
         <div
           className="code"
@@ -124,7 +125,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
             {copied ? 'Copied' : 'Copy'}
           </button>
           <button type="button" className="btn-lg" onClick={rotate}>
-            Rotate
+            {t('Rotate')}
           </button>
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
@@ -208,7 +209,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
                         className="btn-lg"
                         onClick={() => setConfirming(null)}
                       >
-                        Keep them
+                        {t('Keep them')}
                       </button>
                       <button
                         type="button"
@@ -219,7 +220,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
                           setExpanded(null);
                         }}
                       >
-                        Remove
+                        {t('Remove')}
                       </button>
                     </div>
                   </>
@@ -230,7 +231,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
                     style={{ marginTop: 8 }}
                     onClick={() => setConfirming(member.id)}
                   >
-                    Remove from group
+                    {t('Remove from group')}
                   </button>
                 )}
               </div>
@@ -239,7 +240,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
         );
       })}
 
-      <h2 className="section-title">Leave</h2>
+      <h2 className="section-title">{t('Leave')}</h2>
       <button type="button" className="btn-lg btn-lg--danger" onClick={onLeave}>
         {isOwner ? 'Hand over and leave' : 'Leave this group'}
       </button>

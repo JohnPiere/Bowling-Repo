@@ -1,4 +1,5 @@
 import { describeLeave, PIN_POSITIONS } from '../lib/pins';
+import { t } from '../lib/i18n';
 
 interface Props {
   /** Pins still up before this ball. */
@@ -37,7 +38,7 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false, size = 
         width={size}
         height={size}
         role="group"
-        aria-label="Pin rack"
+        aria-label={t('Pin rack')}
         className="rack__svg"
       >
         {Object.entries(PIN_POSITIONS).map(([key, pos]) => {

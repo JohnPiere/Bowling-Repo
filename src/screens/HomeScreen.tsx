@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon';
+import { t } from '../lib/i18n';
 import type { Game } from '../lib/db';
 import { scoreGame } from '../lib/scoring';
 
@@ -24,12 +25,12 @@ export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup, onS
     <>
       <section className="hero-solo">
         <div className="orb" />
-        <div className="hero__label">Your average</div>
+        <div className="hero__label">{t('Your average')}</div>
         {/* A 46px em-dash reads as a stray bar, so the empty state says the
             thing in words instead of showing a placeholder numeral. */}
         {average === null ? (
           <div style={{ fontSize: 19, marginTop: 4, color: 'var(--color-neutral-300)' }}>
-            Nothing bowled yet
+            {t('Nothing bowled yet')}
           </div>
         ) : (
           <div className="hero__numeral tnum">{average}</div>
@@ -46,26 +47,26 @@ export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup, onS
       <div className="quickstats">
         <div className="quickstat">
           <div className="quickstat__value tnum">{average ?? '—'}</div>
-          <div className="quickstat__label">Average</div>
+          <div className="quickstat__label">{t('Average')}</div>
         </div>
         <div className="quickstat">
           <div className="quickstat__value tnum">{high || '—'}</div>
-          <div className="quickstat__label">High game</div>
+          <div className="quickstat__label">{t('High game')}</div>
         </div>
         <div className="quickstat">
           <div className="quickstat__value tnum">{strikeRate === null ? '—' : `${strikeRate}%`}</div>
-          <div className="quickstat__label">Strike rate</div>
+          <div className="quickstat__label">{t('Strike rate')}</div>
         </div>
       </div>
 
       <button type="button" className="btn-lg btn-lg--primary" onClick={onStartGame}>
         <Icon name="play" size={18} />
-        Start a new game
+        {t('Start a new game')}
       </button>
 
-      <h2 className="section-title">Recent games</h2>
+      <h2 className="section-title">{t('Recent games')}</h2>
       {finished.length === 0 ? (
-        <p className="empty">Nothing logged yet. Bowl a game or scan a sheet.</p>
+        <p className="empty">{t('Nothing logged yet. Bowl a game or scan a sheet.')}</p>
       ) : (
         <>
           {finished.slice(0, 5).map((game) => (
@@ -77,12 +78,12 @@ export function HomeScreen({ games, onStartGame, onOpenHistory, onOpenGroup, onS
             style={{ marginTop: 11 }}
             onClick={onOpenHistory}
           >
-            View all games
+            {t('View all games')}
           </button>
         </>
       )}
 
-      <h2 className="section-title">Your crew</h2>
+      <h2 className="section-title">{t('Your crew')}</h2>
       <button type="button" className="btn-lg" onClick={onOpenGroup}>
         <Icon name="users" size={18} />
         Tuesday Crew
@@ -125,9 +126,9 @@ export function GameRow({ game, onOpen }: { game: Game; onOpen?: () => void }) {
       </span>
 
       {game.sharedTo && game.sharedTo.length > 0 ? (
-        <span className="pill">Shared</span>
+        <span className="pill">{t('Shared')}</span>
       ) : (
-        game.source === 'scan' && <span className="pill">Scan</span>
+        game.source === 'scan' && <span className="pill">{t('Scan')}</span>
       )}
     </button>
   );

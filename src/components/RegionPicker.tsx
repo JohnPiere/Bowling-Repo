@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from './Icon';
 import type { CaptureResult } from '../lib/camera';
 import { containFit, projectRect, unprojectPoint, type Rect, type Size } from '../lib/cover';
@@ -193,7 +194,7 @@ export function RegionPicker({
   return (
     <>
       <p className="muted" style={{ margin: '0 0 11px' }}>
-        Drag a box around one game’s row. Only what is inside it is read.
+        {t('Drag a box around one game’s row. Only what is inside it is read.')}
       </p>
 
       <div
@@ -240,7 +241,7 @@ export function RegionPicker({
 
       {box && preview && (
         <>
-          <span className="hero__label">What will be read</span>
+          <span className="hero__label">{t('What will be read')}</span>
           <div
             className="picker__preview"
             style={{ height: Math.min(preview.height, 140), marginTop: 5 }}
@@ -267,11 +268,11 @@ export function RegionPicker({
         onClick={() => void pick()}
       >
         <Icon name="camera" size={18} />
-        Read this game
+        {t('Read this game')}
       </button>
 
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCancel}>
-        Cancel
+        {t('Cancel')}
       </button>
     </>
   );

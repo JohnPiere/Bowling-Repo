@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { t } from '../lib/i18n';
 
 /**
  * A real, scannable QR code.
@@ -43,7 +44,7 @@ export function QrCode({ value, size = 168 }: { value: string; size?: number }) 
   if (failed) {
     return (
       <p className="muted" style={{ textAlign: 'center' }}>
-        The QR code could not be drawn. The code itself still works.
+        {t('The QR code could not be drawn. The code itself still works.')}
       </p>
     );
   }

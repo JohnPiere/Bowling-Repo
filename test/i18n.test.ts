@@ -1,38 +1,53 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { STRINGS, translate } from '../src/lib/i18n';
+import { format, JA, translate } from '../src/lib/i18n';
 import { DEFAULTS, loadPreferences, savePreferences } from '../src/lib/preferences';
 
 describe('translate', () => {
-  it('returns the language asked for', () => {
-    expect(translate('home', 'en')).toBe('Home');
-    expect(translate('home', 'ja')).toBe('ホーム');
+  it('returns the English untouched', () => {
+    expect(translate('Save this game', 'en')).toBe('Save this game');
   });
 
-  it('uses the house vocabulary, not a literal rendering', () => {
-    // A Japanese bowler says アベレージ, not 平均.
-    expect(translate('average', 'ja')).toBe('アベレージ');
-    expect(translate('spareConversion', 'ja')).toBe('スペア成功率');
+  it('falls back to English rather than showing nothing', () => {
+    // The whole point of keying by source text: a missing entry is a usable
+    // screen, not a blank or a key name.
+    expect(translate('A string nobody has translated yet', 'ja')).toBe(
+      'A string nobody has translated yet',
+    );
+  });
+
+  it('uses the house vocabulary where the handoff gave one', () => {
+    expect(translate('Average', 'ja')).toBe('アベレージ');
+    expect(translate('Spare conversion', 'ja')).toBe('スペア成功率');
   });
 });
 
-describe('the string table', () => {
-  it('has both languages for every key', () => {
-    for (const [key, pair] of Object.entries(STRINGS)) {
-      expect(pair[0], `${key} English`).toBeTruthy();
-      expect(pair[1], `${key} Japanese`).toBeTruthy();
-    }
+describe('format', () => {
+  it('fills placeholders after translating', () => {
+    expect(format('{n} games', { n: 3 })).toBe('3 games');
   });
 
-  it('actually translates — no key is the same in both', () => {
-    // Catches a pair left half-filled by copy-paste. Numerals and names would
-    // legitimately match, and there are none in this table.
-    // Widened deliberately: with `as const` the literal types never overlap,
-    // so TypeScript calls the comparison unreachable — which is only true of
-    // the table as it stands today, not of the one someone edits tomorrow.
-    const untranslated = (Object.entries(STRINGS) as [string, readonly [string, string]][])
-      .filter(([, pair]) => pair[0] === pair[1])
-      .map(([key]) => key);
-    expect(untranslated).toEqual([]);
+  it('leaves a placeholder it has no value for, rather than blanking it', () => {
+    expect(format('{n} of {total}', { n: 1 })).toBe('1 of {total}');
+  });
+
+  it('puts the pieces where the target language wants them', () => {
+    // The reason placeholders exist rather than concatenation: Japanese does
+    // not order the fragments the way English does.
+    expect(format(translate('{n} games', 'ja'), { n: 3 })).toBe('3ゲーム');
+  });
+});
+
+describe('the dictionary', () => {
+  it('never maps a string to itself', () => {
+    const same = Object.entries(JA).filter(([en, ja]) => en === ja);
+    expect(same).toEqual([]);
+  });
+
+  it('has no empty translations', () => {
+    const blank = Object.entries(JA)
+      .filter(([, ja]) => !ja.trim())
+      .map(([en]) => en);
+    expect(blank).toEqual([]);
   });
 });
 

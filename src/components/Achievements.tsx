@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import type { BadgeStatus } from '../lib/badges';
 
 /**
@@ -21,9 +22,9 @@ export function Achievements({ badges }: { badges: BadgeStatus[] }) {
     <>
       <div className="row row--between" style={{ alignItems: 'flex-start', gap: 12 }}>
         <h2 className="section-title" style={{ margin: 0 }}>
-          Achievements <span className="tnum badges__count">{earned} / {badges.length}</span>
+          {t('Achievements')} <span className="tnum badges__count">{earned} / {badges.length}</span>
         </h2>
-        <span className="badges__hint">Tap a badge to see exactly how it is measured.</span>
+        <span className="badges__hint">{t('Tap a badge to see exactly how it is measured.')}</span>
       </div>
 
       <div className="badges">
@@ -68,7 +69,7 @@ export function Achievements({ badges }: { badges: BadgeStatus[] }) {
           <div className="row row--between" style={{ marginBottom: 8 }}>
             <span className="badge-detail__name">{detail.name}</span>
             <button type="button" className="badge-detail__close" onClick={() => setOpen(null)}>
-              Close
+              {t('Close')}
             </button>
           </div>
 

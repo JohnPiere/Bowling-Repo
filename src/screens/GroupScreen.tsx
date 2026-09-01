@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { SAMPLE_FEED } from '../data/roster';
@@ -67,7 +68,7 @@ export function GroupScreen({
           <button
             type="button"
             className="iconbtn"
-            aria-label="Group settings"
+            aria-label={t('Group settings')}
             onClick={onOpenSettings}
           >
             <Icon name="settings" size={18} />
@@ -75,7 +76,7 @@ export function GroupScreen({
           <button
             type="button"
             className="iconbtn iconbtn--accent"
-            aria-label="Group chat"
+            aria-label={t('Group chat')}
             onClick={onOpenChat}
           >
             <Icon name="chat" size={18} />
@@ -85,7 +86,7 @@ export function GroupScreen({
 
         <div className="hero__standing">
           <div>
-            <div className="hero__label">Your rank</div>
+            <div className="hero__label">{t('Your rank')}</div>
             <div className="hero__numeral tnum">{mine.rank}</div>
             <div className="hero__meta">of {roster.length}</div>
           </div>
@@ -131,7 +132,7 @@ export function GroupScreen({
         </div>
       </section>
 
-      <div className="chips" role="group" aria-label="Leaderboard metric">
+      <div className="chips" role="group" aria-label={t('Leaderboard metric')}>
         {METRICS.map((m) => (
           <button
             key={m.key}
@@ -224,10 +225,10 @@ export function GroupScreen({
         onClick={onOpenShared}
       >
         <Icon name="share" size={18} />
-        Shared games
+        {t('Shared games')}
       </button>
 
-      <h2 className="section-title">Recent activity</h2>
+      <h2 className="section-title">{t('Recent activity')}</h2>
       <div className="card">
         {SAMPLE_FEED.map((item) => (
           <div key={item.text} className="row" style={{ padding: '5px 0' }}>

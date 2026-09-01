@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { QrCode, joinUrl } from '../components/QrCode';
 import { GROUPS } from '../data/groups';
@@ -86,7 +87,7 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
 
   return (
     <>
-      <div className="chips" role="group" aria-label="How to join">
+      <div className="chips" role="group" aria-label={t('How to join')}>
         <button
           type="button"
           className="chip"
@@ -96,17 +97,17 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
             setTab('code');
           }}
         >
-          Invite code
+          {t('Invite code')}
         </button>
         <button type="button" className="chip" aria-pressed={tab === 'qr'} onClick={() => setTab('qr')}>
-          QR code
+          {t('QR code')}
         </button>
       </div>
 
       {tab === 'code' ? (
         <>
           <label style={{ display: 'block' }}>
-            <span className="hero__label">Enter the six-character code</span>
+            <span className="hero__label">{t('Enter the six-character code')}</span>
             <input
               className="input code-input"
               style={{ marginTop: 6 }}
@@ -163,7 +164,7 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
           {scanError && <div className="note note--bad">{scanError}</div>}
           {ignored && (
             <div className="note note--warn">
-              That QR is not a Lane Log invite. Still looking.
+              {t('That QR is not a Lane Log invite. Still looking.')}
             </div>
           )}
 
@@ -172,10 +173,10 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
               <div className="viewfinder">
                 <video ref={videoRef} className="viewfinder__video" playsInline muted />
                 <div className="viewfinder__guide" />
-                <div className="viewfinder__hint">Point at the group's QR code</div>
+                <div className="viewfinder__hint">{t("Point at the group's QR code")}</div>
               </div>
               <button type="button" className="btn-lg" onClick={stopScanning}>
-                Stop scanning
+                {t('Stop scanning')}
               </button>
             </>
           ) : (
@@ -183,15 +184,15 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
               {supportsLiveCamera() ? (
                 <button type="button" className="btn-lg btn-lg--primary" onClick={startScanning}>
                   <Icon name="camera" size={18} />
-                  Scan a QR code
+                  {t('Scan a QR code')}
                 </button>
               ) : (
                 <div className="note note--warn">
-                  This browser will not give the app a camera. Use the invite code instead.
+                  {t('This browser will not give the app a camera. Use the invite code instead.')}
                 </div>
               )}
 
-              <h2 className="section-title">Or show yours</h2>
+              <h2 className="section-title">{t('Or show yours')}</h2>
               <div className="card" style={{ display: 'grid', placeItems: 'center', padding: 20 }}>
                 <QrCode value={joinUrl('TCRW31')} size={180} />
                 <p className="muted" style={{ marginTop: 12, marginBottom: 0, textAlign: 'center' }}>
@@ -205,7 +206,7 @@ export function JoinGroupScreen({ onJoined, initialCode = '' }: Props) {
       )}
 
       <p className="footnote">
-        Try <span className="tnum">TCRW31</span> against the sample data.
+        {t('Try')} <span className="tnum">TCRW31</span> against the sample data.
       </p>
     </>
   );

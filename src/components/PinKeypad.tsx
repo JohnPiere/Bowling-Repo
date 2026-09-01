@@ -1,4 +1,5 @@
 import { pinsAvailable, PINS } from '../lib/scoring';
+import { t } from '../lib/i18n';
 
 interface Props {
   rolls: number[];
@@ -42,7 +43,7 @@ export function PinKeypad({ rolls, onRoll, onUndo, disabled = false }: Props) {
         onClick={onUndo}
         disabled={rolls.length === 0}
       >
-        Undo
+        {t('Undo')}
       </button>
     </div>
   );

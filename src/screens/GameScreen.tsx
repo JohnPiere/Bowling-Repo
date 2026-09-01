@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { t } from '../lib/i18n';
 import { downloadHtml, gameSheetHtml } from '../lib/exporting';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
@@ -125,7 +126,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
       <>
         <div className="card">
           <div className="row row--between" style={{ marginBottom: 10 }}>
-            <span className="hero__label">Corrected game</span>
+            <span className="hero__label">{t('Corrected game')}</span>
             <span className="tnum" style={{ fontSize: 28, letterSpacing: '-0.03em' }}>
               {editedCard ? editedCard.total : '—'}
             </span>
@@ -142,7 +143,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           ))}
 
         <label style={{ display: 'block', marginBottom: 11 }}>
-          <span className="hero__label">Marks</span>
+          <span className="hero__label">{t('Marks')}</span>
           <input
             className="input tnum"
             style={{ marginTop: 5, letterSpacing: '0.08em' }}
@@ -154,11 +155,11 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           />
         </label>
         <p className="muted" style={{ margin: '-6px 0 12px' }}>
-          One group a frame. X for a strike, / for a spare, - for a miss.
+          {t('One group a frame. X for a strike, / for a spare, - for a miss.')}
         </p>
 
         <label style={{ display: 'block', marginBottom: 11 }}>
-          <span className="hero__label">Where you bowled</span>
+          <span className="hero__label">{t('Where you bowled')}</span>
           <input
             className="input"
             style={{ marginTop: 5 }}
@@ -183,12 +184,12 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           style={{ marginTop: 11 }}
           onClick={() => setEditing(false)}
         >
-          Cancel
+          {t('Cancel')}
         </button>
 
         {game.hasSheet && photo && (
           <>
-            <h2 className="section-title">The sheet, for checking against</h2>
+            <h2 className="section-title">{t('The sheet, for checking against')}</h2>
             <img className="shot" src={photo} alt="The scanned score sheet" />
           </>
         )}
@@ -217,7 +218,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
 
       {game.hasSheet && (
         <>
-          <h2 className="section-title">The sheet it came from</h2>
+          <h2 className="section-title">{t('The sheet it came from')}</h2>
           {photo ? (
             <>
               <img className="shot" src={photo} alt="The scanned score sheet" />
@@ -226,14 +227,14 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
               </p>
             </>
           ) : photoFailed ? (
-            <p className="empty">The photo for this game could not be read.</p>
+            <p className="empty">{t('The photo for this game could not be read.')}</p>
           ) : (
-            <p className="empty">Loading the photo…</p>
+            <p className="empty">{t('Loading the photo…')}</p>
           )}
         </>
       )}
 
-      <h2 className="section-title">Keep a copy</h2>
+      <h2 className="section-title">{t('Keep a copy')}</h2>
       <button
         type="button"
         className="btn-lg"
@@ -244,16 +245,16 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           )
         }
       >
-        Export this game
+        {t('Export this game')}
       </button>
       <p className="footnote">
         A printable score sheet, saved to this device. Open it and print to save it as a PDF —
         which is how a phone makes one.
       </p>
 
-      <h2 className="section-title">Correct it</h2>
+      <h2 className="section-title">{t('Correct it')}</h2>
       <button type="button" className="btn-lg" onClick={startEditing}>
-        Fix a frame
+        {t('Fix a frame')}
       </button>
       <p className="footnote">
         {game.source === 'scan'
@@ -261,11 +262,11 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           : 'Mis-tapped a ball? Put it right here.'}
       </p>
 
-      <h2 className="section-title">Sharing</h2>
+      <h2 className="section-title">{t('Sharing')}</h2>
       {sharedWith.length === 0 ? (
         <button type="button" className="btn-lg btn-lg--primary" onClick={onShare}>
           <Icon name="share" size={18} />
-          Share to a crew
+          {t('Share to a crew')}
         </button>
       ) : (
         <>
@@ -278,19 +279,19 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
                   className="chip"
                   onClick={() => retract(group!.id)}
                 >
-                  Unshare
+                  {t('Unshare')}
                 </button>
               </div>
             </div>
           ))}
           <button type="button" className="btn-lg" onClick={onShare}>
             <Icon name="share" size={18} />
-            Share to another crew
+            {t('Share to another crew')}
           </button>
         </>
       )}
 
-      <h2 className="section-title">Delete</h2>
+      <h2 className="section-title">{t('Delete')}</h2>
       {confirming ? (
         <>
           <div className="note note--bad">
@@ -300,7 +301,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           </div>
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn-lg" onClick={() => setConfirming(false)}>
-              Keep it
+              {t('Keep it')}
             </button>
             <button
               type="button"
@@ -318,7 +319,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           className="btn-lg btn-lg--danger"
           onClick={() => setConfirming(true)}
         >
-          Delete this game
+          {t('Delete this game')}
         </button>
       )}
     </>

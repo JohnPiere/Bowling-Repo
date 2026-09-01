@@ -1,4 +1,5 @@
 import { DataTable } from './DataTable';
+import { t } from '../../lib/i18n';
 
 /**
  * How often each length of strike run happened.
@@ -16,7 +17,7 @@ export function StrikeRunsChart({ runs }: { runs: number[] }) {
   const peak = Math.max(...buckets, 0);
 
   if (peak === 0) {
-    return <p className="empty">No strikes in this range yet.</p>;
+    return <p className="empty">{t('No strikes in this range yet.')}</p>;
   }
 
   const longest = buckets.reduce((best, count, i) => (count > 0 ? i + 1 : best), 0);
@@ -24,7 +25,7 @@ export function StrikeRunsChart({ runs }: { runs: number[] }) {
   return (
     <div className="viz">
       <div className="row row--between" style={{ marginBottom: 10 }}>
-        <span className="hero__label">Consecutive strikes</span>
+        <span className="hero__label">{t('Consecutive strikes')}</span>
         <span className="tnum" style={{ fontSize: 12, color: 'var(--color-accent-300)' }}>
           Longest: {longest}
         </span>
@@ -52,10 +53,10 @@ export function StrikeRunsChart({ runs }: { runs: number[] }) {
         ))}
       </div>
 
-      <p className="footnote">Consecutive strikes per occurrence, across this range.</p>
+      <p className="footnote">{t('Consecutive strikes per occurrence, across this range.')}</p>
 
       <DataTable
-        caption="Strike runs by length"
+        caption={t('Strike runs by length')}
         columns={['Run', 'Times']}
         rows={buckets.map((count, i) => [`${i + 1} in a row`, count])}
       />

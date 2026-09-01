@@ -1,4 +1,5 @@
 import type { BallOutcomes } from '../../lib/stats';
+import { t } from '../../lib/i18n';
 import { DataTable } from './DataTable';
 
 /**
@@ -13,7 +14,7 @@ export function OutcomeSplitChart({ outcomes }: { outcomes: BallOutcomes }) {
   const total = outcomes.strikes + outcomes.spares + outcomes.opens;
 
   if (total === 0) {
-    return <p className="empty">No finished frames in this range.</p>;
+    return <p className="empty">{t('No finished frames in this range.')}</p>;
   }
 
   const segments = [
@@ -63,7 +64,7 @@ export function OutcomeSplitChart({ outcomes }: { outcomes: BallOutcomes }) {
       </div>
 
       <DataTable
-        caption="Frame outcomes"
+        caption={t('Frame outcomes')}
         columns={['Outcome', 'Frames', 'Share']}
         rows={segments.map((s) => [s.key, s.value, `${Math.round((s.value / total) * 100)}%`])}
       />

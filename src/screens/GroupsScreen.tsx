@@ -1,4 +1,5 @@
 import { Avatar } from '../components/Avatar';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { GROUPS } from '../data/groups';
 import type { Session } from '../lib/session';
@@ -17,14 +18,14 @@ export function GroupsScreen({ session, onOpenGroup, onCreate, onJoin, onLinkAcc
     return (
       <>
         <div className="note note--info">
-          <strong>Groups need an account.</strong>
+          <strong>{t('Groups need an account.')}</strong>
           <p style={{ margin: '6px 0 0' }}>
             A group is shared with other people, so it cannot live only on this phone. Your games
             stay exactly where they are — linking adds an account, it does not move anything.
           </p>
         </div>
         <button type="button" className="btn-lg btn-lg--primary" onClick={onLinkAccount}>
-          Link an account
+          {t('Link an account')}
         </button>
       </>
     );
@@ -32,7 +33,7 @@ export function GroupsScreen({ session, onOpenGroup, onCreate, onJoin, onLinkAcc
 
   return (
     <>
-      <h2 className="section-title">Your groups</h2>
+      <h2 className="section-title">{t('Your groups')}</h2>
       {GROUPS.map((group) => (
         <button
           key={group.id}
@@ -74,13 +75,13 @@ export function GroupsScreen({ session, onOpenGroup, onCreate, onJoin, onLinkAcc
         </button>
       ))}
 
-      <h2 className="section-title">Add a group</h2>
+      <h2 className="section-title">{t('Add a group')}</h2>
       <button type="button" className="btn-lg btn-lg--primary" onClick={onJoin}>
         <Icon name="users" size={18} />
-        Join with a code
+        {t('Join with a code')}
       </button>
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCreate}>
-        Create a group
+        {t('Create a group')}
       </button>
 
       <p className="footnote">

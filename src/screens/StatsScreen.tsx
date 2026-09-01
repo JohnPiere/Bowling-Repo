@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Achievements } from '../components/Achievements';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
@@ -79,7 +80,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
       <>
         <RangePicker range={range} onChange={setRange} />
         <p className="empty">
-          No finished games in this range. Bowl one, or widen the range above.
+          {t('No finished games in this range. Bowl one, or widen the range above.')}
         </p>
       </>
     );
@@ -101,7 +102,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
                 type="button"
                 className="profile__edit"
                 onClick={onOpenSettings}
-                aria-label="Settings"
+                aria-label={t('Settings')}
               >
                 <Icon name="settings" size={13} />
               </button>
@@ -112,21 +113,21 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div className="profile__label">Best</div>
+          <div className="profile__label">{t('Best')}</div>
           <div className="profile__best tnum">{records.high}</div>
         </div>
       </div>
 
-      <h2 className="section-title">Personal records</h2>
+      <h2 className="section-title">{t('Personal records')}</h2>
       <div className="records">
-        <Pr value={records.high} label="Highest game" />
-        <Pr value={records.recentAverage} label="Best 10-game average" />
-        <Pr value={records.longestStrikeRun} label="Longest strike streak" />
-        <Pr value={`${records.sparePercent}%`} label="Spare conversion" />
+        <Pr value={records.high} label={t('Highest game')} />
+        <Pr value={records.recentAverage} label={t('Best 10-game average')} />
+        <Pr value={records.longestStrikeRun} label={t('Longest strike streak')} />
+        <Pr value={`${records.sparePercent}%`} label={t('Spare conversion')} />
       </div>
 
       {/* The tabs choose what is plotted; the chips choose over what. */}
-      <div className="tabs" role="tablist" aria-label="Metric">
+      <div className="tabs" role="tablist" aria-label={t('Metric')}>
         {METRICS.map((m) => (
           <button
             key={m.key}
@@ -136,7 +137,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
             className={`tabs__tab${m.key === metric ? ' tabs__tab--on' : ''}`}
             onClick={() => setMetric(m.key)}
           >
-            {m.short}
+            {t(m.short)}
           </button>
         ))}
       </div>
@@ -146,7 +147,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
       <div className="card">
         <div className="row row--between" style={{ marginBottom: 10 }}>
           <span className="grow">
-            <span className="hero__label">{active.label}</span>
+            <span className="hero__label">{t(active.label)}</span>
             <span className="metric__now tnum">
               {change ? change.now : '—'}
               {active.unit}
@@ -154,7 +155,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
           </span>
           {change && series.length > 1 && (
             <span className="grow" style={{ textAlign: 'right' }}>
-              <span className="hero__label">Change</span>
+              <span className="hero__label">{t('Change')}</span>
               <span
                 className="metric__delta tnum"
                 style={{
@@ -174,10 +175,10 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
           points={series}
           baseline={lifetime}
           unit={active.unit}
-          subject={`${active.short} to date`}
+          subject={`${t(active.short)}`}
           // The grey dots are one game's own reading, whatever the metric is —
           // calling them "Average" would name the line, not them.
-          context="Each game" 
+          context={t("Each game")} 
           scale={active.unit === '%' ? { min: 0, max: 100 } : undefined}
         />
       </div>
@@ -188,27 +189,27 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
         <Stat label="Best run" value={bestRun} suffix="×" />
       </div>
 
-      <h2 className="section-title">Spare analysis</h2>
+      <h2 className="section-title">{t('Spare analysis')}</h2>
       <SpareAnalysis breakdown={spares} conversion={conversion} games={rackGames} />
 
-      <h2 className="section-title">Strike streaks</h2>
+      <h2 className="section-title">{t('Strike streaks')}</h2>
       <div className="card">
         <StrikeRunsChart runs={runs} />
       </div>
 
-      <h2 className="section-title">How frames finish</h2>
+      <h2 className="section-title">{t('How frames finish')}</h2>
       <div className="card">
         <OutcomeSplitChart outcomes={outcomes} />
       </div>
 
       {leaves.length > 0 && (
         <>
-          <h2 className="section-title">What you leave</h2>
+          <h2 className="section-title">{t('What you leave')}</h2>
           <div className="card">
             {splits.faced > 0 && (
               <div className="row row--between" style={{ marginBottom: 12 }}>
                 <span className="grow">
-                  <span style={{ display: 'block', fontSize: 13 }}>Splits</span>
+                  <span style={{ display: 'block', fontSize: 13 }}>{t('Splits')}</span>
                   <span className="muted tnum">
                     {splits.converted} of {splits.faced} picked up
                   </span>
@@ -264,7 +265,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
 
       <Achievements badges={badges} />
 
-      <h2 className="section-title">First ball</h2>
+      <h2 className="section-title">{t('First ball')}</h2>
       <div className="card">
         <FirstBallChart counts={firstBalls} />
         <p className="footnote" style={{ marginBottom: 0 }}>
@@ -278,7 +279,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
 
 function RangePicker({ range, onChange }: { range: RangeKey; onChange: (r: RangeKey) => void }) {
   return (
-    <div className="chips" role="group" aria-label="Date range">
+    <div className="chips" role="group" aria-label={t('Date range')}>
       {RANGES.map((r) => (
         <button
           key={r.key}
@@ -287,7 +288,7 @@ function RangePicker({ range, onChange }: { range: RangeKey; onChange: (r: Range
           aria-pressed={r.key === range}
           onClick={() => onChange(r.key)}
         >
-          {r.label}
+          {t(r.label)}
         </button>
       ))}
     </div>

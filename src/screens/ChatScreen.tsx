@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { SAMPLE_MESSAGES, type ChatMessage, type Group } from '../data/groups';
 import type { Session } from '../lib/session';
@@ -67,7 +68,7 @@ export function ChatScreen({ group, session }: Props) {
                       <span className="tnum" style={{ fontSize: 26, letterSpacing: '-0.03em' }}>
                         {message.sharedScore.score}
                       </span>
-                      <span className="pill">Shared to board</span>
+                      <span className="pill">{t('Shared to board')}</span>
                     </div>
                     <div className="muted tnum">
                       {message.sharedScore.strikes} strikes · {message.sharedScore.spares} spares
@@ -84,7 +85,7 @@ export function ChatScreen({ group, session }: Props) {
 
       {session.isGuest ? (
         <div className="note note--info" style={{ margin: 0 }}>
-          Guests can read a group they were sent, but posting needs an account.
+          {t('Guests can read a group they were sent, but posting needs an account.')}
         </div>
       ) : (
         <div className="composer">
@@ -99,14 +100,14 @@ export function ChatScreen({ group, session }: Props) {
               }
             }}
             placeholder={`Message ${group.name}`}
-            aria-label="Message"
+            aria-label={t('Message')}
           />
           <button
             type="button"
             className="iconbtn iconbtn--accent"
             onClick={send}
             disabled={!draft.trim()}
-            aria-label="Send"
+            aria-label={t('Send')}
           >
             ↑
           </button>

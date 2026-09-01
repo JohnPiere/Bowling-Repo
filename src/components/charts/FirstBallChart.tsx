@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../../lib/i18n';
 import { DataTable } from './DataTable';
 
 const W = 320;
@@ -19,7 +20,7 @@ export function FirstBallChart({ counts }: { counts: number[] }) {
   const total = counts.reduce((a, b) => a + b, 0);
 
   if (total === 0) {
-    return <p className="empty">No frames in this range.</p>;
+    return <p className="empty">{t('No frames in this range.')}</p>;
   }
 
   const max = Math.max(...counts);
@@ -101,7 +102,7 @@ export function FirstBallChart({ counts }: { counts: number[] }) {
       )}
 
       <DataTable
-        caption="First-ball pin counts"
+        caption={t('First-ball pin counts')}
         columns={['First ball', 'Frames', 'Share']}
         rows={counts.map((count, pins) => [
           pins === 10 ? 'Strike' : String(pins),

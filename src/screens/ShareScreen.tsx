@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { GROUPS } from '../data/groups';
@@ -59,7 +60,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
     <>
       <div className="card">
         <div className="row row--between" style={{ marginBottom: 10 }}>
-          <span className="hero__label">This game</span>
+          <span className="hero__label">{t('This game')}</span>
           <span className="tnum" style={{ fontSize: 28, letterSpacing: '-0.03em' }}>
             {game.total}
           </span>
@@ -67,10 +68,10 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         <Scorecard scorecard={card} />
       </div>
 
-      <h2 className="section-title">Which crew</h2>
+      <h2 className="section-title">{t('Which crew')}</h2>
       {available.length === 0 ? (
         <p className="empty">
-          This game is already on every board you belong to.
+          {t('This game is already on every board you belong to.')}
         </p>
       ) : (
         available.map((group) => (
@@ -99,7 +100,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         </p>
       )}
 
-      <h2 className="section-title">What goes with it</h2>
+      <h2 className="section-title">{t('What goes with it')}</h2>
       <button
         type="button"
         className={`choice${!withSheet || !hasPhoto ? ' choice--on' : ''}`}
@@ -107,9 +108,9 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
       >
         <span className="choice__dot" aria-hidden="true" />
         <span className="grow">
-          <span className="choice__label">Score sheet only</span>
+          <span className="choice__label">{t('Score sheet only')}</span>
           <span className="choice__note">
-            The frames, marks and totals. A couple of kilobytes — instant, and it works offline.
+            {t('The frames, marks and totals. A couple of kilobytes — instant, and it works offline.')}
           </span>
         </span>
       </button>
@@ -124,7 +125,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         <span className="grow">
           <span className="choice__label">
             Score sheet and the photo
-            {!hasPhoto && <span className="pill" style={{ marginLeft: 8 }}>No photo</span>}
+            {!hasPhoto && <span className="pill" style={{ marginLeft: 8 }}>{t('No photo')}</span>}
           </span>
           <span className="choice__note">
             {hasPhoto
@@ -134,20 +135,20 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         </span>
       </button>
 
-      <h2 className="section-title">Tell the crew</h2>
+      <h2 className="section-title">{t('Tell the crew')}</h2>
       <div className="card">
         <div className="row row--between">
           <span className="grow">
-            <span style={{ display: 'block', fontSize: 13 }}>Send a notification</span>
+            <span style={{ display: 'block', fontSize: 13 }}>{t('Send a notification')}</span>
             <span className="muted">
-              Members with notifications on get a nudge. Needs the push server running.
+              {t('Members with notifications on get a nudge. Needs the push server running.')}
             </span>
           </span>
           <button
             type="button"
             role="switch"
             aria-checked={tellCrew}
-            aria-label="Send a notification"
+            aria-label={t('Send a notification')}
             className={`switch${tellCrew ? ' switch--on' : ''}`}
             onClick={() => setTellCrew((v) => !v)}
           >
@@ -167,7 +168,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         {busy ? 'Sharing…' : 'Share to the board'}
       </button>
       <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onCancel}>
-        Not now
+        {t('Not now')}
       </button>
 
       <p className="footnote">
