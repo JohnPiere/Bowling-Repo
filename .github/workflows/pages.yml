@@ -45,8 +45,11 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
-      # Turns Pages on for the repository if it is not on already, so this
-      # needs no click in Settings before the first run.
+      # Asks GitHub to turn Pages on if it is not on already. The workflow
+      # token is often not allowed to create a Pages site — the step then fails
+      # with "Resource not accessible by integration", and Pages has to be
+      # switched on once by hand: Settings -> Pages -> Source: GitHub Actions.
+      # After that this step finds the site and the run goes through.
       - uses: actions/configure-pages@v5
         with:
           enablement: true
