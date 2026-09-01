@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { t } from '../../lib/i18n';
 import type { MetricPoint } from '../../lib/stats';
 import { DataTable } from './DataTable';
@@ -51,6 +51,7 @@ export function ScoreTrendChart({
   scale,
 }: Props) {
   const hover = useHoverIndex(points.length, PAD.left, PAD.right);
+  const [picked, setPicked] = useState<number | null>(null);
 
   // Every hook runs on every render, so the scale is worked out before the
   // "not enough games yet" case rather than after it.
@@ -98,7 +99,11 @@ export function ScoreTrendChart({
   // fill is what makes a rise read as a rise rather than as a wandering line.
   const area = `${line} L${rolling[rolling.length - 1].x} ${floor} L${rolling[0].x} ${floor} Z`;
 
-  const active = hover.index === null ? null : points[hover.index];
+  // Tap wins over hover. On a phone `pointerleave` fires the instant a tap
+  // ends, so tracking alone made the tooltip flash and vanish — the reading
+  // has to be something you choose and that then stays chosen.
+  const shown = picked ?? hover.index;
+  const active = shown === null ? null : points[shown];
   const last = points[points.length - 1];
   const tip = rolling[rolling.length - 1];
   const radius = ringRadius((W - PAD.left - PAD.right) / Math.max(1, rolling.length - 1));
@@ -165,17 +170,34 @@ export function ScoreTrendChart({
         {/* Open rings on the line itself, big enough to tap. The handoff draws
             these rather than filled dots: a ring sits *on* the curve instead of
             hiding the piece of it underneath. */}
-        {radius >= 2.5 &&
-          rolling.map((p, i) => (
-            <circle
-              key={`r${i}`}
-              className="viz__ring-dot"
-              cx={p.x}
-              cy={p.y}
-              r={radius}
-              strokeWidth={radius >= 4 ? 2 : 1.5}
-            />
-          ))}
+        {rolling.map((p, i) => {
+          const on = shown === i;
+          const drawn = radius >= 2.5 || on;
+
+          return (
+            <g key={`r${i}`} className="viz__pt" style={{ animationDelay: `${(0.15 + i * 0.04).toFixed(2)}s` }}>
+              {drawn && (
+                <circle
+                  className="viz__ring-dot"
+                  cx={p.x}
+                  cy={p.y}
+                  r={on ? Math.max(5.5, radius + 2) : radius}
+                  fill={on ? 'var(--viz-subject)' : undefined}
+                  strokeWidth={on ? 3 : radius >= 4 ? 2 : 1.5}
+                />
+              )}
+              {/* The target is a thumb, not the dot. */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={15}
+                fill="transparent"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setPicked(on ? null : i)}
+              />
+            </g>
+          );
+        })}
 
         {/* The endpoint is always drawn, however many games there are. */}
         <circle
@@ -185,19 +207,19 @@ export function ScoreTrendChart({
           r={Math.max(4, radius + 0.5)}
         />
 
-        {hover.index !== null && active && (
+        {shown !== null && active && (
           <>
             <line
               className="viz__crosshair"
-              x1={x(hover.index)}
-              x2={x(hover.index)}
+              x1={x(shown)}
+              x2={x(shown)}
               y1={PAD.top}
               y2={PAD.top + plotH}
             />
             <circle
               className="viz__dot"
-              cx={scores[hover.index]?.x ?? x(hover.index)}
-              cy={scores[hover.index]?.y ?? y(active.value)}
+              cx={scores[shown]?.x ?? x(shown)}
+              cy={scores[shown]?.y ?? y(active.value)}
               r={4}
               fill="var(--viz-context)"
             />
@@ -212,26 +234,22 @@ export function ScoreTrendChart({
         </text>
       </svg>
 
-      {hover.index !== null && active && (
-        <div
-          className="viz__tooltip"
-          style={{
-            left: `${(x(hover.index) / W) * 100}%`,
-            top: `${(y(Math.max(active.value, active.rolling)) / H) * 100}%`,
-            // Centring on the point pushes the box out of the card at either
-            // end, so the anchor follows the edge it is near.
-            transform: `translate(${anchorX(hover.index, points.length)}, -100%)`,
-          }}
-        >
-          <div className="viz__tooltip-label">{formatDate(active.playedAt)}</div>
-          <div className="tnum">
-            {context} <strong>
+      {/* A box under the plot rather than a bubble over it. A floating
+          tooltip has to dodge both edges of a phone-width card, and it covers
+          the very part of the line being read. */}
+      {shown !== null && active && (
+        <div className="viz__tip">
+          <div className="viz__tip-label">{formatDate(active.playedAt)}</div>
+          <div className="row row--between tnum">
+            <span>{context}</span>
+            <strong>
               {active.value}
               {unit}
             </strong>
           </div>
-          <div className="tnum" style={{ color: 'var(--color-accent-300)' }}>
-            {subject} <strong>
+          <div className="row row--between tnum" style={{ color: 'var(--color-accent-300)' }}>
+            <span>{subject}</span>
+            <strong>
               {active.rolling}
               {unit}
             </strong>
@@ -270,13 +288,6 @@ export function ScoreTrendChart({
   );
 }
 
-/** Keep the tooltip inside the card by anchoring it away from a near edge. */
-function anchorX(index: number, count: number): string {
-  const position = count <= 1 ? 0.5 : index / (count - 1);
-  if (position < 0.2) return '0%';
-  if (position > 0.8) return '-100%';
-  return '-50%';
-}
 
 /**
  * A curve through the points rather than a dogleg at each one.
