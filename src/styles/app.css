@@ -249,6 +249,9 @@ body {
   background: transparent;
   color: var(--color-neutral-300);
 }
+/* Sits beside the commit button rather than above it: at 100% width the two
+   would cost 112px of a screen that has to hold a rack as well. */
+.btn-lg--narrow { width: auto; flex: none; min-height: 48px; padding: 0 18px; }
 .btn-lg:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .note {
@@ -470,6 +473,16 @@ body {
   content: '';
   position: absolute;
   inset: -12px -10px;
+}
+/* The play screen's discard: a link rather than a button, because a
+   full-width one would push the commit row under the fold to say something
+   nobody opened the screen to do. */
+.linkbtn--centred {
+  display: block;
+  width: 100%;
+  text-align: center;
+  color: var(--color-neutral-500);
+  padding: 8px 0;
 }
 
 /* The dashboard's list of recent games. Tighter than `.stack`: these are five
@@ -1913,12 +1926,6 @@ body {
 /* The shortcut above the rack. Accent-outlined rather than filled: it is the
    fastest path, not the only one, and two filled buttons on one screen means
    neither is the primary. */
-.btn-lg--quick {
-  color: var(--color-accent-200);
-  border-color: var(--color-accent-700);
-  background: rgba(145, 132, 217, 0.08);
-}
-
 .btn-lg--danger { color: var(--negative); border-color: rgba(224, 163, 182, 0.4); }
 
 /* The confirmation for the one action nothing can undo, marked as such. */
@@ -1926,42 +1933,286 @@ body {
 
 /* ── Pin rack ──────────────────────────────────────────────────────────── */
 
-.rack { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.rack__svg { display: block; overflow: visible; }
-/*
- * Fills the card. A rack is a grid of ten targets that abut with no gutter, so
- * how big it is *is* how accurate tapping it is — at 200px each cell is 50px
- * and a thumb landing a few pixels wide knocks down a neighbour. Capped so it
- * does not become absurd on a tablet.
- */
-.rack__svg--fill { width: 100%; height: auto; max-width: 340px; }
+/* ── Play: the frame strip ─────────────────────────────────────────────── */
 
+/* The scoring step is sized to fit one screen. `gap` owns the rhythm so no
+   child carries a margin that would push the commit buttons under the fold. */
+.play { display: flex; flex-direction: column; gap: 11px; }
+/* The tenth adds a line of explanation, so the column gives back the height it
+   costs rather than pushing the commit row under the fold. */
+.play--tenth { gap: 7px; }
+.play__note { margin: -4px 0 0; font-size: 10px; line-height: 1.4; color: var(--color-neutral-600); }
+.play__commit { display: flex; gap: 8px; }
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.strip__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--color-neutral-800);
+  transition: box-shadow 0.22s ease, background 0.22s ease, opacity 0.22s ease;
+}
+.strip__cell--now {
+  background: rgba(145, 132, 217, 0.14);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+/* Frames not yet reached are dimmed rather than hidden: the strip is the shape
+   of a whole game, and ten cells that appear one at a time is a progress bar. */
+.strip__cell--todo { opacity: 0.5; }
+
+.strip__head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1px;
+}
+.strip__num { font-size: 9px; font-weight: 500; color: var(--color-neutral-600); }
+.strip__total { font-size: 11px; font-weight: 600; color: var(--color-neutral-200); }
+.strip__cell--now .strip__total { color: var(--color-accent-200); }
+
+/* The pin diagram. Five-pixel dots, filled in the accent for a pin this frame
+   took down — the reason the strip exists rather than a row of numbers. */
+.strip__pins { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.strip__pinrow { display: flex; gap: 2px; }
+.strip__pin {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--color-neutral-600);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.strip__pin--down {
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.strip__boxes { display: flex; gap: 1.5px; width: 100%; }
+.strip__box {
+  flex: 1;
+  min-height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(63, 66, 77, 0.85);
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-300);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.strip__box--mark { color: var(--color-accent-200); }
+/* The tenth's third box only exists once a mark earns it, so it is drawn as
+   waiting rather than as an ordinary empty box. */
+.strip__box--bonus {
+  background: rgba(145, 132, 217, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(145, 132, 217, 0.45);
+}
+.strip__box--live {
+  background: rgba(145, 132, 217, 0.26);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+/* Where you are, and what it has scored. */
+.playline { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.playline__ball { font-size: 15px; font-weight: 500; line-height: 1.25; margin-top: 3px; }
+.playline__total {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--color-accent-200);
+}
+
+/* ── Play: the rack ────────────────────────────────────────────────────── */
+
+.rack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.rack__deck { display: flex; flex-direction: column; gap: 7px; align-items: center; }
+.rack__row { display: flex; gap: 10px; }
+
+/*
+ * 46px painted with a 10px gutter.
+ *
+ * The gutter is the point. An earlier rack drew the ten targets abutting with
+ * no dead space, so a thumb aimed at the 5 and landing a few pixels high took
+ * the 8 instead — bigger targets do not help when the miss lands on a
+ * neighbour. Here a near miss lands on nothing and the bowler tries again.
+ */
 .rack__pin {
-  fill: var(--color-surface);
-  stroke: var(--color-neutral-600);
-  stroke-width: 0.5;
-  transition: fill 0.14s ease, stroke 0.14s ease;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-neutral-600);
+  color: var(--color-neutral-200);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.22s ease;
 }
 /* Knocked down by this ball. */
-.rack__pin--knocked { fill: var(--color-accent); stroke: var(--color-accent-300); }
+.rack__pin--knocked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #191b26;
+  box-shadow: 0 0 0 6px rgba(145, 132, 217, 0.13);
+  animation: pinDrop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
 /* Already down before this ball: drawn faintly rather than removed, so the
    deck keeps its shape and a leave stays recognisable. */
-.rack__pin--gone { fill: transparent; stroke: var(--color-neutral-800); }
-
-.rack__number {
-  font-size: 2.6px;
-  fill: var(--color-neutral-500);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
+.rack__pin--gone {
+  background: var(--color-neutral-900);
+  border-color: var(--color-neutral-900);
+  color: var(--color-neutral-700);
+  cursor: default;
+  animation: pinSettle 0.3s ease both;
 }
-.rack__pin--knocked + .rack__number { fill: #17141f; }
-.rack__pin--gone + .rack__number { fill: var(--color-neutral-800); }
+.rack__pin:disabled { opacity: 1; }
+.rack__pin:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
-.rack__hit { cursor: pointer; }
-.rack__hit:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+@keyframes pinDrop {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.22) translateY(-3px); }
+  72% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes pinSettle {
+  from { transform: scale(1.08); opacity: 0.5; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes shout {
+  0% { opacity: 0; transform: scale(0.7); }
+  55% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
 
-.rack__leave { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+/* The deck is clear, and the screen says so before the button has to. */
+.rack__shout {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--color-accent-200);
+  animation: shout 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.rack__legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-neutral-500);
+}
+.rack__legend span { display: flex; gap: 6px; align-items: center; }
+.rack__key { width: 11px; height: 11px; border-radius: 50%; }
+.rack__key--standing { border: 1.5px solid var(--color-neutral-700); }
+.rack__key--knocked { background: var(--color-accent); }
+.rack__key--gone { background: var(--color-neutral-900); }
+
+.rack__leave { min-height: 16px; text-align: center; }
 .pill--warn { border-color: var(--negative); color: var(--negative); }
+
+/* One tap for the ball that takes everything. Dashed, because it is a
+   shortcut past the rack rather than another thing to press in sequence. */
+.btn-quick {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px dashed var(--color-accent-700);
+  background: rgba(145, 132, 217, 0.07);
+  color: var(--color-accent-200);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: background 0.18s ease, border-style 0.18s ease;
+}
+.btn-quick:hover,
+.btn-quick:focus-visible { background: rgba(145, 132, 217, 0.16); border-style: solid; }
+.btn-quick__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #191b26;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/*
+ * Short screens.
+ *
+ * The scoring step wants about 720px and an SE-sized phone gives 545. Targets
+ * stay at 44px — shrinking those is the one thing that would make the screen
+ * worse to use — so what goes is the part that explains rather than accepts
+ * input: the legend, the leave caption, and the strip's second row, which
+ * becomes one row of ten. Everything still fits, and a frame is still a frame.
+ */
+@media (max-height: 780px) {
+  .play { gap: 7px; }
+  .strip { grid-template-columns: repeat(10, 1fr); gap: 3px; }
+  .strip__cell { padding: 3px 2px; gap: 2px; }
+  .strip__pin { width: 4px; height: 4px; }
+  .strip__pinrow { gap: 1.5px; }
+  .strip__box { min-height: 12px; font-size: 8px; }
+  .strip__num { font-size: 8px; }
+  .strip__total { font-size: 10px; }
+
+  .playline__ball { font-size: 13px; }
+  .playline__total { font-size: 24px; }
+
+  .rack { padding: 8px 12px 6px; gap: 5px; }
+  .rack__deck { gap: 5px; }
+  .rack__row { gap: 9px; }
+  .rack__pin { width: 44px; height: 44px; }
+  .rack__legend { display: none; }
+  .rack__leave { min-height: 14px; font-size: 10px; }
+
+  .play__commit .btn-lg { min-height: 46px; }
+  .linkbtn--centred { padding: 4px 0; }
+}
+
+/*
+ * Shorter still — a 640px phone. The leave caption goes too. It is the last
+ * thing worth losing, because it names what you left, but a rack you have to
+ * scroll to reach is worse than a rack that does not say "7-10".
+ */
+@media (max-height: 660px) {
+  .rack__leave { display: none; }
+  .play__commit .btn-lg { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rack__pin,
+  .rack__shout { animation: none; }
+}
 
 .leave-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .leave-row__bar {

@@ -1,4 +1,5 @@
-import { describeLeave, PIN_POSITIONS } from '../lib/pins';
+import { describeLeave } from '../lib/pins';
+import { rackRows } from '../lib/framestrip';
 import { t, tf } from '../lib/i18n';
 
 interface Props {
@@ -9,102 +10,89 @@ interface Props {
   onToggle: (pin: number) => void;
   /** Read-only, for showing a leave that has already been bowled. */
   readOnly?: boolean;
-  /**
-   * A fixed pixel size. Left off, the rack fills the width it is given, which
-   * is what the entry screen wants: the whole point of tapping pins is hitting
-   * the right one, and at 200px each pin's target is 50px with no dead space
-   * between neighbours — aim a little off and you knock the wrong pin down.
-   */
-  size?: number;
 }
-
-/** Pin-width in SVG units; the rack is four wide and four rows deep. */
-const UNIT = 10;
-const RADIUS = 3.6;
 
 /**
  * The rack, drawn as it stands on the deck.
  *
- * Tap a pin to knock it down. Pins already down before this ball are drawn
- * faintly rather than hidden, so the deck keeps its shape and the leave stays
- * recognisable — a 7-10 should look like a 7-10.
+ * Real buttons in rows rather than circles in an SVG. The rack is the thing
+ * being aimed at on a phone, and buttons get the browser's own hit testing,
+ * focus ring and press feedback for free — an SVG needs all three rebuilt, and
+ * the version that did had its targets abutting with no dead space between
+ * them, so a thumb aimed at the 5 could take the 8.
+ *
+ * Each pin is 46px painted with a 10px gutter, which is 44px to the thumb with
+ * room to miss into rather than a neighbour to hit.
+ *
+ * Pins already down before this ball are drawn faintly rather than hidden, so
+ * the deck keeps its shape and the leave stays recognisable — a 7-10 should
+ * look like a 7-10.
  */
-export function PinRack({ standing, knocked, onToggle, readOnly = false, size }: Props) {
+export function PinRack({ standing, knocked, onToggle, readOnly = false }: Props) {
   const up = new Set(standing);
   const down = new Set(knocked);
   const remaining = standing.filter((pin) => !down.has(pin));
-
-  const width = UNIT * 4;
-  const height = UNIT * 4;
+  const swept = standing.length > 0 && remaining.length === 0;
 
   return (
     <div className="rack">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        width={size}
-        height={size}
-        role="group"
-        aria-label={t('Pin rack')}
-        className={`rack__svg${size ? '' : ' rack__svg--fill'}`}
-      >
-        {Object.entries(PIN_POSITIONS).map(([key, pos]) => {
-          const pin = Number(key);
-          const isUp = up.has(pin);
-          const isKnocked = down.has(pin);
+      <div className="rack__deck" role="group" aria-label={t('Pin rack')}>
+        {rackRows().map((row, i) => (
+          <div key={i} className="rack__row">
+            {row.map((pin) => {
+              const isUp = up.has(pin);
+              const isKnocked = down.has(pin);
 
-          // Rows run back to front on the deck, so row 3 draws at the top.
-          const cx = pos.x * UNIT + UNIT / 2;
-          const cy = (3 - pos.row) * UNIT + UNIT / 2;
+              const label = !isUp
+                ? tf('Pin {n}, already down', { n: pin })
+                : isKnocked
+                  ? tf('Pin {n}, knocked down — tap to stand it back up', { n: pin })
+                  : tf('Pin {n}, standing — tap to knock it down', { n: pin });
 
-          const label = !isUp
-            ? `Pin ${pin}, already down`
-            : isKnocked
-              ? `Pin ${pin}, knocked down — tap to stand it back up`
-              : `Pin ${pin}, standing — tap to knock it down`;
-
-          return (
-            <g key={pin}>
-              <circle
-                cx={cx}
-                cy={cy}
-                r={RADIUS}
-                className={[
-                  'rack__pin',
-                  !isUp ? 'rack__pin--gone' : '',
-                  isKnocked ? 'rack__pin--knocked' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              />
-              <text x={cx} y={cy + 1.4} className="rack__number" textAnchor="middle">
-                {pin}
-              </text>
-              {/* A generous hit target over the whole cell: a 3.6-unit circle
-                  is far smaller than a thumb. */}
-              {!readOnly && isUp && (
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={UNIT / 2}
-                  fill="transparent"
-                  className="rack__hit"
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={isKnocked}
+              return (
+                <button
+                  key={pin}
+                  type="button"
+                  className={[
+                    'rack__pin',
+                    !isUp ? 'rack__pin--gone' : '',
+                    isKnocked ? 'rack__pin--knocked' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-pressed={isUp ? isKnocked : undefined}
                   aria-label={label}
+                  disabled={readOnly || !isUp}
                   onClick={() => onToggle(pin)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onToggle(pin);
-                    }
-                  }}
-                />
-              )}
-            </g>
-          );
-        })}
-      </svg>
+                >
+                  {pin}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* The shout, where the prototype puts it: the deck is clear and the
+          screen says so before the commit button has to. */}
+      {swept && (
+        <div className="rack__shout">{standing.length === 10 ? t('STRIKE') : t('SPARE')}</div>
+      )}
+
+      <div className="rack__legend" aria-hidden="true">
+        <span>
+          <i className="rack__key rack__key--standing" />
+          {t('standing')}
+        </span>
+        <span>
+          <i className="rack__key rack__key--knocked" />
+          {t('knocked')}
+        </span>
+        <span>
+          <i className="rack__key rack__key--gone" />
+          {t('down')}
+        </span>
+      </div>
 
       {/* describeLeave already says "split" where it is one, so there is no
           separate flag — two words for the same fact reads as a stutter.
@@ -114,15 +102,11 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false, size }:
         {down.size === 0 ? (
           <span className="muted">{t('Tap the pins this ball took down')}</span>
         ) : (
-          <>
-            <span className="tnum" style={{ fontSize: 21 }}>
-              {down.size}
-            </span>{' '}
-            <span className="muted">
-              {down.size === 1 ? t('pin') : t('pins')}
-              {remaining.length > 0 && ` · ${tf('leaves {leave}', { leave: describeLeave(remaining) })}`}
-            </span>
-          </>
+          <span className="muted">
+            {tf('{n} down', { n: down.size })}
+            {remaining.length > 0 &&
+              ` · ${tf('leaves {leave}', { leave: describeLeave(remaining) })}`}
+          </span>
         )}
       </div>
     </div>

@@ -25,6 +25,30 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Play: the frame strip and the rack ──
+  'Frames': 'フレーム',
+  'Frame {n} of 10': '第{n}フレーム / 全10',
+  'Running': '現在の合計',
+  'Second ball — {n} standing': '2投目 — {n}本残り',
+  'Bonus ball — fresh rack, {n} pins': 'ボーナス投球 — 新しいラック、{n}本',
+  'The tenth keeps three boxes — the bonus ball is the accented one.':
+    '第10フレームは3枠。ボーナス投球は色付きの枠です。',
+  'STRIKE': 'ストライク',
+  'SPARE': 'スペア',
+  'standing': '残り',
+  'knocked': '倒した',
+  'down': '倒れた',
+  'Strike — all ten': 'ストライク（10本）',
+  'Spare — everything left': 'スペア（残り全部）',
+  'Clear': 'クリア',
+  '{n} down': '{n}本',
+  'Pin {n}, already down': '{n}番ピン、すでに倒れています',
+  'Pin {n}, knocked down — tap to stand it back up': '{n}番ピン、倒しました。タップで元に戻します',
+  'Pin {n}, standing — tap to knock it down': '{n}番ピン、残っています。タップで倒します',
+  'Game finished — {n} pins. Add the house if you want it on the record.':
+    'ゲーム終了 — {n}ピン。記録に残す場合はボウリング場を入力してください。',
+  'Saving…': '保存中…',
+
   // ── Home dashboard ──
   'of 300': '/ 300',
   'Bowl a game or scan a sheet and it starts here.':

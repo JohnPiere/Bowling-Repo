@@ -38,9 +38,13 @@ deriving a number inside a component, it probably belongs in `lib/`.
 src/lib/
   scoring.ts      ten-pin scoring from a flat roll list
   marks.ts        parses X / - marks off a sheet into rolls
+  framestrip.ts   the play screen's ten cells: boxes, totals, pins per frame
+  dashboard.ts    what the home screen shows, and where you stand in your crew
   leaderboard.ts  ranking, bar scaling, podium order, movement
   stats.ts        season summary, trend, outcomes, first-ball buckets, leaves
   pins.ts         the rack, adjacency, split detection, leave names
+  history.ts      sorting, searching and grouping games into sessions
+  datetime.ts     input round-trips, and every date the app prints
   ocr/            segmentation, preprocessing, the recogniser interface
   db.ts           IndexedDB
   navigation.ts   the screen stack
@@ -69,6 +73,19 @@ fetches one when something actually shows it.
 
 **A scan is never imported silently.** OCR on pencil is good enough to save
 typing and not good enough to trust. Every scan lands on a review screen.
+
+**The scoring step fits one screen, and that is a constraint, not a wish.**
+Strip, status line, rack, two buttons — nothing scrolls, because the screen is
+used a ball at a time with one hand while somebody else is bowling. It wants
+about 720px and an SE-sized phone gives 545, so `app.css` carries two
+height media queries that give back what an ordinary phone does not need to.
+Targets stay at 44px through all of them; what goes is explanation. Anything
+added here has to earn its height against something already there —
+`scrollHeight - clientHeight` on `.screen` is the test.
+
+**Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
+the *browser*, so a phone in English shows "Aug 31" in the middle of a
+Japanese screen. One helper decides, and it reads the app's own setting.
 
 ## The scanner: one game at a time
 

@@ -209,7 +209,7 @@ async function main() {
     await check('the rack records which pins fell, and names the leave', async () => {
       await page.getByRole('button', { name: 'Play', exact: true }).click();
       await page.getByRole('button', { name: /Tap the pins/ }).click();
-      await page.waitForSelector('.rack__svg');
+      await page.waitForSelector('.rack__deck');
 
       const knock = async (...pins) => {
         for (const pin of pins) {
@@ -246,7 +246,7 @@ async function main() {
       // Finish, and check the pin data was stored alongside the counts.
       await page.getByRole('button', { name: 'Discard this game' }).click();
       await page.getByRole('button', { name: /Tap the pins/ }).click();
-      await page.waitForSelector('.rack__svg');
+      await page.waitForSelector('.rack__deck');
       for (let i = 0; i < 12; i++) {
         await knock(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         await commit();
