@@ -57,7 +57,7 @@ export function HistoryScreen({
         <>
           {sessions.map(([day, dayGames]) => (
             <section key={day}>
-              <h2 className="section-title">
+              <h2 className="section-title tnum">
                 {day} · {dayGames.length} game{dayGames.length === 1 ? '' : 's'} · avg{' '}
                 {Math.round(dayGames.reduce((sum, g) => sum + g.total, 0) / dayGames.length)}
               </h2>

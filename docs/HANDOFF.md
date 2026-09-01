@@ -125,3 +125,75 @@ the real-sheet work, drop a photo back at that path.
 upload `dist/`, serve `index.html` for unknown paths, and never cache `sw.js`.
 HTTPS is not optional — the camera, the service worker and Web Push all need a
 secure context, and on plain HTTP they fail silently rather than loudly.
+
+---
+
+# Spec audit — what the handoff asks for versus what is built
+
+A pass over `docs/DESIGN_HANDOFF.md` section by section, checking each concrete
+claim against the code. Prompted by the analytics animations, which the handoff
+specified in full and which had simply not been built — the worry being that
+other parts of the spec had been read the same way.
+
+Most of it holds up. The numbers that matter are all in place and traceable:
+the leaderboard's 54px rows and 7px gap, the 8%–92% bar range, the podium's
+`rise` stagger, `top 0.44s cubic-bezier(.2,.8,.2,1)` for the rank slide,
+`0.42s` for the bar fills, the 46px hero numeral, `--negative: #e0a3b6`, the
+44px touch targets, and the `prefers-reduced-motion` handling. All fourteen
+screens exist. What follows is only what does not match.
+
+## Gaps
+
+### 1. The high-game trend chart is missing
+`Stats / Analytics` lists four charts: **average trend, high game trend**,
+strike/spare/open split, first-ball distribution. Three are built. High game
+appears only as a single summary number on the stats screen, not as a series
+over the selected range.
+
+`src/lib/stats.ts` already produces per-game points; a running maximum over the
+same `TrendPoint[]` is most of the work, and `ScoreTrendChart` is close to
+reusable. Half a day at most.
+
+### 2. History cannot be filtered by venue
+"Filterable by range / **venue**" — `HistoryScreen` has the range chips and
+nothing else. Games already carry `house`, so the data is there; it needs a
+second chip row, or a combined filter, plus a decision about what to show when
+a game has no house recorded (most scanned ones will not).
+
+### 3. Settings has no units control
+"Units (pins / points)" is listed under Settings and does not exist. Worth
+deciding whether it is real before building it: everything in the app is
+already pin counts, and it is not obvious what "points" would change. This may
+be a line in the spec that does not survive contact.
+
+### 4. The history screen's numerals are not tabular
+The handoff is emphatic — `tabular-nums` **everywhere numbers can change** —
+and calls it out as overriding general charting guidance. The session header
+in `HistoryScreen` prints a game count and an average with neither `tnum` nor
+the class that sets it, so those numbers shift horizontally as they change
+between days. One-line fix, and the only place in the app it is wrong.
+
+### 5. The leaderboard's metric set follows the prototype, not the document
+The written handoff lists **Strike %** as the fourth metric (`metric: 'avg' |
+'high' | 'pins' | 'strike' | 'improved'`). The prototype's own `CREW_METRICS`
+lists **Handicap avg** instead. They disagree, and the build followed the
+prototype, so `hdcp` is in and `strike` is out.
+
+This is a decision to confirm rather than a defect. Handicap is the more useful
+of the two on a mixed-ability board — it is the entire reason league bowling
+has handicaps — but the document is the document.
+
+## Not gaps, recorded so they are not re-litigated
+
+- **Video** is a placeholder screen on purpose; the handoff puts it in Phase 4
+  and conditions it on a storage backend.
+- **Google and Apple OAuth** are stubbed. Real credentials were one of the
+  handoff's own open questions.
+- **The backend** does not exist; groups, rosters, chat and posts are sample
+  data in `src/data/`. Also the handoff's question, unanswered.
+- **Frame outcomes stayed a stacked bar** rather than becoming a second ring.
+  A ring reads one number against its own maximum and cannot be read against
+  another ring; three proportions belong in a bar.
+- **The chart motion is interpolated in JS**, not with `transition: d` and
+  animated `cx`/`cy` as the prototype does. Neither is dependable in Safari and
+  this app is opened on an iPhone; the durations and curves are the handoff's.
