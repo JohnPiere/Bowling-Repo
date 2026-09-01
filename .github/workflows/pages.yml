@@ -1,0 +1,66 @@
+# Publish the app to GitHub Pages.
+#
+# A project site serves under /<repo>/ rather than the domain root, which is
+# why the build takes BASE_PATH — see `base` in vite.config.ts. Every other
+# host in docs/DEPLOYING.md serves at the root and needs none of this.
+#
+# GitHub Pages cannot set response headers, so the Content-Security-Policy in
+# public/_headers does not apply here. The app works without it; a real
+# deployment should prefer a host that can send it.
+name: Pages
+
+on:
+  push:
+    branches: [claude/web-app-notifications-camera-ipb7lc]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a run finish rather than cancelling it: a half-published site is worse
+# than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # `prebuild` vendors Inter and the OCR engine into public/, which is
+      # gitignored — so this needs network access, and the build is not
+      # reproducible without it.
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      # Turns Pages on for the repository if it is not on already, so this
+      # needs no click in Settings before the first run.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

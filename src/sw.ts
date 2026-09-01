@@ -34,7 +34,7 @@ registerRoute(
 );
 
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/'),
+  ({ url }) => url.pathname.startsWith(`${import.meta.env.BASE_URL}api/`),
   new NetworkFirst({ cacheName: 'api', networkTimeoutSeconds: 5 }),
 );
 
@@ -51,10 +51,10 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title ?? 'Lane Log', {
       body: payload.body ?? '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/badge-72.png',
+      icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+      badge: `${import.meta.env.BASE_URL}icons/badge-72.png`,
       tag: payload.tag ?? 'lane-log',
-      data: { url: payload.url ?? '/' },
+      data: { url: payload.url ?? import.meta.env.BASE_URL },
     }),
   );
 });

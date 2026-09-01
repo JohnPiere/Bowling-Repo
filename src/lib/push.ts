@@ -189,8 +189,8 @@ export async function showLocalTestNotification(): Promise<void> {
   const registration = await navigator.serviceWorker.ready;
   await registration.showNotification('Lane Log', {
     body: 'Notifications are working on this device.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/badge-72.png',
+    icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+    badge: `${import.meta.env.BASE_URL}icons/badge-72.png`,
     tag: 'lane-log-test',
   });
 }

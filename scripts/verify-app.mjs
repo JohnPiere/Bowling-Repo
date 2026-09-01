@@ -18,7 +18,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const BASE = process.argv[2] ?? 'http://localhost:4173';
+const BASE = (process.argv[2] ?? 'http://localhost:4173').replace(/\/+$/, '');
 
 /** Where downloaded and generated files go. */
 const OUT = 'app-check';
@@ -132,7 +132,7 @@ async function main() {
     const pageErrors = [];
     page.on('pageerror', (e) => pageErrors.push(String(e)));
 
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('web manifest is served and installable-shaped', async () => {
       const href = await page.getAttribute('link[rel=manifest]', 'href');
@@ -181,7 +181,7 @@ async function main() {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.waitForTimeout(1200);
 
@@ -339,7 +339,7 @@ async function main() {
     const context = await browser.newContext();
     await context.grantPermissions(['notifications'], { origin: BASE });
     const page = await context.newPage();
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => navigator.serviceWorker.ready);
 
     await check('a push reaches the service worker and shows a notification', async () => {
@@ -401,7 +401,7 @@ async function main() {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('groups are gated for a guest, with a way forward', async () => {
       await page.getByRole('button', { name: 'Crew', exact: true }).click();
@@ -553,7 +553,7 @@ async function main() {
         await new Promise((res) => { tx.oncomplete = res; });
       });
 
-      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
       await page.locator('.game-row').first().click();
       await page.waitForSelector('text=The sheet it came from');
 
@@ -669,7 +669,7 @@ async function main() {
     const context = await browser.newContext();
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.setViewportSize({ width: 412, height: 892 });
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     const auditTargets = () =>
       page.evaluate(() => {
@@ -703,7 +703,7 @@ async function main() {
       const file = join(OUT, 'three-games.png');
       writeFileSync(file, Buffer.from(await drawSheet(page), 'base64'));
 
-      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
       await page.getByRole('button', { name: 'Play', exact: true }).click();
       await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
       await page.waitForSelector('text=Use a photo instead');
@@ -740,7 +740,7 @@ async function main() {
     });
 
     await check('the camera aims with a bar, and dims everything outside it', async () => {
-      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
       await page.getByRole('button', { name: 'Play', exact: true }).click();
       await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
       await page.getByRole('button', { name: 'Open the camera' }).click();
@@ -828,7 +828,7 @@ async function main() {
   {
     const source = await browser.newContext({ acceptDownloads: true });
     const page = await source.newPage();
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     let backupPath = '';
 
@@ -934,7 +934,7 @@ async function main() {
   {
     const context = await browser.newContext();
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('blocked storage is explained, not shown as an empty season', async () => {
       const blocked = await browser.newContext();
@@ -1023,7 +1023,7 @@ async function main() {
   {
     const context = await browser.newContext();
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('navigating moves focus to the new screen', async () => {
       // Without this the tapped control unmounts and focus falls to the body,
@@ -1050,7 +1050,7 @@ async function main() {
   {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('reduced motion drops the travel but keeps the final state', async () => {
       await signIn(page);

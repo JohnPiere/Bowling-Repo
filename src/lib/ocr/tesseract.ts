@@ -49,11 +49,18 @@ interface LocalAssets {
   lang: boolean;
 }
 
+/**
+ * Where the vendored engine sits. Built from the app's own base rather than
+ * assumed to be the root: served from a subpath, `/tesseract/` is somebody
+ * else's directory, and the fetch quietly 404s into the CDN fallback.
+ */
+const TESSERACT = `${import.meta.env.BASE_URL}tesseract`;
+
 let assetsPromise: Promise<LocalAssets> | null = null;
 
 function localAssets(): Promise<LocalAssets> {
   if (!assetsPromise) {
-    assetsPromise = fetch('/tesseract/manifest.json')
+    assetsPromise = fetch(`${TESSERACT}/manifest.json`)
       .then((response) => (response.ok ? response.json() : null))
       .then((manifest) => ({
         core: Boolean(manifest?.core?.length),
@@ -83,9 +90,9 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       // falls back to its CDN, so a build without them still scans.
       const local = await localAssets();
       const worker = await createWorker('eng', undefined, {
-        ...(local.core ? { corePath: '/tesseract/' } : {}),
-        ...(local.worker ? { workerPath: '/tesseract/worker.min.js' } : {}),
-        ...(local.lang ? { langPath: '/tesseract', gzip: true } : {}),
+        ...(local.core ? { corePath: `${TESSERACT}/` } : {}),
+        ...(local.worker ? { workerPath: `${TESSERACT}/worker.min.js` } : {}),
+        ...(local.lang ? { langPath: TESSERACT, gzip: true } : {}),
       });
       this.worker = worker;
       this.mode = null;
