@@ -3,7 +3,8 @@ import { Achievements } from '../components/Achievements';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
-import { SpareRing } from '../components/charts/SpareRing';
+import { SpareAnalysis } from '../components/charts/SpareAnalysis';
+import { StrikeRunsChart } from '../components/charts/StrikeRunsChart';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import {
@@ -12,6 +13,7 @@ import {
   bestStrikeRun,
   firstBallDistribution,
   leaveRecords,
+  conversionByType,
   METRICS,
   metricChange,
   metricSeries,
@@ -19,6 +21,7 @@ import {
   RANGES,
   spareBreakdown,
   splitSummary,
+  strikeRuns,
   summarise,
   type MetricKey,
   type RangeKey,
@@ -48,6 +51,15 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
   const change = useMemo(() => metricChange(series), [series]);
   const records = useMemo(() => personalRecords(games), [games]);
   const spares = useMemo(() => spareBreakdown(inRange), [inRange]);
+  const conversion = useMemo(() => conversionByType(inRange), [inRange]);
+  const runs = useMemo(() => strikeRuns(inRange.filter((g) => g.isComplete)), [inRange]);
+  const rackGames = useMemo(() => inRange.filter((g) => g.pinfalls).length, [inRange]);
+
+  // The lifetime figure the range is measured against, drawn as a dashed rule.
+  const lifetime = useMemo(() => {
+    const all = metricSeries(games, metric);
+    return all.length === 0 ? null : all[all.length - 1].rolling;
+  }, [games, metric]);
   // Badges are lifetime, not per range: a 200 game does not stop counting
   // because the range moved past it.
   const badges = useMemo(() => badgeStatuses(games), [games]);
@@ -77,7 +89,10 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
     <div className="stats">
       {/* Who this season belongs to, and the one number that sums it up. */}
       <div className="profile">
-        <div className="profile__mark">{preferences.playerIcon}</div>
+        {/* Initials, the way the handoff draws it, unless a symbol was picked. */}
+        <div className="profile__mark">
+          {preferences.playerIcon || initials(preferences.playerName)}
+        </div>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="row" style={{ gap: 6 }}>
             <span className="profile__name">{preferences.playerName}</span>
@@ -104,9 +119,9 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
 
       <h2 className="section-title">Personal records</h2>
       <div className="records">
-        <Pr value={records.high} label="High game" />
-        <Pr value={records.recentAverage} label="Average, last 10" />
-        <Pr value={records.longestStrikeRun} label="Longest strike run" />
+        <Pr value={records.high} label="Highest game" />
+        <Pr value={records.recentAverage} label="Best 10-game average" />
+        <Pr value={records.longestStrikeRun} label="Longest strike streak" />
         <Pr value={`${records.sparePercent}%`} label="Spare conversion" />
       </div>
 
@@ -157,8 +172,9 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
 
         <ScoreTrendChart
           points={series}
+          baseline={lifetime}
           unit={active.unit}
-          subject={`${active.short}, rolling`}
+          subject={`${active.short} to date`}
           context={active.short}
           scale={active.unit === '%' ? { min: 0, max: 100 } : undefined}
         />
@@ -170,30 +186,12 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
         <Stat label="Best run" value={bestRun} suffix="×" />
       </div>
 
-      <h2 className="section-title">Spare conversion</h2>
+      <h2 className="section-title">Spare analysis</h2>
+      <SpareAnalysis breakdown={spares} conversion={conversion} games={rackGames} />
+
+      <h2 className="section-title">Strike streaks</h2>
       <div className="card">
-        <SpareRing outcomes={outcomes} />
-        {spares.total > 0 && (
-          <>
-            <div className="split-row">
-              <span className="grow">From one pin</span>
-              <span className="tnum">
-                {spares.single} · {Math.round((spares.single / spares.total) * 100)}%
-              </span>
-            </div>
-            <div className="split-row">
-              <span className="grow">From two or more</span>
-              <span className="tnum">
-                {spares.multi} · {Math.round((spares.multi / spares.total) * 100)}%
-              </span>
-            </div>
-            <p className="footnote">
-              {spares.total} spare{spares.total === 1 ? '' : 's'} where the pins left were
-              recorded. Games entered by count know a spare happened but not what it was taken
-              from, so they are not counted here.
-            </p>
-          </>
-        )}
+        <StrikeRunsChart runs={runs} />
       </div>
 
       <h2 className="section-title">How frames finish</h2>
@@ -262,7 +260,6 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
         </>
       )}
 
-      <h2 className="section-title">Achievements</h2>
       <Achievements badges={badges} />
 
       <h2 className="section-title">First ball</h2>
@@ -293,6 +290,20 @@ function RangePicker({ range, onChange }: { range: RangeKey; onChange: (r: Range
       ))}
     </div>
   );
+}
+
+/**
+ * Up to two initials from a name.
+ *
+ * Splits on whitespace, so "Marcus Vale" gives MV and "ジョン" gives ジ — a
+ * Japanese name has no word break to split on and one character is the right
+ * answer there rather than two.
+ */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '—';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
 /** The month a season started, for the profile line. */

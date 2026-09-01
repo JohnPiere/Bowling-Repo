@@ -294,9 +294,19 @@ describe('metricSeries', () => {
     expect(metricSeries([g(STRIKES, 300, 1)], 'pins')[0].value).toBe(120);
   });
 
-  it('rolls the average over the window', () => {
+  it('averages across every game so far, not a trailing window', () => {
     const series = metricSeries([g(STRIKES, 300, 1), g(OPENS, 70, 2)], 'avg');
+    expect(series[0].rolling).toBe(300);
     expect(series[1].rolling).toBe(185);
+  });
+
+  it('settles rather than lurching as games accumulate', () => {
+    // A season average moves by a point when one game goes badly; a ten-game
+    // window would drop off a cliff, and a lurching line invites reading
+    // weather as climate.
+    const games = Array.from({ length: 20 }, (_, i) => g(OPENS, 150, i + 1));
+    const series = metricSeries([...games, g(OPENS, 60, 25)], 'avg');
+    expect(series[series.length - 1].rolling).toBeCloseTo(145.7, 1);
   });
 
   it('ignores a game still in progress', () => {

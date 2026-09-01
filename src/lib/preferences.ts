@@ -30,12 +30,16 @@ export interface Preferences {
   autoShareGroupId: string | null;
 }
 
-export const AVATARS = ['◆', '●', '▲', '★', '◼', '✚'];
+/**
+ * The avatar tile's mark. The empty string means "use my initials", which is
+ * how the handoff draws it and so the default.
+ */
+export const AVATARS = ['', '◆', '●', '▲', '★', '◼', '✚'];
 
 export const DEFAULTS: Preferences = {
   language: 'en',
   playerName: 'You',
-  playerIcon: '◆',
+  playerIcon: '',
   autoShare: false,
   autoShareGroupId: null,
 };

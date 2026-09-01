@@ -150,7 +150,7 @@ export function SettingsScreen({
               aria-pressed={preferences.playerIcon === glyph}
               onClick={() => update({ playerIcon: glyph })}
             >
-              {glyph}
+              {glyph || 'Initials'}
             </button>
           ))}
         </div>

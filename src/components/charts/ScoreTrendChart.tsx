@@ -11,8 +11,13 @@ const PAD = { left: 30, right: 10, top: 12, bottom: 22 };
 /** Dots crowd into a smear past this many games; the line alone reads better. */
 const MAX_DOTS = 26;
 
+/** Rings are bigger and sit on the curve, so they crowd sooner than the dots. */
+const MAX_RINGS = 14;
+
 interface Props {
   points: MetricPoint[];
+  /** Drawn as a dashed rule across the plot — the lifetime figure to beat. */
+  baseline?: number | null;
   /** Appended to every number shown, e.g. "%". */
   unit?: string;
   /** What the accented line is, and what the grey dots are. */
@@ -32,6 +37,7 @@ interface Props {
  */
 export function ScoreTrendChart({
   points,
+  baseline = null,
   unit = '',
   subject = 'Rolling average',
   context = 'Each game',
@@ -78,12 +84,12 @@ export function ScoreTrendChart({
   }
 
   const { ticks, x, y, plotH } = geometry;
-  const baseline = PAD.top + plotH;
+  const floor = PAD.top + plotH;
 
-  const line = rolling.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+  const line = smoothPath(rolling);
   // The same line, closed down to the axis: the handoff fills under it, and the
   // fill is what makes a rise read as a rise rather than as a wandering line.
-  const area = `${line} L${rolling[rolling.length - 1].x} ${baseline} L${rolling[0].x} ${baseline} Z`;
+  const area = `${line} L${rolling[rolling.length - 1].x} ${floor} L${rolling[0].x} ${floor} Z`;
 
   const active = hover.index === null ? null : points[hover.index];
   const last = points[points.length - 1];
@@ -118,6 +124,18 @@ export function ScoreTrendChart({
 
         <path d={area} fill="url(#viz-trend-fill)" stroke="none" />
 
+        {/* The figure to beat, drawn flat across the plot. Dashed so it reads
+            as a reference rather than as a second series. */}
+        {baseline !== null && baseline >= 0 && (
+          <line
+            className="viz__baseline"
+            x1={PAD.left}
+            x2={W - PAD.right}
+            y1={y(baseline)}
+            y2={y(baseline)}
+          />
+        )}
+
         {/* Context first, so the subject line sits above it. Keyed by position
             rather than by game: the marker for slot 3 has to be the same
             element from one range to the next, or React replaces it and it
@@ -136,8 +154,16 @@ export function ScoreTrendChart({
 
         <path className="viz__line viz__line--draw" d={line} stroke="var(--viz-subject)" pathLength={1} />
 
-        {/* Only the endpoint is labelled — a number on every point goes unread. */}
-        <circle className="viz__dot" cx={tip.x} cy={tip.y} r={4} fill="var(--viz-subject)" />
+        {/* Open rings on the line itself, big enough to tap. The handoff draws
+            these rather than filled dots: a ring sits *on* the curve instead of
+            hiding the piece of it underneath. */}
+        {rolling.length <= MAX_RINGS &&
+          rolling.map((p, i) => (
+            <circle key={`r${i}`} className="viz__ring-dot" cx={p.x} cy={p.y} r={5} />
+          ))}
+
+        {/* The endpoint is always drawn, however many games there are. */}
+        <circle className="viz__ring-dot viz__ring-dot--last" cx={tip.x} cy={tip.y} r={5.5} />
 
         {hover.index !== null && active && (
           <>
@@ -193,6 +219,10 @@ export function ScoreTrendChart({
         </div>
       )}
 
+      <p className="footnote" style={{ margin: '6px 0 0' }}>
+        Dashed line = lifetime average. Tap a point for detail.
+      </p>
+
       <div className="viz__legend">
         <span className="viz__legend-item">
           <span className="viz__swatch viz__swatch--line" style={{ background: 'var(--viz-subject)' }} />
@@ -226,6 +256,37 @@ function anchorX(index: number, count: number): string {
   if (position < 0.2) return '0%';
   if (position > 0.8) return '-100%';
   return '-50%';
+}
+
+/**
+ * A curve through the points rather than a dogleg at each one.
+ *
+ * Catmull-Rom converted to cubic béziers: each control point is derived from
+ * the neighbours, so the curve passes exactly through every reading and only
+ * the path *between* them is smoothed. A spline that misses its own data
+ * would be a drawing, not a chart.
+ */
+function smoothPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return '';
+  if (points.length < 3) return points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+
+  let d = `M${points[0].x} ${points[0].y}`;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x} ${p2.y}`;
+  }
+
+  return d;
 }
 
 /**

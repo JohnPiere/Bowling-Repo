@@ -15,9 +15,17 @@ import type { BadgeStatus } from '../lib/badges';
 export function Achievements({ badges }: { badges: BadgeStatus[] }) {
   const [open, setOpen] = useState<string | null>(null);
   const detail = badges.find((badge) => badge.key === open) ?? null;
+  const earned = badges.filter((badge) => badge.earned).length;
 
   return (
     <>
+      <div className="row row--between" style={{ alignItems: 'flex-start', gap: 12 }}>
+        <h2 className="section-title" style={{ margin: 0 }}>
+          Achievements <span className="tnum badges__count">{earned} / {badges.length}</span>
+        </h2>
+        <span className="badges__hint">Tap a badge to see exactly how it is measured.</span>
+      </div>
+
       <div className="badges">
         {badges.map((badge) => (
           <button
@@ -35,13 +43,21 @@ export function Achievements({ badges }: { badges: BadgeStatus[] }) {
               <span className="badge__meta tnum">
                 {badge.earnedAt
                   ? new Date(badge.earnedAt).toLocaleDateString(undefined, {
+                      day: 'numeric',
                       month: 'short',
                       year: 'numeric',
                     })
                   : 'Earned'}
               </span>
             ) : (
-              <span className="badge__meta tnum">{Math.round(badge.progress * 100)}%</span>
+              <>
+                <span className="badge__meta tnum">
+                  {Math.round(badge.progress * 100)}% — {Math.max(1, Math.round((1 - badge.progress) * 100))}% to go
+                </span>
+                <span className="badge__progress">
+                  <span style={{ width: `${Math.round(badge.progress * 100)}%` }} />
+                </span>
+              </>
             )}
           </button>
         ))}

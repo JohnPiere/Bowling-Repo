@@ -276,7 +276,16 @@ export interface MetricPoint {
   playedAt: number;
   /** The game's own reading of the metric. */
   value: number;
-  /** …and the ten-game rolling average of it, which is the line drawn. */
+  /**
+   * The line that is actually drawn: the metric's *progression*, meaning its
+   * average across every game up to and including this one.
+   *
+   * Cumulative rather than a trailing window, because that is what "average
+   * progression" means and what a bowler is asking when they look at it — not
+   * "how have I been lately" but "where has this settled". It also behaves:
+   * one bad game moves a season average by a point, where a ten-game window
+   * lurches, and a lurching line invites reading weather as climate.
+   */
   rolling: number;
 }
 
@@ -287,7 +296,7 @@ export interface MetricPoint {
  * not a missed spare, and counting it as a converted one would let a good
  * striking night flatter a bad spare night.
  */
-export function metricSeries(games: Game[], metric: MetricKey, window = 10): MetricPoint[] {
+export function metricSeries(games: Game[], metric: MetricKey): MetricPoint[] {
   const played = [...games]
     .filter((game) => game.isComplete)
     .sort((a, b) => a.playedAt - b.playedAt);
@@ -316,13 +325,10 @@ export function metricSeries(games: Game[], metric: MetricKey, window = 10): Met
     }
   });
 
+  let running = 0;
   return raw.map((point, i) => {
-    const from = Math.max(0, i - window + 1);
-    const slice = raw.slice(from, i + 1);
-    return {
-      ...point,
-      rolling: round1(slice.reduce((sum, p) => sum + p.value, 0) / slice.length),
-    };
+    running += point.value;
+    return { ...point, rolling: round1(running / (i + 1)) };
   });
 }
 
@@ -398,4 +404,73 @@ export function spareBreakdown(games: Game[]): SpareBreakdown {
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+
+/**
+ * How long the strike runs were, counted by length.
+ *
+ * `runs[3]` is how many times three strikes came in a row. A run of four
+ * counts once as a four, not as two threes — the question is "how often did I
+ * string four", and counting overlaps would answer a different one.
+ */
+export function strikeRuns(games: Game[], longest = 7): number[] {
+  const runs = new Array(longest + 1).fill(0);
+
+  for (const game of games) {
+    const card = scoreGame(game.rolls);
+    let run = 0;
+
+    for (const frame of card.frames) {
+      if (frame.isStrike) {
+        run += 1;
+      } else {
+        if (run > 0) runs[Math.min(run, longest)] += 1;
+        run = 0;
+      }
+    }
+    if (run > 0) runs[Math.min(run, longest)] += 1;
+  }
+
+  return runs;
+}
+
+export interface ConversionByType {
+  /** Frames where exactly one pin was left, and how many were picked up. */
+  single: { attempts: number; converted: number };
+  /** …and where two or more were. */
+  multi: { attempts: number; converted: number };
+}
+
+/**
+ * Spare conversion split by what was left standing.
+ *
+ * The number worth knowing: a single pin should go almost every time, and the
+ * gap between that rate and the multi-pin one is where practice pays. Needs
+ * pin data, so it counts only frames scored on the rack.
+ */
+export function conversionByType(games: Game[]): ConversionByType {
+  const result: ConversionByType = {
+    single: { attempts: 0, converted: 0 },
+    multi: { attempts: 0, converted: 0 },
+  };
+
+  for (const game of games) {
+    if (!game.pinfalls) continue;
+    const card = scoreGame(game.rolls);
+    const leaves = leavesFromPinfalls(game.pinfalls);
+
+    card.frames.slice(0, FRAMES_PER_GAME).forEach((frame, i) => {
+      // A strike leaves nothing, so it was never a spare attempt.
+      if (frame.isStrike) return;
+      const left = leaves[i];
+      if (!left || left.length === 0) return;
+
+      const bucket = left.length === 1 ? result.single : result.multi;
+      bucket.attempts += 1;
+      if (frame.isSpare) bucket.converted += 1;
+    });
+  }
+
+  return result;
 }
