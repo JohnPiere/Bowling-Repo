@@ -74,7 +74,7 @@ export function planRestore(raw: string, existing: Game[]): RestorePlan {
   const seen = new Set<string>();
 
   games.forEach((entry, index) => {
-    const problem = describeProblem(entry);
+    const problem = problemWith(entry);
     if (problem) {
       rejected.push({ index, reason: problem });
       return;
@@ -129,8 +129,15 @@ function gamesFrom(parsed: unknown): unknown[] {
   throw new BackupError('That file does not contain any games.');
 }
 
-/** Why an entry cannot be restored, or null if it can. */
-function describeProblem(entry: unknown): string | null {
+/**
+ * Why an entry cannot be restored, or null if it can.
+ *
+ * Exported because a cloud backup is the same question with a different
+ * transport: rows come back from Postgres rather than out of a file, and both
+ * are outside data that ends up persisted and then rendered. One definition of
+ * "a game worth trusting" for both.
+ */
+export function problemWith(entry: unknown): string | null {
   if (!entry || typeof entry !== 'object') return 'not a game';
 
   const game = entry as Partial<Game>;

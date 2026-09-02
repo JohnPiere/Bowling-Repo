@@ -15,7 +15,7 @@ interface Props {
 
 const GUEST_LIMITS = [
   'No groups, no chat, no shared games',
-  'Nothing is backed up — a lost phone is a lost season',
+  'No copy on the server — a lost phone is a lost season',
   'Everything else works: scoring, scanning, history and analytics',
 ];
 

@@ -4,8 +4,10 @@ import { tf, useTranslation } from '../lib/i18n';
 import { AVATARS, colourOf, DEFAULTS, PLAYER_COLOURS, usePreferences } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { Avatar } from '../components/Avatar';
+import { CloudBackup } from '../components/CloudBackup';
 import { initialsOf } from '../lib/social';
 import { clearAllGames, putGames, type Game } from '../lib/db';
+import type { Session } from '../lib/session';
 import {
   getInstallState,
   IOS_INSTALL_STEPS,
@@ -36,10 +38,13 @@ import {
  */
 export function SettingsScreen({
   games,
+  session,
   onRestored,
   onReplayTour,
 }: {
   games: Game[];
+  /** Who is signed in, which is what decides whether a backup is offered. */
+  session: Session;
   onRestored?: () => void;
   /** Runs the first-run tour again, without touching anything stored. */
   onReplayTour?: () => void;
@@ -363,21 +368,12 @@ export function SettingsScreen({
         </div>
         <p className="footnote" style={{ marginBottom: 0, marginTop: 10 }}>
           {t(
-            'Lane Log keeps everything on this device. There is no account, no server and nothing uploaded — which is also why a backup file is the only way to move a season to another phone.',
+            'Lane Log scores, scans and keeps your season on this device, with no account and no signal. A copy on the server is something you switch on, and a file export works without one.',
           )}
         </p>
       </div>
 
-      <h2 className="section-title">{t('Sync')}</h2>
-      <div className="card">
-        <div className="row row--between">
-          <span className="grow">{t('Cloud sync')}</span>
-          <span className="tag tag--accent">{t('Soon')}</span>
-        </div>
-        <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('Back up games and share stats with friends. Coming soon.')}
-        </p>
-      </div>
+      <CloudBackup session={session} games={games} onRestored={onRestored} />
 
       <h2 className="section-title">{t('Data')}</h2>
       <div className="card">
@@ -592,9 +588,9 @@ export function SettingsScreen({
         )}
 
         <p className="footnote" style={{ marginBottom: 0 }}>
-          Everything is stored on this device only. There is no account and nothing is uploaded, so
-          a file is the only backup — and the only way to move a season to a new phone. Scanned
-          photos are not included; the scores are the part that cannot be bowled again.
+          A file works with no account and no network, and it is the one backup a guest can make.
+          Scanned photos are not included either way; the scores are the part that cannot be bowled
+          again.
         </p>
       </div>
     </>

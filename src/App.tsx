@@ -359,6 +359,7 @@ export function App() {
           <SettingsScreen
             onReplayTour={() => nav.push({ name: 'tour' })}
             games={games}
+            session={session}
             onRestored={refresh}
           />
         )}

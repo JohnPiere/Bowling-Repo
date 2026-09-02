@@ -153,6 +153,7 @@ memberships   (group, profile) → owner | moderator | member
 shared_games  a game copied up to one crew's board
 messages      the chat, with an optional pointer at a shared game
 reactions     hearts on a shared game
+game_backups  your own season, readable by nobody else  (0002)
 ```
 
 Two pieces of it are worth reading before changing anything:
@@ -169,6 +170,25 @@ needs a membership, nobody can see. Joining has to look up a group you are not
 yet in, which the policies forbid and should: being able to select by invite
 code *is* the ability to enumerate crews. Both happen inside `security definer`
 functions where the only thing that escapes is a group you now belong to.
+
+**`game_backups` is not part of the social layer.** It is in this database
+because this is the database there is, and every policy on it says
+`owner_id = auth.uid()` and nothing else — no crew clause, on any of the four
+verbs. Sharing a game with a crew writes `shared_games` and is a deliberate act
+per game; this table is a safe, and the only reader is the account that filled
+it.
+
+Two things about it are load-bearing on the client side:
+
+- **`updated_at` is the device's clock, not `now()`.** It is what decides a
+  conflict between two phones, and a server timestamp would make "newest wins"
+  mean "whichever synced last" — losing a week of offline edits to a phone that
+  opened the app first.
+- **A delete has to be told, not inferred.** The phone keeps a tombstone for
+  every game it deletes (`tombstones` in IndexedDB) and the sync sends those
+  before anything else. Without them a pull is an undelete: the row is still on
+  the server, the game is not on the phone, and "missing here" looks exactly
+  like "bowled on the other phone".
 
 **Reactions are counted on the client.** `loadSharedGames` reads every reaction
 row for the posts it is about to draw and folds them in with `heartsBy`; there

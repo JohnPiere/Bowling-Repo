@@ -62,6 +62,23 @@ export interface PushRecord {
   createdAt: number;
 }
 
+/**
+ * A game this device deleted.
+ *
+ * Kept because a backup that cannot be told about a deletion is a backup that
+ * undoes one: the next sync would find a row the phone no longer has and
+ * helpfully put it back. Deleting offline is normal — it happens on the walk
+ * to the car — so the fact has to survive until there is a network to say it
+ * on, and that means a record rather than a request.
+ *
+ * Dropped as soon as the server has been told, and dropped early if a game
+ * with the same id is written again.
+ */
+export interface Tombstone {
+  id: string;
+  deletedAt: number;
+}
+
 /** A scanned sheet photo, kept apart from the game it belongs to. */
 export interface SheetRecord {
   gameId: string;
@@ -83,10 +100,14 @@ interface LaneLogDB extends DBSchema {
     key: string;
     value: PushRecord;
   };
+  tombstones: {
+    key: string;
+    value: Tombstone;
+  };
 }
 
 const DB_NAME = 'lane-log';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<LaneLogDB>> | null = null;
 
@@ -126,6 +147,12 @@ function db() {
 
             return migrate(await cursor.continue());
           });
+        }
+
+        if (oldVersion < 3) {
+          // Nothing to backfill: a device upgrading has never synced, so it has
+          // no server rows for its past deletions to be about.
+          database.createObjectStore('tombstones', { keyPath: 'id' });
         }
       },
     });
@@ -169,11 +196,14 @@ export async function saveGame(
   };
 
   const database = await db();
-  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+  const tx = database.transaction(['games', 'sheets', 'tombstones'], 'readwrite');
   await tx.objectStore('games').put(record);
   if (sheetImage) {
     await tx.objectStore('sheets').put({ gameId: id, image: sheetImage, storedAt: record.updatedAt });
   }
+  // Writing a game with this id is un-deleting it, and the pending deletion
+  // must not follow it to the server.
+  await tx.objectStore('tombstones').delete(id);
   await tx.done;
 
   return record;
@@ -223,12 +253,48 @@ export async function putGames(games: Game[]): Promise<number> {
   if (games.length === 0) return 0;
 
   const database = await db();
-  const tx = database.transaction('games', 'readwrite');
+  const tx = database.transaction(['games', 'tombstones'], 'readwrite');
   const store = tx.objectStore('games');
-  for (const game of games) await store.put(game);
+  const graves = tx.objectStore('tombstones');
+
+  for (const game of games) {
+    await store.put(game);
+    // Same rule as a single save: a game written back is a game not deleted.
+    await graves.delete(game.id);
+  }
   await tx.done;
 
   return games.length;
+}
+
+/**
+ * Record that these games reached the server.
+ *
+ * Takes the versions that were actually sent, and skips any the device has
+ * edited since: a game corrected between building the upload and this call is
+ * still owed, and marking it synced would lose the correction until the next
+ * edit. That window is small and a season is not worth it.
+ */
+export async function markSynced(
+  sent: { id: string; updatedAt: number }[],
+  at = Date.now(),
+): Promise<number> {
+  if (sent.length === 0) return 0;
+
+  const database = await db();
+  const tx = database.transaction('games', 'readwrite');
+  const store = tx.objectStore('games');
+  let marked = 0;
+
+  for (const { id, updatedAt } of sent) {
+    const game = await store.get(id);
+    if (!game || game.updatedAt !== updatedAt) continue;
+    await store.put({ ...game, syncedAt: at });
+    marked += 1;
+  }
+
+  await tx.done;
+  return marked;
 }
 
 /** The scanned photo a game came from, loaded only when something needs it. */
@@ -238,10 +304,27 @@ export async function getSheetImage(gameId: string): Promise<Blob | undefined> {
 
 export async function deleteGame(id: string): Promise<void> {
   const database = await db();
-  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+  const tx = database.transaction(['games', 'sheets', 'tombstones'], 'readwrite');
   await tx.objectStore('games').delete(id);
   // Deleting the game must not leave its photo occupying storage forever.
   await tx.objectStore('sheets').delete(id);
+  // …nor let the next sync put it back.
+  await tx.objectStore('tombstones').put({ id, deletedAt: Date.now() });
+  await tx.done;
+}
+
+/** Deletions this device has not yet been able to tell the server about. */
+export async function listTombstones(): Promise<Tombstone[]> {
+  return (await db()).getAll('tombstones');
+}
+
+/** Forget the deletions the server has now been told about. */
+export async function clearTombstones(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const database = await db();
+  const tx = database.transaction('tombstones', 'readwrite');
+  for (const id of ids) await tx.objectStore('tombstones').delete(id);
   await tx.done;
 }
 
@@ -260,16 +343,22 @@ export async function deleteGame(id: string): Promise<void> {
  */
 export async function clearAllGames(): Promise<number> {
   const database = await db();
-  const tx = database.transaction(['games', 'sheets'], 'readwrite');
+  const tx = database.transaction(['games', 'sheets', 'tombstones'], 'readwrite');
 
   const games = tx.objectStore('games');
-  const count = await games.count();
+  const ids = await games.getAllKeys();
+  const graves = tx.objectStore('tombstones');
+  const at = Date.now();
+
+  // One tombstone each, so "delete everything" means it on the server too the
+  // next time there is one to talk to.
+  for (const id of ids) await graves.put({ id, deletedAt: at });
 
   await games.clear();
   await tx.objectStore('sheets').clear();
   await tx.done;
 
-  return count;
+  return ids.length;
 }
 
 export async function unsyncedGames(): Promise<Game[]> {

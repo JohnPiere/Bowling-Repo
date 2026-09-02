@@ -60,8 +60,8 @@ export const JA: Record<string, string> = {
   'Nothing you bowl is shared until you say so. Sharing sends that one game to one crew, and you can take it back down.':
     'あなたが選ぶまで何も共有されません。共有すると、そのゲームだけが1つのクルーに送られ、いつでも取り消せます。',
   'Your games live on this phone': 'ゲームはこの端末に保存されます',
-  'No account needed, and they work with no signal at all. That also means a lost phone is a lost season — Settings has an export, and it is the only copy there is.':
-    'アカウントは不要で、電波がなくても使えます。ただし端末をなくすとシーズンごと失われます。設定から書き出せるファイルが唯一の控えです。',
+  'No account needed, and they work with no signal at all. Sign in and Settings will keep a copy on the server; without one, the export in Settings is the only copy there is.':
+    'アカウントは不要で、電波がなくても使えます。サインインすれば設定からサーバーに控えを保存できます。サインインしない場合は、設定から書き出すファイルが唯一の控えです。',
 
   'Nothing shared here yet.': 'まだ共有されたゲームはありません。',
 
@@ -99,8 +99,8 @@ export const JA: Record<string, string> = {
   'or': 'または',
   'Checking your account…': 'アカウントを確認中…',
   'No groups, no chat, no shared games': 'グループ・チャット・共有ゲームは使えません',
-  'Nothing is backed up — a lost phone is a lost season':
-    'バックアップされません。端末をなくすとシーズンごと失われます',
+  'No copy on the server — a lost phone is a lost season':
+    'サーバーに控えがありません。端末をなくすとシーズンごと失われます',
   'Everything else works: scoring, scanning, history and analytics':
     'それ以外はすべて使えます。スコア入力・撮影・履歴・分析',
   'Signing in never moves your games. They stay on this device either way.':
@@ -203,7 +203,8 @@ export const JA: Record<string, string> = {
   'One game at a time. Point the camera at your sheet and slide it until the game you want lies inside the bar, the way you would scan a barcode — only that strip is read. Nothing is saved until you have seen the score and can fix it.': '1ゲームずつ読み取ります。バーコードを読むように、目的のゲームの行がバーの中に入るようシートを動かしてください。その帯だけを読み取ります。スコアを確認して修正できるまで保存されません。',
   'You draw the box around one game yourself, so a sheet of six reads as easily as a sheet of one.': '1ゲーム分を自分で枠で囲むので、6ゲームのシートでも1ゲームのシートと同じように読み取れます。',
   'Everything is stored on this device only. There is no account and nothing is uploaded, so a file is the only backup — and the only way to move a season to another phone.': 'すべてこの端末にのみ保存されます。アカウントもアップロードもないため、ファイルが唯一のバックアップであり、別の端末へ移す唯一の方法です。',
-  'Lane Log keeps everything on this device. There is no account, no server and nothing uploaded — which is also why a backup file is the only way to move a season to another phone.': 'レーンログはすべてこの端末に保存します。アカウントもサーバーもアップロードもありません。だからこそ、別の端末へ移すにはバックアップファイルが必要です。',
+  'Lane Log scores, scans and keeps your season on this device, with no account and no signal. A copy on the server is something you switch on, and a file export works without one.':
+    'レーンログはアカウントも電波もなしに、この端末でスコア入力・撮影・保存ができます。サーバーへの控えは自分で有効にするもので、ファイル書き出しはアカウントなしでも使えます。',
   'Notifications are blocked for this site. Re-allow them in your browser settings — the app cannot ask again once they are blocked.': 'このサイトの通知はブロックされています。ブラウザの設定で許可してください。一度ブロックされるとアプリからは再度求められません。',
   'Storage is nearly full. Export your games, then delete some older ones — scanned sheets take by far the most room.': '空き容量がわずかです。ゲームを書き出してから古いものを削除してください。撮影したシートが最も容量を使います。',
   'This browser has not offered to install Lane Log. It still works as a normal page; notifications may not.': 'このブラウザはインストールを提案していません。通常のページとしては動きますが、通知は使えない場合があります。',
@@ -560,9 +561,27 @@ export const JA: Record<string, string> = {
   'Notifications': '通知',
   'Push notifications': 'プッシュ通知',
   'Send a test notification': 'テスト通知を送る',
-  'Sync': '同期',
-  'Cloud sync': 'クラウド同期',
-  'Back up games and share stats with friends. Coming soon.': 'ゲームのバックアップと友達との共有。近日対応。',
+  'Backup to your account': 'アカウントにバックアップ',
+  'Sign in on the Crews tab and your games get a copy on the server.':
+    'クルータブからサインインすると、ゲームの控えがサーバーに保存されます。',
+  'Only you can read it — a crew sees what you shared with it, and a backup is not sharing.':
+    '読めるのはあなただけです。クルーに見えるのは共有したゲームだけで、バックアップは共有ではありません。',
+  'Last backed up {when}': '最終バックアップ {when}',
+  'Never backed up from this device': 'この端末からはまだバックアップしていません',
+  'Everything on this phone is on the server.': 'この端末のゲームはすべてサーバーにあります。',
+  '{n} game waiting to go up': '未送信 {n}ゲーム',
+  '{n} games waiting to go up': '未送信 {n}ゲーム',
+  'Back up now': '今すぐバックアップ',
+  'Syncing…': '同期中…',
+  '{up} sent, {down} brought down.': '{up}件を送信、{down}件を取得しました。',
+  '{n} could not be read and were left alone.': '{n}件は読み取れなかったため、そのままにしました。',
+  'Scanned photos are not included — the scores are the part that cannot be bowled again. Where two phones changed the same game, the later change wins.':
+    '撮影した写真は含まれません。もう一度投げ直せないのはスコアだからです。同じゲームを2台で編集した場合は、後の変更が残ります。',
+  'The copy on the server is gone. Your games are still on this phone.':
+    'サーバー上の控えを削除しました。ゲームはこの端末に残っています。',
+  'This deletes the server’s copy of every game. Your games stay on this phone, and nothing is left to restore from if you lose it.':
+    'サーバー上のすべてのゲームの控えを削除します。ゲームはこの端末に残りますが、端末をなくすと復元できるものはありません。',
+  'Delete the backup': 'バックアップを削除',
   'About': 'このアプリについて',
   'Version': 'バージョン',
   'Storage': 'ストレージ',

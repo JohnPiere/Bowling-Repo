@@ -44,7 +44,7 @@ const LESSONS: Lesson[] = [
   {
     icon: 'home',
     title: 'Your games live on this phone',
-    body: 'No account needed, and they work with no signal at all. That also means a lost phone is a lost season — Settings has an export, and it is the only copy there is.',
+    body: 'No account needed, and they work with no signal at all. Sign in and Settings will keep a copy on the server; without one, the export in Settings is the only copy there is.',
   },
 ];
 

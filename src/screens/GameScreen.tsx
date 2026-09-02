@@ -316,7 +316,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           <div className="note note--bad">
             This game and {game.hasSheet ? 'its photo are' : 'it is'} removed from this device for
             good. {sharedWith.length > 0 && 'It also comes off the boards it was shared to. '}
-            There is no backup unless you exported one.
+            If you back up to your account, the next backup takes it off the server as well.
           </div>
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn-lg" onClick={() => setConfirming(false)}>
