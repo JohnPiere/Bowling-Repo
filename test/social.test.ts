@@ -3,6 +3,7 @@ import {
   countUnread,
   daysUntil,
   handicap,
+  heartsBy,
   initialsOf,
   markRead,
   standingFor,
@@ -13,6 +14,7 @@ import {
   type MembershipRow,
   type MessageRow,
   type ProfileRow,
+  type ReactionRow,
   type SharedGameRow,
 } from '../src/lib/social';
 import { providerUnavailable } from '../src/lib/backend';
@@ -231,6 +233,26 @@ describe('toMessage', () => {
     expect(toMessage({ ...row, author_id: 'me' }, authors, 'me').author).toBe('You');
   });
 
+  it('draws the card for a message that points at a shared game', () => {
+    const post = { ...shared('aya', 212, '2026-08-14T19:00:00Z'), rolls: new Array(12).fill(10) };
+    const card = toMessage(
+      { ...row, shared_game_id: post.id },
+      authors,
+      'me',
+      new Map([[post.id, post]]),
+    ).sharedScore;
+    expect(card?.score).toBe(212);
+    expect(card?.strikes).toBe(10);
+  });
+
+  it('stays a plain message when the post it named is gone', () => {
+    // A post can be retracted while its line in the chat stays. A card reading
+    // "0, no alley" would be worse than the sentence already there.
+    const orphan = toMessage({ ...row, shared_game_id: 'retracted' }, authors, 'me', new Map());
+    expect(orphan.sharedScore).toBeUndefined();
+    expect(orphan.body).toBe('Lane 6 is drying out.');
+  });
+
   it('still renders a message from somebody who has since left', () => {
     // Their profile is gone from the roster query; the message is not, and a
     // thread with a hole in it is worse than one with an unnamed line.
@@ -260,6 +282,59 @@ describe('toSharedGame', () => {
     expect(
       toSharedGame(shared('aya', 200, '2026-08-14T19:00:00Z'), authors, 'me').isYours,
     ).toBeUndefined();
+  });
+
+  it('carries the local id, so a device can find its own game on the board', () => {
+    const row = shared('me', 200, '2026-08-14T19:00:00Z');
+    expect(toSharedGame(row, authors, 'me').localId).toBe(row.local_id);
+  });
+
+  it('shows no hearts when nobody has left one', () => {
+    const post = toSharedGame(shared('aya', 200, '2026-08-14T19:00:00Z'), authors, 'me');
+    expect(post.hearts).toBe(0);
+    expect(post.youHearted).toBe(false);
+  });
+
+  it('takes its hearts from the reactions it was given', () => {
+    const row = shared('aya', 200, '2026-08-14T19:00:00Z');
+    const hearts = heartsBy(
+      [
+        { shared_game_id: row.id, profile_id: 'me', emoji: '♥' },
+        { shared_game_id: row.id, profile_id: 'kenji', emoji: '♥' },
+      ],
+      'me',
+    );
+    const post = toSharedGame(row, authors, 'me', hearts);
+    expect(post.hearts).toBe(2);
+    expect(post.youHearted).toBe(true);
+  });
+});
+
+describe('heartsBy', () => {
+  const rows: ReactionRow[] = [
+    { shared_game_id: 'a', profile_id: 'me', emoji: '♥' },
+    { shared_game_id: 'a', profile_id: 'kenji', emoji: '♥' },
+    { shared_game_id: 'b', profile_id: 'kenji', emoji: '♥' },
+  ];
+
+  it('counts each post separately', () => {
+    const counts = heartsBy(rows, 'me');
+    expect(counts.get('a')?.hearts).toBe(2);
+    expect(counts.get('b')?.hearts).toBe(1);
+  });
+
+  it('knows which ones are yours', () => {
+    const counts = heartsBy(rows, 'me');
+    expect(counts.get('a')?.youHearted).toBe(true);
+    expect(counts.get('b')?.youHearted).toBe(false);
+  });
+
+  it('says nothing about a post nobody reacted to', () => {
+    expect(heartsBy(rows, 'me').get('c')).toBeUndefined();
+  });
+
+  it('has nothing to count when the crew is quiet', () => {
+    expect(heartsBy([], 'me').size).toBe(0);
   });
 });
 

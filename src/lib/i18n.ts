@@ -345,6 +345,17 @@ export const JA: Record<string, string> = {
   'Shared': '共有済み',
   'Scan': '撮影',
 
+  // ── Chat: sharing a game into the thread ──
+  'Share a game': 'ゲームを共有',
+  'Looking through your games…': 'ゲームを読み込み中…',
+  'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
+  'Shared a {n}.': '{n}を共有しました。',
+
+  // ── Sharing and hearts ──
+  'Send your note too': 'メモも一緒に送る',
+  'Off by default — a note is written for you, not for the board.':
+    '初期設定はオフです。メモは自分のためのもので、ボードのためのものではありません。',
+
   // ── One night ──
   'Finished where you started.': '始めたときと同じ点数で終わりました。',
   'Up {n} from the first game to the last.': '1ゲーム目から最終ゲームで{n}点アップ。',

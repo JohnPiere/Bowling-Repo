@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
+import { HeartButton } from '../components/HeartButton';
 import type { Group, SharedGame } from '../lib/social';
 import { describeBackendFailure } from '../lib/backend';
 import { loadSharedGames, unshareGame as retractFromCrew } from '../lib/social';
@@ -17,15 +18,15 @@ import { formatDay } from '../lib/datetime';
  */
 export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
   const [mine, setMine] = useState<Game[]>([]);
-  const [theirs, setTheirs] = useState<SharedGame[]>([]);
+  const [posts, setPosts] = useState<SharedGame[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     gamesSharedWith(group.id).then(setMine, () => setMine([]));
 
     loadSharedGames(group.id, me).then(
-      (posts) => {
-        setTheirs(posts.filter((post) => !post.isYours));
+      (loaded) => {
+        setPosts(loaded);
         setError(null);
       },
       (err) => setError(describeBackendFailure(err)),
@@ -33,6 +34,25 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
   }, [group.id, me]);
 
   useEffect(refresh, [refresh]);
+
+  const theirs = posts.filter((post) => !post.isYours);
+
+  /**
+   * A heart landed or came back off.
+   *
+   * Kept in this list rather than re-read from the board: a refresh would
+   * redraw every row for one tap, and on a phone that is a visible flicker for
+   * a number the caller has already told us.
+   */
+  function hearted(postId: string, on: boolean) {
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? { ...post, youHearted: on, hearts: Math.max(0, post.hearts + (on ? 1 : -1)) }
+          : post,
+      ),
+    );
+  }
 
   async function retract(gameId: string) {
     try {
@@ -62,6 +82,10 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
           const card = scoreGame(game.rolls);
           const strikes = card.frames.filter((f) => f.isStrike).length;
           const spares = card.frames.filter((f) => f.isSpare).length;
+          // The board's row for this game, which is where its hearts live. It
+          // can be missing for a moment: the local record is written first when
+          // sharing, and last when retracting.
+          const post = posts.find((p) => p.isYours && p.localId === game.id);
 
           return (
             <div key={game.id} className="card" style={{ padding: 12 }}>
@@ -77,6 +101,15 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
                   </span>
                 </span>
                 {game.sharedWithSheet && <span className="pill">{t('Photo')}</span>}
+                {post && (
+                  <HeartButton
+                    postId={post.id}
+                    me={me}
+                    hearts={post.hearts}
+                    youHearted={post.youHearted}
+                    onChanged={(on) => hearted(post.id, on)}
+                  />
+                )}
               </div>
               <button
                 type="button"
@@ -106,7 +139,15 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
                 {post.when} · {post.alley} · {post.strikes} strikes
               </span>
             </span>
+            <HeartButton
+              postId={post.id}
+              me={me}
+              hearts={post.hearts}
+              youHearted={post.youHearted}
+              onChanged={(on) => hearted(post.id, on)}
+            />
             <Avatar initials={post.initials} size={30} />
+            {post.note && <p className="gamenote" style={{ width: '100%' }}>{post.note}</p>}
           </div>
         ))
       )}

@@ -8,7 +8,7 @@
 export type IconName =
   | 'home' | 'play' | 'history' | 'stats' | 'users' | 'settings'
   | 'camera' | 'bell' | 'back' | 'chat' | 'ball' | 'check' | 'share'
-  | 'chevron' | 'plus' | 'trophy' | 'trend' | 'target' | 'grid';
+  | 'chevron' | 'plus' | 'trophy' | 'trend' | 'target' | 'grid' | 'heart';
 
 const PATHS: Record<IconName, string> = {
   home: 'M3 10.5 12 3l9 7.5M5.5 9.5V20h13V9.5',
@@ -35,6 +35,10 @@ const PATHS: Record<IconName, string> = {
   trend: 'M4 18l5-7 4 4 7-9',
   target: 'M12 3v18M3 12h18M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z',
   grid: 'M5 5h14v14H5zM5 10h14M10 5v14',
+  // Drawn as one closed path so `filled` has something to fill: a heart that
+  // can only be an outline says nothing about whether you left one.
+  heart:
+    'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z',
 };
 
 interface Props {
@@ -43,16 +47,18 @@ interface Props {
   strokeWidth?: number;
   /** For the odd case that needs to flip or tint one. */
   className?: string;
+  /** Fill the shape as well as stroke it — a hearted heart, a starred star. */
+  filled?: boolean;
 }
 
-export function Icon({ name, size = 19, strokeWidth = 1.7, className }: Props) {
+export function Icon({ name, size = 19, strokeWidth = 1.7, className, filled }: Props) {
   return (
     <svg
       className={className}
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth={strokeWidth}
       strokeLinecap="round"

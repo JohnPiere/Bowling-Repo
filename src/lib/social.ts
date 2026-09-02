@@ -58,11 +58,18 @@ export interface SharedGame {
   authorId: string;
   author: string;
   initials: string;
+  /** The id the game has in its bowler's own store, for matching a local one. */
+  localId: string;
   when: string;
   alley: string;
   score: number;
   strikes: number;
   spares: number;
+  /** What the bowler wrote about it, if they shared that too. */
+  note?: string;
+  /** How many of the crew have hearted it, and whether you are one of them. */
+  hearts: number;
+  youHearted: boolean;
   /** Yours can be retracted; it stays in your own history either way. */
   isYours?: boolean;
 }
@@ -104,6 +111,12 @@ export interface SharedGameRow {
   note: string | null;
   played_at: string;
   created_at: string;
+}
+
+export interface ReactionRow {
+  shared_game_id: string;
+  profile_id: string;
+  emoji: string;
 }
 
 export interface MessageRow {
@@ -257,14 +270,25 @@ export function toGroup(
   };
 }
 
-/** A stored message, as the chat draws it. */
+/**
+ * A stored message, as the chat draws it.
+ *
+ * `posts` is the group's board by row id, and it is what turns a message that
+ * merely *points* at a shared game into one that shows it. Optional, and a
+ * pointer to a game that is not in it draws as a plain message: a post can be
+ * retracted while its line in the chat stays, and a card reading "0, no alley"
+ * would be worse than the sentence that is already there.
+ */
 export function toMessage(
   row: MessageRow,
   authors: Map<string, ProfileRow>,
   me: string,
+  posts?: Map<string, SharedGameRow>,
 ): ChatMessage {
   const author = authors.get(row.author_id);
   const name = row.author_id === me ? 'You' : (author?.name ?? 'Someone');
+  const post = row.shared_game_id ? posts?.get(row.shared_game_id) : undefined;
+  const card = post ? scoreGame(post.rolls) : null;
 
   return {
     id: row.id,
@@ -273,7 +297,48 @@ export function toMessage(
     initials: author ? initialsOf(author.name) : '?',
     time: formatTime(Date.parse(row.created_at)),
     body: row.body,
+    sharedScore:
+      post && card
+        ? {
+            score: post.total,
+            strikes: card.frames.filter((frame) => frame.isStrike).length,
+            spares: card.frames.filter((frame) => frame.isSpare).length,
+            alley: post.house ?? '',
+          }
+        : undefined,
   };
+}
+
+/** The one reaction the app sends. The column takes more; nothing offers them. */
+export const HEART = '♥';
+
+export interface HeartCount {
+  hearts: number;
+  youHearted: boolean;
+}
+
+/**
+ * Hearts per post, from the crew's reaction rows.
+ *
+ * Counted on the client rather than read back as a Postgres aggregate: the
+ * board already fetches every post it draws, the reactions for those posts are
+ * a few dozen rows, and a `count` per post would be one round trip each. It
+ * also keeps the definition of "you hearted this" in the same place as the
+ * definition of an average — one file, testable without a database.
+ */
+export function heartsBy(rows: ReactionRow[], me: string): Map<string, HeartCount> {
+  const out = new Map<string, HeartCount>();
+
+  for (const row of rows) {
+    const seen = out.get(row.shared_game_id) ?? { hearts: 0, youHearted: false };
+    seen.hearts += 1;
+    // The primary key is (post, profile, emoji), so a person can only be in
+    // here once per emoji and this cannot double-count them.
+    if (row.profile_id === me) seen.youHearted = true;
+    out.set(row.shared_game_id, seen);
+  }
+
+  return out;
 }
 
 /** A posted game, as the shared-games board draws it. */
@@ -281,15 +346,18 @@ export function toSharedGame(
   row: SharedGameRow,
   authors: Map<string, ProfileRow>,
   me: string,
+  hearts: Map<string, HeartCount> = new Map(),
 ): SharedGame {
   const card = scoreGame(row.rolls);
   const author = authors.get(row.profile_id);
+  const reaction = hearts.get(row.id);
 
   return {
     id: row.id,
     authorId: row.profile_id,
     author: row.profile_id === me ? 'You' : (author?.name ?? 'Someone'),
     initials: author ? initialsOf(author.name) : '?',
+    localId: row.local_id,
     when: new Date(row.played_at).toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -298,6 +366,9 @@ export function toSharedGame(
     score: row.total,
     strikes: card.frames.filter((frame) => frame.isStrike).length,
     spares: card.frames.filter((frame) => frame.isSpare).length,
+    note: row.note ?? undefined,
+    hearts: reaction?.hearts ?? 0,
+    youHearted: reaction?.youHearted ?? false,
     isYours: row.profile_id === me || undefined,
   };
 }
@@ -506,11 +577,13 @@ export interface Thread {
    * message reads as "Someone" until the screen is opened again.
    */
   authors: Map<string, ProfileRow>;
+  /** The board, by row id, for the messages that point at a game. */
+  posts: Map<string, SharedGameRow>;
 }
 
 export async function loadMessages(groupId: string, me: string): Promise<Thread> {
   const db = await backend();
-  const [messages, roster] = await Promise.all([
+  const [messages, roster, board] = await Promise.all([
     db
       .from('messages')
       .select('id, group_id, author_id, body, shared_game_id, created_at')
@@ -518,16 +591,26 @@ export async function loadMessages(groupId: string, me: string): Promise<Thread>
       .order('created_at', { ascending: true })
       .limit(300),
     db.from('memberships').select('profiles(id, name, initials)').eq('group_id', groupId),
+    // The whole board rather than the posts these messages name: a crew's board
+    // is tens of rows, the ids are only known after the messages come back, and
+    // waiting for one query to start the other doubles the time to first paint.
+    db.from('shared_games').select('*').eq('group_id', groupId),
   ]);
   if (messages.error) throw messages.error;
   if (roster.error) throw roster.error;
+  if (board.error) throw board.error;
 
   const authors = authorMap(roster.data);
+  const posts = new Map(
+    ((board.data ?? []) as unknown as SharedGameRow[]).map((row) => [row.id, row]),
+  );
+
   return {
     messages: ((messages.data ?? []) as unknown as MessageRow[]).map((row) =>
-      toMessage(row, authors, me),
+      toMessage(row, authors, me, posts),
     ),
     authors,
+    posts,
   };
 }
 
@@ -594,9 +677,62 @@ export async function loadSharedGames(groupId: string, me: string): Promise<Shar
   if (roster.error) throw roster.error;
 
   const authors = authorMap(roster.data);
-  return ((games.data ?? []) as unknown as SharedGameRow[]).map((row) =>
-    toSharedGame(row, authors, me),
-  );
+  const rows = (games.data ?? []) as unknown as SharedGameRow[];
+
+  // Reactions come second because the query needs the post ids, and they are
+  // asked for by id rather than by group: `reactions` has no group column, and
+  // its RLS policy joins through to one, so a filter it cannot see would be a
+  // whole-table scan the policy then throws most of away.
+  const reactions =
+    rows.length === 0
+      ? []
+      : await db
+          .from('reactions')
+          .select('shared_game_id, profile_id, emoji')
+          .in(
+            'shared_game_id',
+            rows.map((row) => row.id),
+          )
+          .then(({ data, error }) => {
+            // A board that draws without its hearts is worth more than one
+            // that fails to draw at all.
+            if (error) return [] as ReactionRow[];
+            return (data ?? []) as unknown as ReactionRow[];
+          });
+
+  const hearts = heartsBy(reactions, me);
+  return rows.map((row) => toSharedGame(row, authors, me, hearts));
+}
+
+/**
+ * Heart a post, or take it back.
+ *
+ * A delete of a row that is not there succeeds, and an insert of one that is
+ * conflicts — so the caller's idea of the current state does not have to be
+ * right for the outcome to be. `ignoreDuplicates` makes a second tap on an
+ * already-hearted post a no-op rather than an error the screen has to explain.
+ */
+export async function setHeart(sharedGameId: string, me: string, on: boolean): Promise<void> {
+  const db = await backend();
+
+  if (!on) {
+    const { error } = await db
+      .from('reactions')
+      .delete()
+      .eq('shared_game_id', sharedGameId)
+      .eq('profile_id', me)
+      .eq('emoji', HEART);
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await db
+    .from('reactions')
+    .upsert(
+      { shared_game_id: sharedGameId, profile_id: me, emoji: HEART },
+      { onConflict: 'shared_game_id,profile_id,emoji', ignoreDuplicates: true },
+    );
+  if (error) throw error;
 }
 
 export interface ShareInput {
@@ -617,22 +753,30 @@ export interface ShareInput {
  * Upserts on (crew, bowler, local game): correcting a frame and sharing again
  * updates the post rather than putting the same night on the board twice.
  */
-export async function shareGame(input: ShareInput): Promise<void> {
+export async function shareGame(input: ShareInput): Promise<SharedGameRow> {
   const db = await backend();
-  const { error } = await db.from('shared_games').upsert(
-    {
-      group_id: input.groupId,
-      profile_id: input.me,
-      local_id: input.localId,
-      rolls: input.rolls,
-      total: input.total,
-      house: input.house ?? null,
-      note: input.note ?? null,
-      played_at: new Date(input.playedAt).toISOString(),
-    },
-    { onConflict: 'group_id,profile_id,local_id' },
-  );
+  const { data, error } = await db
+    .from('shared_games')
+    .upsert(
+      {
+        group_id: input.groupId,
+        profile_id: input.me,
+        local_id: input.localId,
+        rolls: input.rolls,
+        total: input.total,
+        house: input.house ?? null,
+        note: input.note ?? null,
+        played_at: new Date(input.playedAt).toISOString(),
+      },
+      { onConflict: 'group_id,profile_id,local_id' },
+    )
+    // Read the row back: the chat needs the id the board gave this post before
+    // it can write a message pointing at it, and sharing the same game twice
+    // has to give the same id both times.
+    .select('*')
+    .single();
   if (error) throw error;
+  return data as unknown as SharedGameRow;
 }
 
 export async function unshareGame(groupId: string, me: string, localId: string): Promise<void> {

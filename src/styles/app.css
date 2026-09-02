@@ -558,6 +558,9 @@ body {
 .game-row {
   display: flex;
   align-items: center;
+  /* Wraps only for a child that asks for the whole width — the note a bowler
+     chose to send with a shared game. Everything else stays on one line. */
+  flex-wrap: wrap;
   gap: 11px;
   width: 100%;
   text-align: left;
@@ -1910,6 +1913,23 @@ body {
 }
 .composer .input { min-height: 44px; }
 
+/*
+ * The game picker, between the thread and the composer.
+ *
+ * Capped and scrollable so it takes a fixed bite out of the thread rather than
+ * pushing the composer off a short screen — the keyboard is usually up when
+ * this opens, and the box it opens into is already half a phone.
+ */
+.picker {
+  flex: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-divider);
+  max-height: 42vh;
+  overflow-y: auto;
+}
+.picker .game-row:disabled { opacity: 0.5; }
+
 /* ── Group settings ────────────────────────────────────────────────────── */
 
 /* The track is 26px tall by design; the tap area is not. */
@@ -2293,6 +2313,24 @@ body {
 .leave-row__fill--cost {
   background: linear-gradient(90deg, rgba(224, 163, 182, 0.55), var(--negative));
 }
+
+/* A heart on a shared game: painted small beside a score, hit at 44px. */
+.heart {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  position: relative;
+  padding: 4px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-neutral-500);
+  transition: color 120ms ease;
+}
+.heart::after { content: ''; position: absolute; inset: -13px; }
+.heart[aria-pressed='true'] { color: var(--negative); }
+.heart__count { font-size: 12px; }
 
 /* ── First run ─────────────────────────────────────────────────────────── */
 

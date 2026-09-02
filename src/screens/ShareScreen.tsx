@@ -35,6 +35,10 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tellCrew, setTellCrew] = useState(true);
+  // Off by default, and only offered when there is one. A note is written for
+  // yourself — "oily left", "wrong ball" — and the crew reading it should be a
+  // decision rather than a consequence of having kept one.
+  const [shareNote, setShareNote] = useState(false);
 
   const card = scoreGame(game.rolls);
   const hasPhoto = Boolean(game.hasSheet);
@@ -54,6 +58,7 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
         rolls: game.rolls,
         total: game.total,
         house: game.house,
+        note: shareNote ? game.note : undefined,
         playedAt: game.playedAt,
       });
       await shareLocally(game.id, groupId, { withSheet: hasPhoto && withSheet });
@@ -164,6 +169,30 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
           </span>
         </span>
       </button>
+
+      {game.note && (
+        <div className="card" style={{ marginTop: 11 }}>
+          <div className="row row--between">
+            <span className="grow">
+              <span style={{ display: 'block', fontSize: 13 }}>{t('Send your note too')}</span>
+              <span className="muted">
+                {t('Off by default — a note is written for you, not for the board.')}
+              </span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={shareNote}
+              aria-label={t('Send your note too')}
+              className={`switch${shareNote ? ' switch--on' : ''}`}
+              onClick={() => setShareNote((v) => !v)}
+            >
+              <span className="switch__knob" />
+            </button>
+          </div>
+          {shareNote && <p className="gamenote">{game.note}</p>}
+        </div>
+      )}
 
       <h2 className="section-title">{t('Tell the crew')}</h2>
       <div className="card">

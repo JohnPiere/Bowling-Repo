@@ -170,6 +170,17 @@ yet in, which the policies forbid and should: being able to select by invite
 code *is* the ability to enumerate crews. Both happen inside `security definer`
 functions where the only thing that escapes is a group you now belong to.
 
+**Reactions are counted on the client.** `loadSharedGames` reads every reaction
+row for the posts it is about to draw and folds them in with `heartsBy`; there
+is no `count` per post and no view. A board is tens of posts and a crew is a
+handful of people, so this is one extra query against a few dozen rows — where
+an aggregate per post would be one round trip each. The reaction fetch is also
+allowed to fail on its own: a board that draws without its hearts is worth more
+than one that does not draw.
+
+The `emoji` column takes eight characters and the app only ever writes `♥`. A
+second reaction is a change of mind rather than a migration.
+
 Standings — averages, handicap, improvement — are computed in
 `src/lib/social.ts`, not in SQL. There is one definition of what an average
 means and it is the one the analytics screen already uses; a second copy in a
