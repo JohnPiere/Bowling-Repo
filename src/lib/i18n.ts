@@ -24,6 +24,8 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  'Nothing shared here yet.': 'まだ共有されたゲームはありません。',
+
   // ── Chat and sharing ──
   'Loading the thread…': 'メッセージを読み込み中…',
   'Nothing said yet. Start it off.': 'まだ投稿がありません。最初のひとことをどうぞ。',

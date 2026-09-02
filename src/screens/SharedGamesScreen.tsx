@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
-import type { Group } from '../data/groups';
-import { SAMPLE_SHARED } from '../data/groups';
+import type { Group, SharedGame } from '../lib/social';
+import { describeBackendFailure } from '../lib/backend';
+import { loadSharedGames, unshareGame as retractFromCrew } from '../lib/social';
 import { gamesSharedWith, unshareGame, type Game } from '../lib/db';
 import { scoreGame } from '../lib/scoring';
 import { formatDay } from '../lib/datetime';
@@ -10,23 +11,37 @@ import { formatDay } from '../lib/datetime';
 /**
  * Games pushed to a crew.
  *
- * The bowler's own shares come from the local store so they can be retracted;
- * everyone else's are sample data until there is a group API.
+ * Your own come from the local store, because those are the ones that can be
+ * retracted and the local record is what a retraction has to update. Everybody
+ * else's come from the board.
  */
-export function SharedGamesScreen({ group }: { group: Group }) {
+export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
   const [mine, setMine] = useState<Game[]>([]);
+  const [theirs, setTheirs] = useState<SharedGame[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     gamesSharedWith(group.id).then(setMine, () => setMine([]));
-  }, [group.id]);
+
+    loadSharedGames(group.id, me).then(
+      (posts) => {
+        setTheirs(posts.filter((post) => !post.isYours));
+        setError(null);
+      },
+      (err) => setError(describeBackendFailure(err)),
+    );
+  }, [group.id, me]);
 
   useEffect(refresh, [refresh]);
 
-  const theirs = (SAMPLE_SHARED[group.id] ?? []).filter((post) => !post.isYours);
-
   async function retract(gameId: string) {
     try {
+      // The crew's copy first: a local record that says "not shared" while the
+      // board still shows it is the wrong way round to fail.
+      await retractFromCrew(group.id, me, gameId);
       await unshareGame(gameId, group.id);
+    } catch (err) {
+      setError(describeBackendFailure(err));
     } finally {
       // Re-read either way: the list should show what is actually stored.
       refresh();
@@ -35,6 +50,8 @@ export function SharedGamesScreen({ group }: { group: Group }) {
 
   return (
     <>
+      {error && <div className="note note--bad">{error}</div>}
+
       <h2 className="section-title">{t('Shared by you')}</h2>
       {mine.length === 0 ? (
         <p className="empty">

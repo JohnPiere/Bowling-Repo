@@ -10,8 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { describeBackendFailure } from './backend';
-import { listGroups, loadGroup } from './social';
-import type { Group } from '../data/groups';
+import { listGroups, loadGroup, type Group } from './social';
 import type { Session } from './session';
 
 export interface Loaded<T> {

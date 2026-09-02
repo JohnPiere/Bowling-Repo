@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { t } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 
 interface Props {
   group: Group;
@@ -109,10 +109,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
 
       <h2 className="section-title">{t('Invite code')}</h2>
       <div className="card" style={{ textAlign: 'center' }}>
-        <div
-          className="code"
-          style={{ color: doorsOpen ? '#cfc7ff' : 'var(--color-neutral-600)' }}
-        >
+        <div className="code" style={{ color: doorsOpen ? '#cfc7ff' : 'var(--color-neutral-600)' }}>
           {code}
         </div>
         <div className="muted">
@@ -204,11 +201,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
                       can be invited back with a new code.
                     </p>
                     <div className="row" style={{ gap: 8 }}>
-                      <button
-                        type="button"
-                        className="btn-lg"
-                        onClick={() => setConfirming(null)}
-                      >
+                      <button type="button" className="btn-lg" onClick={() => setConfirming(null)}>
                         {t('Keep them')}
                       </button>
                       <button

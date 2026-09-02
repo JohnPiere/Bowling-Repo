@@ -13,10 +13,59 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { backend } from './backend';
-import type { Group, ChatMessage, SharedGame } from '../data/groups';
 import type { Member } from './leaderboard';
 import { scoreGame } from './scoring';
 import { formatMonthYear, formatTime } from './datetime';
+
+// ── The shapes the screens render ──────────────────────────────────────────
+//
+// These used to live in `src/data/` alongside a fictional Tuesday Crew, which
+// was the right home while there was nothing behind them. There is now, so the
+// shapes live with the code that fills them and the fiction is gone.
+
+export interface Group {
+  id: string;
+  name: string;
+  initials: string;
+  homeAlley?: string;
+  /** Invite-only is the only mode that ships; open doors are "Soon". */
+  isOpen: boolean;
+  doorsOpen: boolean;
+  inviteCode: string;
+  codeExpiresInDays: number;
+  yourRole: 'owner' | 'moderator' | 'member';
+  members: Member[];
+  unread: number;
+  lastMessage: string;
+  lastActivity: string;
+  /** A warm tile sets this group apart in the list. */
+  warmTile?: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  authorId: string;
+  author: string;
+  initials: string;
+  time: string;
+  body: string;
+  /** A game shared to the board; the chat carries a link to it. */
+  sharedScore?: { score: number; strikes: number; spares: number; alley: string };
+}
+
+export interface SharedGame {
+  id: string;
+  authorId: string;
+  author: string;
+  initials: string;
+  when: string;
+  alley: string;
+  score: number;
+  strikes: number;
+  spares: number;
+  /** Yours can be retracted; it stays in your own history either way. */
+  isYours?: boolean;
+}
 
 // ── Rows, as the database has them ─────────────────────────────────────────
 
@@ -251,6 +300,32 @@ export function toSharedGame(
     spares: card.frames.filter((frame) => frame.isSpare).length,
     isYours: row.profile_id === me || undefined,
   };
+}
+
+export interface Activity {
+  text: string;
+  time: string;
+  tone: 'accent' | 'neutral' | 'down';
+}
+
+/**
+ * What the crew has been doing, from what it has been shown.
+ *
+ * Derived rather than stored: an activity table would be a second record of
+ * things the shared games already say, free to disagree with them the first
+ * time a post is retracted. The consequence is that only sharing shows up
+ * here — joining and leaving do not — which is the honest limit of deriving it
+ * from one table, and better than a feed that has to be kept in step by hand.
+ */
+export function activityFrom(posts: SharedGame[], best = 0): Activity[] {
+  return posts.slice(0, 6).map((post) => ({
+    text:
+      post.score >= best && best > 0
+        ? `${post.author} shared a ${post.score} — crew record`
+        : `${post.author} shared a ${post.score}`,
+    time: post.when,
+    tone: post.score >= 200 ? 'accent' : 'neutral',
+  }));
 }
 
 // ── Unread, kept on the device ─────────────────────────────────────────────

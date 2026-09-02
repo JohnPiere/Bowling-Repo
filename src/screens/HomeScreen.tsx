@@ -5,7 +5,7 @@ import { t, tf } from '../lib/i18n';
 import { formatDay } from '../lib/datetime';
 import { crewGlance, dashboard, gameShape } from '../lib/dashboard';
 import type { Game } from '../lib/db';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 
 interface Props {
   games: Game[];

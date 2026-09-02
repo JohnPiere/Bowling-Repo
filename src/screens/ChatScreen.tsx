@@ -10,7 +10,7 @@ import {
   watchMessages,
   type ProfileRow,
 } from '../lib/social';
-import type { ChatMessage, Group } from '../data/groups';
+import type { ChatMessage, Group } from '../lib/social';
 import type { Session } from '../lib/session';
 
 interface Props {

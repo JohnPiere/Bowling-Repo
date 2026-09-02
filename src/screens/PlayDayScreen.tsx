@@ -61,12 +61,8 @@ export function PlayDayScreen({
     <div className="stats">
       <div className="profile" style={{ alignItems: 'flex-start' }}>
         <div className="grow" style={{ minWidth: 0 }}>
-          <div className="profile__label">
-            {formatWeekday(group.at)}
-          </div>
-          <div className="day__date">
-            {formatLongDate(group.at)}
-          </div>
+          <div className="profile__label">{formatWeekday(group.at)}</div>
+          <div className="day__date">{formatLongDate(group.at)}</div>
           <div className="profile__meta tnum">
             {group.house ? `${group.house} · ` : ''}
             {sessionSpan(group)}
@@ -89,7 +85,9 @@ export function PlayDayScreen({
         <DayStat value={outcomes?.spares ?? 0} label="Spares" />
         <DayStat value={outcomes?.opens ?? 0} label="Open frames" />
         <DayStat
-          value={attempts === 0 ? '—' : `${Math.round(((outcomes?.spares ?? 0) / attempts) * 100)}%`}
+          value={
+            attempts === 0 ? '—' : `${Math.round(((outcomes?.spares ?? 0) / attempts) * 100)}%`
+          }
           label="Spare rate"
         />
       </div>
@@ -121,9 +119,7 @@ export function PlayDayScreen({
         >
           <span className="gameline__no">
             <span className="gameline__index">Game {index + 1}</span>
-            <span className="gameline__time tnum">
-              {formatTime(game.playedAt)}
-            </span>
+            <span className="gameline__time tnum">{formatTime(game.playedAt)}</span>
           </span>
           {/* The same shape the history rows show, so a game is recognisable
               from either list. */}

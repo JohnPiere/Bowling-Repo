@@ -95,9 +95,7 @@ export function HistoryScreen({
                         year: 'numeric',
                       })}
                     </span>
-                    <span className="session__weekday">
-                      {formatWeekday(day.at, 'short')}
-                    </span>
+                    <span className="session__weekday">{formatWeekday(day.at, 'short')}</span>
                   </span>
                   <span className="session__meta">
                     {day.house ? `${day.house} · ` : ''}
@@ -158,9 +156,7 @@ function GameLine({
     <button type="button" className="gameline" onClick={onOpen}>
       <span className="gameline__no">
         <span className="gameline__index">Game {number}</span>
-        <span className="gameline__time tnum">
-          {formatTime(game.playedAt)}
-        </span>
+        <span className="gameline__time tnum">{formatTime(game.playedAt)}</span>
       </span>
 
       <span className="spark grow" aria-hidden="true">

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { crewGlance, dashboard, gameShape } from '../src/lib/dashboard';
 import type { Game } from '../src/lib/db';
-import type { Group } from '../src/data/groups';
+import type { Group } from '../src/lib/social';
 import type { Member } from '../src/lib/leaderboard';
 
 const game = (over: Partial<Game> = {}): Game => ({

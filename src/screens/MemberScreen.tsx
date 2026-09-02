@@ -1,12 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { t } from '../lib/i18n';
-import type { Group } from '../data/groups';
-import { SAMPLE_SHARED } from '../data/groups';
+import type { Group, SharedGame } from '../lib/social';
+import { loadSharedGames } from '../lib/social';
 import { METRICS, rankRoster } from '../lib/leaderboard';
 
 interface Props {
   group: Group;
   memberId: string;
+  me: string;
 }
 
 /**
@@ -15,12 +17,29 @@ interface Props {
  * Only what they shared here is visible. A member's private games stay
  * private — being in a group is not an audit.
  */
-export function MemberScreen({ group, memberId }: Props) {
+export function MemberScreen({ group, memberId, me }: Props) {
   const member = group.members.find((m) => m.id === memberId) ?? group.members[0];
   const standings = rankRoster(group.members, 'avg');
   const standing = standings.find((s) => s.member.id === member.id);
 
-  const shared = (SAMPLE_SHARED[group.id] ?? []).filter((post) => post.authorId === member.id);
+  const [shared, setShared] = useState<SharedGame[]>([]);
+
+  // Only what they posted here. A member's private games stay private — being
+  // in a crew is not an audit.
+  useEffect(() => {
+    let live = true;
+    loadSharedGames(group.id, me).then(
+      (posts) => {
+        if (live) setShared(posts.filter((post) => post.authorId === member.id));
+      },
+      () => {
+        if (live) setShared([]);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [group.id, member.id, me]);
 
   return (
     <>

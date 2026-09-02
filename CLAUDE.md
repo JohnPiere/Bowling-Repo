@@ -195,11 +195,14 @@ Standings — average, handicap, improvement — are computed in `lib/social.ts`
 not in SQL. One definition of what an average means; a Postgres view would be a
 second copy of it, free to drift.
 
+There is no `src/data/` any more. Crews, chat and shared games all read the
+database; the shapes the screens render live in `lib/social.ts` beside the code
+that fills them. A fictional Tuesday Crew sitting next to a real one was worse
+than an empty screen.
+
 ## Not built
 
-Groups, rosters, chat and shared posts still render the sample data in
-`src/data/` — auth is real, the tables exist, and swapping those screens onto
-`lib/social.ts` is the next step. Also absent: Apple sign-in — the design has
-the button, and Apple will not issue the key Supabase needs without a paid
-developer account, so it is not drawn rather than drawn refusing. Also no cloud
-backup of games, and no video.
+Apple sign-in — the design has the button, and Apple will not issue the key
+Supabase needs without a paid developer account, so it is not drawn rather than
+drawn refusing. Also no cloud backup of games, no reactions on a shared game
+beyond the schema that holds them, and no video.

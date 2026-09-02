@@ -49,8 +49,10 @@ export function VideosScreen({ onScan }: { onScan: () => void }) {
       <h2 className="section-title">{t('What works today')}</h2>
       <div className="card">
         <p className="muted" style={{ marginTop: 0 }}>
-          {t('Score sheets, though. Photograph a finished sheet and the frames are read off it — a few hundred kilobytes rather than a few hundred megabytes.')}
-</p>
+          {t(
+            'Score sheets, though. Photograph a finished sheet and the frames are read off it — a few hundred kilobytes rather than a few hundred megabytes.',
+          )}
+        </p>
         <button type="button" className="btn-lg btn-lg--primary" onClick={onScan}>
           <Icon name="camera" size={18} />
           {t('Scan a score sheet')}

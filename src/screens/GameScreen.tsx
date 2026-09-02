@@ -3,7 +3,7 @@ import { t } from '../lib/i18n';
 import { downloadHtml, gameSheetHtml } from '../lib/exporting';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
-import { GROUPS } from '../data/groups';
+import type { Group } from '../lib/social';
 import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '../lib/db';
 import { frameMarks, scoreGame } from '../lib/scoring';
 import { tryParseMarks } from '../lib/marks';
@@ -12,6 +12,8 @@ import { formatDay } from '../lib/datetime';
 
 interface Props {
   game: Game;
+  /** The crews this bowler is in, for naming the ones it was shared to. */
+  crews: Group[];
   onShare: () => void;
   onChanged: () => void;
   onDeleted: () => void;
@@ -23,7 +25,7 @@ interface Props {
  * Also where a game is deleted — which the storage warning tells people to do,
  * so it had better be possible.
  */
-export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
+export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoSize, setPhotoSize] = useState<number | null>(null);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -38,7 +40,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
   const spares = card.frames.filter((f) => f.isSpare).length;
   const opens = card.frames.filter((f) => f.isComplete && !f.isStrike && !f.isSpare).length;
   const sharedWith = (game.sharedTo ?? [])
-    .map((id) => GROUPS.find((group) => group.id === id))
+    .map((id) => crews.find((group) => group.id === id))
     .filter(Boolean);
 
   // The photo lives in its own store and is fetched only here, which is the
@@ -135,7 +137,8 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
         </div>
 
         {edited && 'error' in edited && <div className="note note--bad">{edited.error}</div>}
-        {edited && !('error' in edited) &&
+        {edited &&
+          !('error' in edited) &&
           edited.warnings.map((warning) => (
             <div key={warning} className="note note--warn">
               {warning}
@@ -206,7 +209,11 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
             {game.total}
           </span>
         </div>
-        {game.house && <div className="muted" style={{ marginBottom: 10 }}>{game.house}</div>}
+        {game.house && (
+          <div className="muted" style={{ marginBottom: 10 }}>
+            {game.house}
+          </div>
+        )}
         <Scorecard scorecard={card} />
       </div>
 
@@ -248,8 +255,10 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
         {t('Export this game')}
       </button>
       <p className="footnote">
-        {t('A printable score sheet, saved to this device. Open it and print to save it as a PDF — which is how a phone makes one.')}
-</p>
+        {t(
+          'A printable score sheet, saved to this device. Open it and print to save it as a PDF — which is how a phone makes one.',
+        )}
+      </p>
 
       <h2 className="section-title">{t('Correct it')}</h2>
       <button type="button" className="btn-lg" onClick={startEditing}>
@@ -273,11 +282,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
             <div key={group!.id} className="card" style={{ padding: 12 }}>
               <div className="row row--between">
                 <span style={{ fontSize: 13 }}>On {group!.name}'s board</span>
-                <button
-                  type="button"
-                  className="chip"
-                  onClick={() => retract(group!.id)}
-                >
+                <button type="button" className="chip" onClick={() => retract(group!.id)}>
                   {t('Unshare')}
                 </button>
               </div>
@@ -313,11 +318,7 @@ export function GameScreen({ game, onShare, onChanged, onDeleted }: Props) {
           </div>
         </>
       ) : (
-        <button
-          type="button"
-          className="btn-lg btn-lg--danger"
-          onClick={() => setConfirming(true)}
-        >
+        <button type="button" className="btn-lg btn-lg--danger" onClick={() => setConfirming(true)}>
           {t('Delete this game')}
         </button>
       )}

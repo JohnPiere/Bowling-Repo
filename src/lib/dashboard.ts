@@ -8,7 +8,7 @@
  */
 
 import type { Game } from './db';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 import { rankRoster } from './leaderboard';
 import { scoreGame } from './scoring';
 import { ballOutcomes } from './stats';

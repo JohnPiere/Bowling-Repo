@@ -42,7 +42,13 @@ import { formatMonthYear } from '../lib/datetime';
  * Everything below the chart reads the same range, so the screen never mixes
  * periods.
  */
-export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSettings?: () => void }) {
+export function StatsScreen({
+  games,
+  onOpenSettings,
+}: {
+  games: Game[];
+  onOpenSettings?: () => void;
+}) {
   const { preferences } = usePreferences();
   const [range, setRange] = useState<RangeKey>('all');
   const [metric, setMetric] = useState<MetricKey>('avg');
@@ -179,7 +185,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
           subject={`${t(active.short)}`}
           // The grey dots are one game's own reading, whatever the metric is —
           // calling them "Average" would name the line, not them.
-          context={t("Each game")} 
+          context={t('Each game')}
           scale={active.unit === '%' ? { min: 0, max: 100 } : undefined}
         />
       </div>
@@ -243,10 +249,7 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
                   {/* Bar length is the conversion rate, so a row that is
                       mostly empty is one to practise. */}
                   <span className="leave-row__bar">
-                    <span
-                      className="leave-row__fill"
-                      style={{ width: `${Math.max(2, rate)}%` }}
-                    />
+                    <span className="leave-row__fill" style={{ width: `${Math.max(2, rate)}%` }} />
                   </span>
                   <span className="tnum" style={{ fontSize: 13, minWidth: 34, textAlign: 'right' }}>
                     {rate}%
@@ -270,8 +273,10 @@ export function StatsScreen({ games, onOpenSettings }: { games: Game[]; onOpenSe
       <div className="card">
         <FirstBallChart counts={firstBalls} />
         <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('Counts the ball thrown at a full rack in each frame. The tenth frame\'s bonus balls are left out — they would flatter the distribution.')}
-</p>
+          {t(
+            "Counts the ball thrown at a full rack in each frame. The tenth frame's bonus balls are left out — they would flatter the distribution.",
+          )}
+        </p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { Avatar } from '../components/Avatar';
 import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 import type { Session } from '../lib/session';
 
 interface Props {

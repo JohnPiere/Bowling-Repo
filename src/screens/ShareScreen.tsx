@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 import { describeBackendFailure } from '../lib/backend';
 import { shareGame as shareLocally, type Game } from '../lib/db';
 import { shareGame as postToCrew } from '../lib/social';

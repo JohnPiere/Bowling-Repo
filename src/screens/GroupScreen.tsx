@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CrewTrendChart } from '../components/charts/CrewTrendChart';
-import { t , tf } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
-import { SAMPLE_FEED } from '../data/roster';
-import type { Group } from '../data/groups';
+import { activityFrom, loadSharedGames, type Activity } from '../lib/social';
+import type { Group } from '../lib/social';
 import {
   boardHeight,
   METRICS,
@@ -28,6 +28,7 @@ import {
  */
 interface Props {
   group: Group;
+  me: string;
   onOpenMember?: (memberId: string) => void;
   onOpenChat?: () => void;
   onOpenSettings?: () => void;
@@ -36,12 +37,33 @@ interface Props {
 
 export function GroupScreen({
   group,
+  me,
   onOpenMember,
   onOpenChat,
   onOpenSettings,
   onOpenShared,
 }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
+  const [feed, setFeed] = useState<Activity[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    loadSharedGames(group.id, me).then(
+      (posts) => {
+        if (!live) return;
+        const best = Math.max(0, ...posts.map((post) => post.score));
+        setFeed(activityFrom(posts, best));
+      },
+      () => {
+        // The board above already reports an unreachable server; a second
+        // sentence saying the same thing is noise.
+        if (live) setFeed([]);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [group.id, me]);
 
   const roster = group.members;
   const metric = metricByKey(metricKey);
@@ -62,8 +84,7 @@ export function GroupScreen({
           <div className="grow">
             <div className="hero__name">{group.name}</div>
             <div className="hero__meta">
-              {tf('{n} members', { n: roster.length })} ·{' '}
-              {t(group.isOpen ? 'open' : 'invite-only')}
+              {tf('{n} members', { n: roster.length })} · {t(group.isOpen ? 'open' : 'invite-only')}
               {group.yourRole === 'owner' ? ` · ${t('you own it')}` : ''}
             </div>
           </div>
@@ -216,15 +237,12 @@ export function GroupScreen({
       </div>
 
       <p className="footnote">
-        {t('Switching the metric re-ranks in place — rows slide to their new position. Tap anyone to see their season.')}
-</p>
+        {t(
+          'Switching the metric re-ranks in place — rows slide to their new position. Tap anyone to see their season.',
+        )}
+      </p>
 
-      <button
-        type="button"
-        className="btn-lg"
-        style={{ marginTop: 4 }}
-        onClick={onOpenShared}
-      >
+      <button type="button" className="btn-lg" style={{ marginTop: 4 }} onClick={onOpenShared}>
         <Icon name="share" size={18} />
         {t('Shared games')}
       </button>
@@ -236,7 +254,12 @@ export function GroupScreen({
 
       <h2 className="section-title">{t('Recent activity')}</h2>
       <div className="card">
-        {SAMPLE_FEED.map((item) => (
+        {feed.length === 0 && (
+          <p className="muted" style={{ margin: 0 }}>
+            {t('Nothing shared here yet.')}
+          </p>
+        )}
+        {feed.map((item) => (
           <div key={item.text} className="row" style={{ padding: '5px 0' }}>
             <span
               style={{

@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { QrCode, joinUrl } from '../components/QrCode';
 import { describeBackendFailure } from '../lib/backend';
 import { createGroup } from '../lib/social';
-import type { Group } from '../data/groups';
+import type { Group } from '../lib/social';
 import type { Session } from '../lib/session';
 
 interface Props {

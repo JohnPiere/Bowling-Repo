@@ -261,6 +261,7 @@ export function App() {
         {route.name === 'group' && group && (
           <GroupScreen
             group={group}
+            me={session.id}
             onOpenMember={(memberId) => nav.push({ name: 'member', groupId: group.id, memberId })}
             onOpenChat={() => nav.push({ name: 'chat', groupId: group.id })}
             onOpenSettings={() => nav.push({ name: 'groupSettings', groupId: group.id })}
@@ -271,7 +272,7 @@ export function App() {
         {route.name === 'chat' && group && <ChatScreen group={group} session={session} />}
 
         {route.name === 'member' && group && (
-          <MemberScreen group={group} memberId={route.memberId} />
+          <MemberScreen group={group} memberId={route.memberId} me={session.id} />
         )}
 
         {route.name === 'groupSettings' && group && (
@@ -299,11 +300,14 @@ export function App() {
           />
         )}
 
-        {route.name === 'sharedGames' && group && <SharedGamesScreen group={group} />}
+        {route.name === 'sharedGames' && group && (
+          <SharedGamesScreen group={group} me={session.id} />
+        )}
 
         {route.name === 'game' && gameInView && (
           <GameScreen
             game={gameInView}
+            crews={crews.data}
             onShare={() => nav.push({ name: 'shareGame', gameId: gameInView.id })}
             onChanged={refresh}
             onDeleted={() => {

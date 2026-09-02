@@ -192,7 +192,9 @@ export function SettingsScreen({
           </button>
         </div>
         <p className="footnote" style={{ marginBottom: 0 }}>
-          {t('Off by default. Turn it on and every game you save is posted to the crew as soon as it is finished.')}
+          {t(
+            'Off by default. Turn it on and every game you save is posted to the crew as soon as it is finished.',
+          )}
         </p>
       </div>
 
@@ -236,16 +238,20 @@ export function SettingsScreen({
 
         {install.kind === 'unavailable' && (
           <p className="muted" style={{ margin: 0 }}>
-            {t('This browser has not offered to install Lane Log. It still works as a normal page; notifications may not.')}
-</p>
+            {t(
+              'This browser has not offered to install Lane Log. It still works as a normal page; notifications may not.',
+            )}
+          </p>
         )}
       </div>
 
       <h2 className="section-title">{t('Notifications')}</h2>
       <div className="card">
         {availability.state !== 'ready' ? (
-          <div className={`note ${availability.state === 'needs-install' ? 'note--info' : 'note--warn'}`}
-               style={{ marginBottom: 0 }}>
+          <div
+            className={`note ${availability.state === 'needs-install' ? 'note--info' : 'note--warn'}`}
+            style={{ marginBottom: 0 }}
+          >
             {availability.reason}
           </div>
         ) : (
@@ -313,8 +319,10 @@ export function SettingsScreen({
           <span className="tnum">{__APP_VERSION__}</span>
         </div>
         <p className="footnote" style={{ marginBottom: 0, marginTop: 10 }}>
-          {t('Lane Log keeps everything on this device. There is no account, no server and nothing uploaded — which is also why a backup file is the only way to move a season to another phone.')}
-</p>
+          {t(
+            'Lane Log keeps everything on this device. There is no account, no server and nothing uploaded — which is also why a backup file is the only way to move a season to another phone.',
+          )}
+        </p>
       </div>
 
       <h2 className="section-title">{t('Sync')}</h2>
@@ -424,8 +432,7 @@ export function SettingsScreen({
                   className="progress__fill"
                   style={{
                     width: `${Math.min(100, Math.round(storage.fraction * 100))}%`,
-                    background:
-                      storage.fraction >= STORAGE_WARN_AT ? 'var(--negative)' : undefined,
+                    background: storage.fraction >= STORAGE_WARN_AT ? 'var(--negative)' : undefined,
                   }}
                 />
               </div>
@@ -433,8 +440,10 @@ export function SettingsScreen({
 
             {storage.fraction !== null && storage.fraction >= STORAGE_WARN_AT && (
               <div className="note note--warn" style={{ marginTop: 11, marginBottom: 0 }}>
-                {t('Storage is nearly full. Export your games, then delete some older ones — scanned sheets take by far the most room.')}
-</div>
+                {t(
+                  'Storage is nearly full. Export your games, then delete some older ones — scanned sheets take by far the most room.',
+                )}
+              </div>
             )}
           </>
         )}
@@ -458,8 +467,10 @@ export function SettingsScreen({
               {t('Ask the browser to keep this data')}
             </button>
             <p className="footnote" style={{ marginBottom: 0 }}>
-              {t('Without this, a browser short of space may clear your games. Installing the app usually makes the browser grant it.')}
-</p>
+              {t(
+                'Without this, a browser short of space may clear your games. Installing the app usually makes the browser grant it.',
+              )}
+            </p>
           </>
         )}
 
@@ -516,8 +527,7 @@ export function SettingsScreen({
             <p style={{ margin: '4px 0 0' }}>
               {plan.alreadyHere > 0 &&
                 `${plan.alreadyHere} already on this device and left alone. `}
-              {plan.duplicatedInFile > 0 &&
-                `${plan.duplicatedInFile} repeated within the file. `}
+              {plan.duplicatedInFile > 0 && `${plan.duplicatedInFile} repeated within the file. `}
               {plan.rejected.length > 0 &&
                 `${plan.rejected.length} could not be read (${plan.rejected[0].reason}). `}
               Nothing is changed until you say so.
