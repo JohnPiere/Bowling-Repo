@@ -113,9 +113,18 @@ So the unit of a scan is **one row**, and the bowler says which:
   a crop that shaves the borders off leaves the reader nothing to find the
   frame grid against.
 
-Nothing on the sheet is read for the date, the time or the house. Sheets print
-them somewhere else, or in another language, or not at all; two fields to type
-beats a date silently read wrong.
+The house is not read, and neither is the date: two fields to type beats a date
+silently read wrong. The **time** is different — a Korona sheet prints
+`開始時間 00:41` beside every game, so where it can be read it is offered and
+the bowler confirms it.
+
+**The pin diagrams are read.** That reverses an earlier decision, and the reason
+is that the sheets turned out to carry more than was assumed: each frame gets a
+4/3/2/1 rack drawn in three shapes that say which pins survived which ball. See
+`docs/SHEET_FORMAT.md` — that is the same `pinfalls` a game scored on the app's
+own rack stores, so a scan can feed the leave statistics instead of only the
+scores. The marks above the diagram are a checksum on it, and a leave that
+disagrees with the count is dropped rather than imported.
 
 Within a row it finds the rules and reads each frame separately, because
 reading even one row in a single pass throws away the grid that says where

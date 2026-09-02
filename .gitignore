@@ -24,3 +24,7 @@ public/real-sheet.jpg
 # Supabase dashboard and nowhere else.
 client_secret*.json
 *.credentials.json
+
+# Real score sheets used to test the scanner. They carry a name and a QR code,
+# so they are local-only — same rule as public/real-sheet.jpg.
+sheet-fixtures/
