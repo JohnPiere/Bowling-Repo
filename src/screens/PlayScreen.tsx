@@ -15,6 +15,7 @@ import {
   scoreGame,
 } from '../lib/scoring';
 import { describeSaveFailure } from '../lib/storage';
+import { fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
 
 /**
  * How the bowler is entering the game.
@@ -28,7 +29,6 @@ type Entry = 'rack' | 'pad';
 interface Props {
   /** Receives the saved game so the caller can offer to share it. */
   onSaved: (gameId: string) => void;
-  onScan: () => void;
 }
 
 /**
@@ -43,7 +43,7 @@ interface Props {
  * Rolls are held in component state until the game is saved, so a mis-tap can
  * be undone without touching the database.
  */
-export function PlayScreen({ onSaved, onScan }: Props) {
+export function PlayScreen({ onSaved }: Props) {
   const [started, setStarted] = useState(false);
   const [entry, setEntry] = useState<Entry>('rack');
   const [rolls, setRolls] = useState<number[]>([]);
@@ -52,8 +52,17 @@ export function PlayScreen({ onSaved, onScan }: Props) {
   /** Pins marked as down by the ball being entered, before it is committed. */
   const [pending, setPending] = useState<number[]>([]);
   const [house, setHouse] = useState('');
+  // When it was bowled. Seeded from the clock and editable, because a game is
+  // often written up afterwards — in the car, or the next morning — and filing
+  // it under the moment it was typed puts it on the wrong day.
+  const [day, setDay] = useState(() => toDateInput(Date.now()));
+  const [time, setTime] = useState(() => toTimeInput(Date.now()));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Null when the two fields do not make a date between them; the save button
+  // goes off rather than quietly filing the game under today.
+  const playedAt = fromInputs(day, time);
 
   const card = scoreGame(rolls);
   const cursor = nextRollCursor(rolls);
@@ -118,12 +127,14 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         total: card.total,
         isComplete: complete,
         source: 'manual',
-        playedAt: Date.now(),
+        playedAt: playedAt ?? Date.now(),
       });
       setRolls([]);
       setPinfalls([]);
       setPending([]);
       setHouse('');
+      setDay(toDateInput(Date.now()));
+      setTime(toTimeInput(Date.now()));
       setStarted(false);
       onSaved(saved.id);
     } catch (err) {
@@ -172,15 +183,6 @@ export function PlayScreen({ onSaved, onScan }: Props) {
           )}
         </p>
 
-        <button type="button" className="btn-lg" onClick={onScan}>
-          <Icon name="camera" size={18} />
-          {t('Scan a paper score sheet')}
-        </button>
-        <p className="muted" style={{ margin: '6px 0 0' }}>
-          {t(
-            'Photograph a finished sheet and Lane Log reads the marks off it. Best for games already bowled — you check every frame before it is saved.',
-          )}
-        </p>
       </>
     );
   }
@@ -193,7 +195,7 @@ export function PlayScreen({ onSaved, onScan }: Props) {
         <FrameStrip frames={strip} />
 
         <div className="note note--good" style={{ marginTop: 12 }}>
-          {tf('Game finished — {n} pins. Add the house if you want it on the record.', {
+          {tf('Game finished — {n} pins. Check when and where before saving.', {
             n: card.total,
           })}
         </div>
@@ -208,9 +210,43 @@ export function PlayScreen({ onSaved, onScan }: Props) {
             placeholder="Rose Bowl Lanes"
           />
         </label>
+
+        <div className="row" style={{ gap: 11, marginBottom: 11 }}>
+          <label className="grow">
+            <span className="hero__label">{t('Date')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+            />
+          </label>
+          <label className="grow">
+            <span className="hero__label">{t('Time')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </label>
+        </div>
+
+        {playedAt === null && (
+          <div className="note note--warn">
+            {t('That date is not one the calendar has — check it before saving.')}
+          </div>
+        )}
         {saveError && <div className="note note--bad">{saveError}</div>}
 
-        <button type="button" className="btn-lg btn-lg--primary" onClick={save} disabled={saving}>
+        <button
+          type="button"
+          className="btn-lg btn-lg--primary"
+          onClick={save}
+          disabled={saving || playedAt === null}
+        >
           <Icon name="check" size={18} />
           {saving ? t('Saving…') : t('Save this game')}
         </button>

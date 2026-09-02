@@ -28,7 +28,6 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { ShareScreen } from './screens/ShareScreen';
 import { SharedGamesScreen } from './screens/SharedGamesScreen';
 import { StatsScreen } from './screens/StatsScreen';
-import { VideosScreen } from './screens/VideosScreen';
 
 const TABS: { key: RouteName; label: string; icon: IconName }[] = [
   { key: 'home', label: 'Home', icon: 'home' },
@@ -202,7 +201,7 @@ export function App() {
         )}
 
         {route.name === 'play' && (
-          <PlayScreen onSaved={finishGame} onScan={() => nav.push({ name: 'scan' })} />
+          <PlayScreen onSaved={finishGame} />
         )}
 
         {route.name === 'scan' && <ScanScreen onImported={finishGame} />}
@@ -353,7 +352,6 @@ export function App() {
           <p className="empty">{t('That game is no longer on this device.')}</p>
         )}
 
-        {route.name === 'videos' && <VideosScreen onScan={() => nav.push({ name: 'scan' })} />}
 
         {route.name === 'tour' && <OnboardingScreen replay onDone={nav.back} />}
 
@@ -361,7 +359,6 @@ export function App() {
           <SettingsScreen
             onReplayTour={() => nav.push({ name: 'tour' })}
             games={games}
-            onOpenVideos={() => nav.push({ name: 'videos' })}
             onRestored={refresh}
           />
         )}
@@ -423,8 +420,6 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('How it works'), kicker: s('Tour'), meta: '' };
     case 'day':
       return { title: s('Play day'), kicker: s('Session'), meta: '' };
-    case 'videos':
-      return { title: s('Video gallery'), kicker: s('Slow motion'), meta: '' };
     case 'auth':
       return { title: s('Sign in'), kicker: s('Account'), meta: '' };
     case 'groups':

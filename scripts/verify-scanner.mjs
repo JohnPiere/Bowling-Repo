@@ -217,9 +217,9 @@ async function main() {
   let failures = 0;
 
   for (const testCase of CASES) {
-    await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'Play', exact: true }).click();
-    await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
+    // Straight to the scanner. The play screen's button is parked while the
+    // reader is being worked on; the app's own ?screen= link still opens it.
+    await page.goto(`${BASE}/?screen=scan`, { waitUntil: 'networkidle' });
     await page.waitForSelector('text=Use a photo instead');
     await page.setInputFiles('input[type=file]', join(OUT, testCase.file));
 

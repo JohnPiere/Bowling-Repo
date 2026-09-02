@@ -17,7 +17,6 @@ export type Route =
   | { name: 'stats' }
   | { name: 'settings' }
   | { name: 'tour' }
-  | { name: 'videos' }
   | { name: 'auth'; then?: Route }
   | { name: 'groups' }
   | { name: 'group'; groupId: string }

@@ -874,9 +874,10 @@ async function main() {
       const file = join(OUT, 'three-games.png');
       writeFileSync(file, Buffer.from(await drawSheet(page), 'base64'));
 
-      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: 'Play', exact: true }).click();
-      await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
+      // Straight to the scanner: the play screen's button is parked while the
+      // reader is being worked on, and the app's own ?screen= link still opens
+      // it. What is being checked here is the scanner, not the way in.
+      await page.goto(`${BASE}/?screen=scan`, { waitUntil: 'networkidle' });
       await page.waitForSelector('text=Use a photo instead');
       await page.setInputFiles('input[type=file]', file);
 
@@ -909,9 +910,10 @@ async function main() {
     });
 
     await check('the camera aims with a bar, and dims everything outside it', async () => {
-      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: 'Play', exact: true }).click();
-      await page.getByRole('button', { name: 'Scan a paper score sheet' }).click();
+      // Straight to the scanner: the play screen's button is parked while the
+      // reader is being worked on, and the app's own ?screen= link still opens
+      // it. What is being checked here is the scanner, not the way in.
+      await page.goto(`${BASE}/?screen=scan`, { waitUntil: 'networkidle' });
       await page.getByRole('button', { name: 'Open the camera' }).click();
 
       await page.waitForSelector('.reticle', { timeout: 15000 });

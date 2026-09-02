@@ -289,5 +289,18 @@ than an empty screen.
 
 Apple sign-in — the design has the button, and Apple will not issue the key
 Supabase needs without a paid developer account, so it is not drawn rather than
-drawn refusing. Also no cloud backup of games, no reactions on a shared game
-beyond the schema that holds them, and no video.
+drawn refusing. Also no cloud backup of games, and no reactions on a shared game
+beyond the schema that holds them.
+
+**Video is out, and its screen with it.** The handoff has a Videos tab and there
+was a screen explaining why it was empty — the arithmetic of storing clips, and
+what a backend for them would cost. A screen whose whole content is an apology
+for itself earns nothing, so it is gone rather than parked. Nothing links to it
+and the `videos` route no longer exists.
+
+**The scan button on the play screen is parked**, not deleted: `ScanScreen` and
+everything under `lib/ocr/` are intact and still reached by `?screen=scan`,
+which is how both browser checks drive them. The reader works on a real sheet
+about as far as the notes above say and no further, and the button goes back the
+moment that is worth offering — one `onScan` prop and one button in
+`PlayScreen.tsx`.

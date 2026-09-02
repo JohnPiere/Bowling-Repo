@@ -15,6 +15,8 @@ import {
   firstBallDistribution,
   leaveRecords,
   conversionByType,
+  dailySeries,
+  dailyStats,
   METRICS,
   metricChange,
   metricSeries,
@@ -29,7 +31,7 @@ import {
 } from '../lib/stats';
 import { badgeStatuses } from '../lib/badges';
 import { usePreferences } from '../lib/preferences';
-import { formatMonthYear } from '../lib/datetime';
+import { formatDay, formatMonthYear } from '../lib/datetime';
 
 /**
  * Analytics.
@@ -79,6 +81,8 @@ export function StatsScreen({
     [inRange],
   );
   const bestRun = useMemo(() => bestStrikeRun(inRange), [inRange]);
+  const days = useMemo(() => dailyStats(inRange), [inRange]);
+  const daily = useMemo(() => dailySeries(days), [days]);
   const leaves = useMemo(() => leaveRecords(inRange), [inRange]);
   const splits = useMemo(() => splitSummary(inRange), [inRange]);
 
@@ -195,6 +199,47 @@ export function StatsScreen({
         <Stat label="Games" value={summary.games} />
         <Stat label="Best run" value={bestRun} suffix="×" />
       </div>
+
+      {days.length > 1 && (
+        <>
+          <h2 className="section-title">{t('Day by day')}</h2>
+          <div className="card">
+            {/* One dot a night, not one a game. A six-game Saturday and a
+                single Wednesday are one reading each here, which is what makes
+                the line answer "how do my nights go" rather than "how do my
+                games go" — the chart above already answers that one. */}
+            <ScoreTrendChart
+              points={daily}
+              baseline={lifetime}
+              subject={t('Average of every day so far')}
+              context={t('That day')}
+              xLabel={formatDay}
+              each="day"
+            />
+
+            {/* The nights themselves, newest first — the chart is the shape
+                and this is the reading. */}
+            <div className="days">
+              <div className="days__row days__row--head">
+                <span>{t('Day')}</span>
+                <span />
+                <span>{t('Average')}</span>
+                <span>{t('Best')}</span>
+              </div>
+              {[...days].reverse().map((day) => (
+                <div className="days__row" key={day.key}>
+                  <span className="days__when">{formatDay(day.at)}</span>
+                  <span className="days__count">
+                    {tf(day.games === 1 ? '{n} game' : '{n} games', { n: day.games })}
+                  </span>
+                  <span className="tnum">{day.average}</span>
+                  <span className="days__high tnum">{day.high}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">{t('Spare analysis')}</h2>
       <SpareAnalysis breakdown={spares} conversion={conversion} games={rackGames} />

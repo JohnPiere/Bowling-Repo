@@ -36,12 +36,10 @@ import {
  */
 export function SettingsScreen({
   games,
-  onOpenVideos,
   onRestored,
   onReplayTour,
 }: {
   games: Game[];
-  onOpenVideos?: () => void;
   onRestored?: () => void;
   /** Runs the first-run tour again, without touching anything stored. */
   onReplayTour?: () => void;
@@ -355,16 +353,6 @@ export function SettingsScreen({
             )}
           </>
         )}
-      </div>
-
-      <h2 className="section-title">{t('Clips')}</h2>
-      <div className="card">
-        <p className="muted" style={{ marginTop: 0 }}>
-          {t('Video is not built yet — it is the one feature that needs a backend.')}
-        </p>
-        <button type="button" className="btn-lg" onClick={onOpenVideos}>
-          {t('What it would take')}
-        </button>
       </div>
 
       <h2 className="section-title">{t('About')}</h2>

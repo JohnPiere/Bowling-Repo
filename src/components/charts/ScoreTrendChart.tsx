@@ -32,6 +32,8 @@ interface Props {
   scale?: { min: number; max: number };
   /** How to write the two end labels. A session wants times, a season dates. */
   xLabel?: (at: number) => string;
+  /** What one point is, for the table's caption: a game, a day, a night. */
+  each?: string;
 }
 
 /**
@@ -50,6 +52,7 @@ export function ScoreTrendChart({
   context = 'Each game',
   scale,
   xLabel = formatDate,
+  each = 'game',
 }: Props) {
   const hover = useHoverIndex(points.length, PAD.left, PAD.right);
   const [picked, setPicked] = useState<number | null>(null);
@@ -265,7 +268,7 @@ export function ScoreTrendChart({
       </p>
 
       <DataTable
-        caption={`${context} and ${subject.toLowerCase()} per game`}
+        caption={`${context} and ${subject.toLowerCase()} per ${each}`}
         columns={['Date', context, subject]}
         rows={points.map((p) => [
           formatDate(p.playedAt),

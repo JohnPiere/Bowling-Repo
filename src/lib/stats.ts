@@ -7,6 +7,7 @@
  */
 
 import type { Game } from './db';
+import { groupByDay } from './history';
 import { describeLeave, isSplit, leavesFromPinfalls } from './pins';
 import { FRAMES_PER_GAME, scoreGame } from './scoring';
 
@@ -329,6 +330,63 @@ export function metricSeries(games: Game[], metric: MetricKey): MetricPoint[] {
   return raw.map((point, i) => {
     running += point.value;
     return { ...point, rolling: round1(running / (i + 1)) };
+  });
+}
+
+export interface DayStat {
+  /** The calendar day, as `history.ts` keys them. */
+  key: string;
+  /** When the first game of that day was bowled. */
+  at: number;
+  games: number;
+  average: number;
+  high: number;
+  low: number;
+  /** Every game of the day added up — the number a league cares about. */
+  series: number;
+}
+
+/**
+ * A season by the day rather than by the game, oldest first.
+ *
+ * Bowling happens in sessions: three games on a Tuesday are one outing, and a
+ * bowler asking "how did that night go" is asking about the night. Averaged by
+ * day, a good night and a bad night are one reading each — where a game-by-game
+ * line gives a six-game Saturday six times the say of a single Wednesday.
+ *
+ * Built on `groupByDay`, which is also what the history screen lists, so a day
+ * has one definition and a night's average is the same number on both screens.
+ */
+export function dailyStats(games: Game[]): DayStat[] {
+  return groupByDay(games, 'old').map((day) => {
+    const scores = day.games.map((game) => game.total);
+
+    return {
+      key: day.key,
+      at: day.at,
+      games: day.games.length,
+      average: day.average,
+      high: day.high,
+      low: Math.min(...scores),
+      series: day.series,
+    };
+  });
+}
+
+/**
+ * The daily averages as a chart's points: one dot a day, and the line the
+ * average of every day so far.
+ *
+ * The same shape `metricSeries` returns, so the same chart draws it — and the
+ * same reading applies, that the dots are what happened and the line is where
+ * it has settled.
+ */
+export function dailySeries(days: DayStat[]): MetricPoint[] {
+  let running = 0;
+
+  return days.map((day, i) => {
+    running += day.average;
+    return { playedAt: day.at, value: day.average, rolling: round1(running / (i + 1)) };
   });
 }
 

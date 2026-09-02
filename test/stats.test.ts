@@ -4,6 +4,8 @@ import {
   applyRange,
   ballOutcomes,
   bestStrikeRun,
+  dailySeries,
+  dailyStats,
   firstBallDistribution,
   leaveRecords,
   metricChange,
@@ -326,5 +328,58 @@ describe('metricChange', () => {
 
   it('has nothing to say about an empty range', () => {
     expect(metricChange([])).toBeNull();
+  });
+});
+
+describe('dailyStats', () => {
+  // Two nights: a three-game Saturday and a single game two days later.
+  const saturday = [
+    game(open4s, 4, { id: 'sat-1' }),
+    game(spares, 4, { id: 'sat-2', playedAt: NOW - 4 * DAY + 3600_000 }),
+    game(strikes, 4, { id: 'sat-3', playedAt: NOW - 4 * DAY + 7200_000 }),
+  ];
+  const monday = [game(open4s, 2, { id: 'mon-1' })];
+  const season = [...monday, ...saturday];
+
+  it('gives one reading a night, oldest first', () => {
+    const days = dailyStats(season);
+    expect(days).toHaveLength(2);
+    expect(days[0].games).toBe(3);
+    expect(days[1].games).toBe(1);
+    expect(days[0].at).toBeLessThan(days[1].at);
+  });
+
+  it('reads a night the way a bowler does: its average, its best, its series', () => {
+    const [night] = dailyStats(saturday);
+    expect(night.high).toBe(300);
+    expect(night.low).toBe(80);
+    expect(night.series).toBe(80 + 150 + 300);
+    expect(night.average).toBe(Math.round((80 + 150 + 300) / 3));
+  });
+
+  it('agrees with the history screen about what a day is', () => {
+    // Both screens group by `groupByDay`, so a night's average is one number
+    // and not two that drift.
+    const days = dailyStats(saturday);
+    expect(days[0].key).toBe(dailyStats([saturday[2]])[0].key);
+  });
+
+  it('has nothing to say about an empty season', () => {
+    expect(dailyStats([])).toEqual([]);
+  });
+});
+
+describe('dailySeries', () => {
+  it('plots the day and carries the average of the days so far', () => {
+    const days = dailyStats([game(open4s, 4), game(strikes, 2)]);
+    const series = dailySeries(days);
+
+    expect(series.map((point) => point.value)).toEqual([80, 300]);
+    // The line is the average of every *day*, so one big night counts once.
+    expect(series[1].rolling).toBe(190);
+  });
+
+  it('has nothing to plot without days', () => {
+    expect(dailySeries([])).toEqual([]);
   });
 });

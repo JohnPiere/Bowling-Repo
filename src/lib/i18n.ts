@@ -137,8 +137,8 @@ export const JA: Record<string, string> = {
   'Pin {n}, already down': '{n}番ピン、すでに倒れています',
   'Pin {n}, knocked down — tap to stand it back up': '{n}番ピン、倒しました。タップで元に戻します',
   'Pin {n}, standing — tap to knock it down': '{n}番ピン、残っています。タップで倒します',
-  'Game finished — {n} pins. Add the house if you want it on the record.':
-    'ゲーム終了 — {n}ピン。記録に残す場合はボウリング場を入力してください。',
+  'Game finished — {n} pins. Check when and where before saving.':
+    'ゲーム終了 — {n}ピン。保存前に日時と場所を確認してください。',
   'Saving…': '保存中…',
 
   // ── Home dashboard ──
@@ -211,7 +211,6 @@ export const JA: Record<string, string> = {
   'Sharing sends the score sheet, not your whole history. You can retract it from the group\'s shared games at any time and it stays in your own history either way.': '共有されるのはスコアのみで、履歴全体ではありません。グループの共有ゲームからいつでも取り消せます。取り消しても自分の履歴には残ります。',
   'Sharing sends the score sheet only — video comes later. Unsharing retracts a game from the board; it stays in your own history.': '共有されるのはスコアのみです。動画は今後対応します。共有を解除するとボードから消えますが、自分の履歴には残ります。',
   'Counts the ball thrown at a full rack in each frame. The tenth frame\'s bonus balls are left out — they would flatter the distribution.': '各フレームで10本すべて立った状態の1投目を数えます。第10フレームのボーナス投球は分布を良く見せてしまうため除いています。',
-  'A phone will not hold that, and neither will a browser\'s storage quota. Clips need somewhere to live and something to pay for it.': 'スマートフォンにもブラウザの保存容量にも収まりません。動画には保存場所とその費用が必要です。',
   'Score sheets, though. Photograph a finished sheet and the frames are read off it — a few hundred kilobytes rather than a few hundred megabytes.': 'スコアシートなら可能です。投げ終えたシートを撮影するとフレームを読み取ります。数百メガバイトではなく数百キロバイトで済みます。',
   'Single pin': '1本残り',
   'Multi pin': '複数本',
@@ -387,6 +386,10 @@ export const JA: Record<string, string> = {
   '90 days': '90日',
   '6 months': '6ヶ月',
   'Lifetime': '通算',
+  'Day by day': '日ごと',
+  'That day': 'その日',
+  'Average of every day so far': 'これまでの日別平均',
+  'Day': '日',
   'Spare analysis': 'スペア分析',
   'Strike streaks': '連続ストライク',
   'How frames finish': 'フレームの結果',
@@ -527,18 +530,6 @@ export const JA: Record<string, string> = {
   'Ask the browser to keep this data': 'このデータの保持をブラウザに要求',
   'Restore': '復元',
   'Restore from a file': 'ファイルから復元',
-  'Clips': '動画',
-  'Video is not built yet — it is the one feature that needs a backend.': '動画は未実装です。唯一サーバーが必要な機能です。',
-  'What it would take': '必要なもの',
-
-  // ── Videos ──
-  'Clips are not built yet.': '動画はまだ実装されていません。',
-  'What works today': '今できること',
-  'Why it needs a backend first': 'サーバーが先に必要な理由',
-  'Scan a score sheet': 'スコアシートを撮影',
-  'A full game': '1ゲーム',
-  'One throw at 1080p': '1080pの1投',
-  'Video is the one feature that cannot live on the device. This is where it will go.': '動画だけは端末内に収まりません。ここに入る予定です。',
 
   // ── Errors ──
   'Something broke': '問題が発生しました',
