@@ -441,6 +441,8 @@ export const JA: Record<string, string> = {
   'Reading the sheet': 'スコアシートを読み取り中',
   'Recognition runs on this device — the photo is not uploaded anywhere.': '解析は端末内で行われ、写真はどこにも送信されません。',
   'Scanned game': '読み取ったゲーム',
+  'This adds up to every total printed on the sheet.':
+    'シートに印字された各フレームの合計とすべて一致しています。',
   'Which row is yours': 'どの行があなたのものですか',
   'Marks — correct anything the scan got wrong': 'マーク — 読み取り間違いを修正してください',
   'What the scan read': '読み取り結果',

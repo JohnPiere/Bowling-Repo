@@ -245,11 +245,21 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
           {review.error ? (
             <div className="note note--bad">{review.error}</div>
           ) : (
-            review.warnings.map((warning) => (
-              <div key={warning} className="note note--warn">
-                {warning}
-              </div>
-            ))
+            <>
+              {/* The sheet prints its own running totals, so a scan can be
+                  checked rather than merely believed. Saying so is worth more
+                  than any confidence figure the recogniser could offer. */}
+              {review.matchesSheet && (
+                <div className="note note--good">
+                  {t('This adds up to every total printed on the sheet.')}
+                </div>
+              )}
+              {review.warnings.map((warning) => (
+                <div key={warning} className="note note--warn">
+                  {warning}
+                </div>
+              ))}
+            </>
           )}
 
           {corrected && !('error' in corrected) && (

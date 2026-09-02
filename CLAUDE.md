@@ -147,6 +147,36 @@ which is the one thing that tells a frame rule from the border of a mark box
 printed inside the frame. Ink alone fits the mark boxes perfectly at half the
 true spacing and puts every frame boundary through the middle of a frame.
 
+**Where there are pin diagrams, they place the comb and the rules only refine
+it.** The rules have a rival the racks do not: the sheet numbers each frame in
+its middle and prints the second ball's box there too, so the *centre* of a
+frame carries ink in every band the same way its edge does — and on a bent sheet
+it carries more. That ambiguity put the grid half a frame out on real
+photographs, cutting every mark in two. A rack of ten circles sits under every
+frame with a lane of white paper between one and the next, exactly where the
+frames divide; `rackColumns` is that lane, and a comb half a frame out cuts
+every rack in half rather than passing between them.
+
+**The marks on a Japanese sheet are shapes, not characters.** A strike is a
+square filled corner to corner both ways, a spare a square with one triangular
+half filled, a miss a bar, and a count thrown at a split a digit with a ring
+round it. `markglyphs.ts` classifies them by which corners of the shape are
+inked, the way `pindiagram.ts` classifies pins, and only what is left goes to
+OCR. Handing those shapes to a recogniser constrained to `X0123456789/-` returns
+whichever of the thirteen a black shape most resembles, which is nothing in
+particular and differs every time.
+
+**The sheet checks itself.** Every frame carries its running total, and that
+column is a second record of the same game. `lib/reconcile.ts` cleans it (totals
+never fall, and never climb by more than thirty), repairs frames the recogniser
+read short — an open frame's two balls are worth exactly what the total climbed
+by, so one ball and the climb give the other — and says whether the game that
+came out matches the paper. A scan that agrees with every printed total says so
+on the review screen, and that is worth more than any confidence figure the
+recogniser can offer about itself. What it will not do is invent: a frame where
+nothing was read stays blank, because the score would be right and the two balls
+behind it would be a guess.
+
 Four mistakes that are easy to repeat:
 
 1. **Thresholds must be relative to what was found, not to the image.** A
@@ -177,18 +207,18 @@ catches this class of thing. Its sheets are seeded — do not make them random,
 or a pass stops being attributable to the code.
 
 It stands at **5 of 6**. The one that fails is the noisiest sheet, on one
-character: a pencil `9` that reads as nothing, so `9/` comes back as `/`. It is
-a knife edge rather than a fault to find — shifting every frame boundary by one
-pixel flips it back, and widening the cells by five does not — and tuning a
-constant until that sheet passes would be fitting the code to the fixture.
+character: a pencil `9` that reads as nothing, so `9/` comes back as `/` and
+will not parse. The totals cannot repair it and should not — the ball before a
+spare does not change the score by a pin, so any digit written there would be
+invented rather than derived, and it would land in somebody's first-ball
+average. The bowler types one character on the review screen instead.
 
-**What still does not work is the marks themselves, on a real Korona sheet.**
-The row, the box, the bands and the ten frames all come out right; the
-characters do not, because that sheet writes a strike as a crossed box and a
-spare as a filled triangle. Neither is a character, and an OCR engine asked for
-`X0123456789/-` returns whichever of those it thinks a filled shape resembles.
-Those frames want classifying by shape, the way `pindiagram.ts` classifies pins
-— see `docs/SHEET_FORMAT.md`.
+**Where it stands on real sheets.** Of six rows photographed off four Korona
+sheets, two now read exactly and say so, both agreeing with every running total
+printed under them. The rest parse into a game and warn that they do not match
+the paper, which is the honest answer and what the review screen is for. What
+goes wrong now is ordinary: a digit misread in an open frame, on a row bent
+enough that a straight grid cannot sit on it.
 
 It compares the resulting **game**, not the mark string: `9/` and `91` are the
 same two throws, so a scanner that reads one for the other is still right.

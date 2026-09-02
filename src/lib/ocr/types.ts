@@ -26,6 +26,17 @@ export interface RecognitionResult {
    * `text` and the rest live here for the bowler to choose from.
    */
   otherRows?: string[];
+  /**
+   * The running totals printed under the row, one per frame, where the sheet
+   * prints them and they could be read.
+   *
+   * A sheet carries its own checksum: the marks say what was thrown and the
+   * totals say what it came to, written by the same machine from the same
+   * throw. Where the two agree the scan is worth trusting; where they do not,
+   * the totals are usually the ones worth believing, because a column of
+   * numbers is easier to read than a mark.
+   */
+  totals?: (number | null)[];
 }
 
 export interface ScoreSheetRecogniser {

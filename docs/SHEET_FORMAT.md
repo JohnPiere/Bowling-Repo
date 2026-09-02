@@ -97,18 +97,46 @@ Three things follow, and each of them was a bug:
   the diagrams they are not the tallest ink in the picture, so they have to be
   looked for inside the box and not before it is found.
 
-## Why the marks still do not read
+## How the marks are read
 
-The segmentation now finds the row, the box, the bands and the ten frames on
-these sheets. The characters that come back are still wrong, and the reason is
-in the table above: a strike is `⊠` and a spare is `◤`. Neither is a character.
-Tesseract is asked for `X0123456789/-` and hands back whatever of that alphabet
-those filled shapes most resemble, which is nothing in particular.
+They are not recognised as text, because they are not text. `⊠` and `◤` are
+shapes, and an engine asked for `X0123456789/-` hands back whichever of those
+thirteen a solid black shape most resembles — which is nothing in particular and
+differs every time.
 
-Reading these needs the frames classified by shape the way the pin diagrams
-already are — a crossed box, a filled triangle, a digit — rather than recognised
-as text. That is the next piece of work, and it is much closer to
-`pindiagram.ts` than to OCR.
+`lib/ocr/markglyphs.ts` classifies them instead, by which corners of the shape
+are inked:
+
+| Shape | What gives it away |
+| --- | --- |
+| strike `⊠` | ink at all four corners, white at the top and bottom of the middle — what two triangles meeting point to point leaves |
+| spare `◤` | ink at one corner, white at the corner opposite: a triangle has a hypotenuse and a square does not |
+| miss `−` | the one shape that is not square, and the one that has to be told from a printed rule — it is half the width of a frame, and a rule is all of it |
+| count `⑧` | hollow, square, with something inside it; the digit is read from within the ring, which is what makes it unreadable whole |
+
+Across fifty frames on these four sheets, every strike, spare and miss was found
+and named correctly. What is left in a frame beside them is digits, and those do
+go to OCR.
+
+## The sheet's own checksum
+
+The running totals are not decoration. They are a second record of the same
+game, and `lib/reconcile.ts` uses them three ways:
+
+- **To throw out a misread total.** The column never falls and never climbs by
+  more than thirty, which catches a `195` between `88` and `114` as a `95` with
+  the frame's own rule read as a `1` in front of it.
+- **To repair a frame read short.** An open frame's two balls are worth exactly
+  what the total climbed by, so one ball and the climb give the other. The
+  tenth's third ball — written in the narrowest box on the sheet, and the one
+  most often lost — follows from the final total the same way.
+- **To say whether the scan is right.** A game agreeing with every printed total
+  has been checked rather than merely believed, and the review screen says so.
+
+It stops short of inventing. The ball before a spare does not change the score
+by a pin, so where it was not read it stays unread: a digit written there would
+be a guess, and it would land in a first-ball average as though it were
+measured.
 
 ## What a photograph adds, that a synthetic sheet does not
 

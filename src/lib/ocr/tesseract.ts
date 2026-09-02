@@ -272,6 +272,8 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       confidence: number;
       frames: number;
       middle: number;
+      /** Where the totals for this row sit, under its marks. */
+      under: Band;
     }[] = [];
     let done = 0;
     const totalCells = bands.length * grid.cells.length;
@@ -288,7 +290,11 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       // Skip the strip that numbers the frames, the running totals under each
       // bowler, and any band of ruling that carried nothing.
       if (row && row.frames >= 3 && !looksLikeFrameNumbers(row.perFrame) && looksLikeMarks(row.text)) {
-        readRows.push({ ...row, middle: (band.top + band.bottom) / 2 });
+        readRows.push({
+          ...row,
+          middle: (band.top + band.bottom) / 2,
+          under: { top: marks.bottom, bottom: band.bottom },
+        });
       }
     }
 
@@ -304,10 +310,14 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       (a, b) => Math.abs(a.middle - middle) - Math.abs(b.middle - middle),
     );
 
+    // The row's own running totals, which are the sheet's check on the marks.
+    const totals = await this.readTotals(worker, prepared, grid.cells, first.under);
+
     return {
       // Frames are space-separated, which is exactly what the mark parser
       // expects — and here the separation is the paper's, not a guess.
       text: first.text,
+      totals,
       // Discount by how much of the grid was actually on the paper: a grid
       // half of which was placed rather than found should not produce a
       // confident-looking read.
@@ -358,6 +368,35 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       confidence: mean,
       frames: marked.length,
     };
+  }
+
+  /**
+   * The running totals printed under a row, one per frame.
+   *
+   * Read on their own and separately from the marks, because they are a
+   * different kind of thing: a number rather than a mark, and the one part of
+   * the sheet that says what the game came to. Where the band under the marks
+   * is empty — a sheet that does not print them, or a crop that lost them —
+   * every frame comes back null and the caller is no worse off than before.
+   */
+  private async readTotals(
+    worker: Worker,
+    prepared: Prepared,
+    cells: Cell[],
+    band: Band,
+  ): Promise<(number | null)[]> {
+    const top = band.top + 2;
+    const bottom = band.bottom - 2;
+    if (bottom - top < 8) return cells.map(() => null);
+
+    const totals: (number | null)[] = [];
+    for (const cell of cells) {
+      const read = await this.readText(worker, prepared, cell.x0, cell.x1, top, bottom, 8);
+      const digits = read.marks.replace(/[^0-9]/g, '');
+      totals.push(digits.length > 0 && digits.length <= 3 ? Number(digits) : null);
+    }
+
+    return totals;
   }
 
   /**
