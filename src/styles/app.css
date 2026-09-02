@@ -1366,6 +1366,9 @@ body {
   margin-top: 12px;
   border-top: 1px solid var(--color-divider);
 }
+/* When the table is the whole card — the houses — there is nothing above for
+   the rule to separate it from, and a floating line reads as a mistake. */
+.card > .days:first-child { margin-top: 0; border-top: 0; }
 .days__row {
   display: grid;
   grid-template-columns: 1fr auto 46px 46px;
