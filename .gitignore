@@ -18,3 +18,9 @@ public/real-sheet.jpg
 
 # Scratch files from poking at the pipeline in a browser.
 *.tmp.*
+
+# Google OAuth client files. The secret in one of these is a real credential —
+# unlike the publishable key, which is public by design — and it belongs in the
+# Supabase dashboard and nowhere else.
+client_secret*.json
+*.credentials.json
