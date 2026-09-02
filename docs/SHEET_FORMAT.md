@@ -56,6 +56,15 @@ was taken; the diagram says it was the 5-pin. That is precisely the `pinfalls`
 the app stores for games scored on its own rack, so a scanned sheet can feed the
 leave statistics rather than only the scores.
 
+They are read into the saved game, ball by ball, but only as far as they can be
+confirmed: `pinfallsUpTo` stops at the first frame whose diagram disagrees with
+the marks above it, since `pinfalls` lines up with the rolls one for one and a
+gap in the middle would shift every later ball onto the wrong frame. On these
+four photographs that comes to a frame or two before a rack fails to resolve —
+`readDiagram` wants a clean 4/3/2/1 and two circles touching cost it the frame.
+The strictness is deliberate; splitting merged circles is the work that would
+extend it.
+
 Two consequences fall out of the encoding and are implemented in
 `lib/ocr/pindiagram.ts`:
 

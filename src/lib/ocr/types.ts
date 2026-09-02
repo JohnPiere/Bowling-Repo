@@ -37,6 +37,15 @@ export interface RecognitionResult {
    * numbers is easier to read than a mark.
    */
   totals?: (number | null)[];
+  /**
+   * Which pins each ball took, frame by frame, read from the diagrams the sheet
+   * draws under the row — null for a frame whose diagram did not resolve.
+   *
+   * This is what a photograph offers that a typed mark string cannot: `9 /`
+   * says nine fell and the spare was taken, and the diagram says it was the
+   * 10-pin. See `docs/SHEET_FORMAT.md`.
+   */
+  pins?: (number[][] | null)[];
 }
 
 export interface ScoreSheetRecogniser {

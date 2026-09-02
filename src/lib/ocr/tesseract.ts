@@ -16,6 +16,7 @@
 
 import { createWorker, type Worker } from 'tesseract.js';
 import { findGlyphs, type FoundGlyph } from './markglyphs';
+import { readDiagram, toPinfalls } from './pindiagram';
 import { cropRegion, preprocessForOcr, type Prepared } from './preprocess';
 import {
   fitFrameGrid,
@@ -51,6 +52,86 @@ const SHEET_ALPHABET = 'XG0123456789/-';
  * right frame.
  */
 const GLYPH_CONFIDENCE = 0.95;
+
+/**
+ * Which pins each ball took, frame by frame, from the diagrams under the row.
+ *
+ * The sheet draws a rack of ten circles beneath every frame and says in their
+ * shapes which pins survived which ball — see `docs/SHEET_FORMAT.md`. That is
+ * the same `pinfalls` a game scored on the app's own rack stores, and the one
+ * thing a photograph offers that a typed mark string never could.
+ *
+ * Null for a frame whose diagram did not resolve into a rack. A fold across the
+ * page, a crop that clipped it, or a frame the printer left blank all end here,
+ * and the caller drops the pins rather than guessing at them.
+ */
+function readPins(
+  prepared: Prepared,
+  cells: Cell[],
+  box: Band,
+  rows: number[],
+  ruled: number,
+): (number[][] | null)[] {
+  const band = diagramBand(prepared, box, rows, ruled);
+  if (!band) return cells.map(() => null);
+
+  const height = band.bottom - band.top + 1;
+
+  return cells.map((cell) => {
+    const width = cell.x1 - cell.x0;
+    if (width < 8 || height < 8) return null;
+
+    // The rack's own extent, not the band's. A photographed row is never level,
+    // so each frame's diagram sits a few rows off its neighbour's, and a band
+    // wide enough for all ten catches the edge of the next game's ruling in
+    // some of them — which joins the top row of pins into one blob.
+    const rows = new Array<number>(height).fill(0);
+    for (let y = 0; y < height; y++) {
+      const from = (band.top + y) * prepared.width + cell.x0;
+      for (let x = 0; x < width; x++) if (prepared.binary[from + x]) rows[y] += 1;
+    }
+
+    let first = rows.findIndex((ink) => ink > 0);
+    let last = rows.length - 1 - [...rows].reverse().findIndex((ink) => ink > 0);
+    if (first < 0 || last - first < 8) return null;
+
+    first = Math.max(0, first - 1);
+    last = Math.min(height - 1, last + 1);
+
+    const rackHeight = last - first + 1;
+    const rack = new Uint8Array(width * rackHeight);
+    for (let y = 0; y < rackHeight; y++) {
+      const from = (band.top + first + y) * prepared.width + cell.x0;
+      for (let x = 0; x < width; x++) rack[y * width + x] = prepared.binary[from + x];
+    }
+
+    return toPinfalls(readDiagram(rack, width, rackHeight));
+  });
+}
+
+/**
+ * Where the diagrams sit: under the row's box, down to whatever is ruled next.
+ *
+ * Bounded by the next rule rather than by a share of the crop, because what
+ * comes after the diagrams is the next game's box — and its border, caught in
+ * the band, joins the top row of pins into one blob and makes the whole rack
+ * unreadable.
+ */
+function diagramBand(prepared: Prepared, box: Band, rows: number[], ruled: number): Band | null {
+  const clear = 6;
+  const top = box.bottom + clear;
+  if (top >= prepared.height - clear) return null;
+
+  let bottom = prepared.height - 1;
+  for (let y = top + clear; y < prepared.height; y++) {
+    if (rows[y] >= ruled * 0.6) {
+      bottom = y - clear;
+      break;
+    }
+  }
+
+  return bottom - top >= 16 ? { top, bottom } : null;
+}
 
 /**
  * The strip with any ink that runs off its ends trimmed away.
@@ -314,6 +395,7 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     const totals = await this.readTotals(worker, prepared, grid.cells, first.under);
 
     return {
+      pins: readPins(prepared, grid.cells, bounds, rows, ruled),
       // Frames are space-separated, which is exactly what the mark parser
       // expects — and here the separation is the paper's, not a guess.
       text: first.text,

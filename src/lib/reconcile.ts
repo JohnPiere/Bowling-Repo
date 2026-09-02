@@ -18,7 +18,7 @@
  * guess in somebody's history is worse than a blank.
  */
 
-import { scoreGame } from './scoring';
+import { scoreGame, type Frame } from './scoring';
 
 /** The most a frame can add to the running total: a strike and two more. */
 const MOST_PER_FRAME = 30;
@@ -205,6 +205,41 @@ function climbAt(totals: (number | null)[], i: number): number | null {
 function pinsOf(mark: string): number | null {
   if (mark === '-') return 0;
   return /^[0-9]$/.test(mark) ? Number(mark) : null;
+}
+
+/**
+ * The pins a scan can honestly claim, ball by ball.
+ *
+ * A frame's diagram is kept only when it says the same thing as the marks above
+ * it: the same number of balls, each taking the same number of pins. Both were
+ * printed by one machine from one throw, so where they disagree something was
+ * misread, and a leave that contradicts the score is worse than no leave at all
+ * — it looks like data.
+ *
+ * Kept as a prefix rather than a patchwork. `pinfalls` is read ball by ball
+ * against the rolls beside it, so a gap in the middle would put every later
+ * ball against the wrong frame; the run stops at the first frame that cannot be
+ * confirmed. The tenth ends it in the ordinary way too, since one diagram
+ * cannot describe a frame that re-racks and throws three.
+ */
+export function pinfallsUpTo(
+  pins: (number[][] | null)[] | undefined,
+  frames: Frame[],
+): number[][] | undefined {
+  if (!pins) return undefined;
+
+  const kept: number[][] = [];
+
+  for (let i = 0; i < frames.length; i++) {
+    const diagram = pins[i];
+    const rolls = frames[i]?.rolls ?? [];
+    if (!diagram || diagram.length !== rolls.length) break;
+    if (diagram.some((ball, at) => ball.length !== rolls[at])) break;
+
+    kept.push(...diagram);
+  }
+
+  return kept.length > 0 ? kept : undefined;
 }
 
 export interface TotalsCheck {

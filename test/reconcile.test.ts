@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { checkAgainstTotals, cleanTotals, repairFrames } from '../src/lib/reconcile';
+import { checkAgainstTotals, cleanTotals, pinfallsUpTo, repairFrames } from '../src/lib/reconcile';
 import { parseMarks } from '../src/lib/marks';
+import { scoreGame } from '../src/lib/scoring';
 
 describe('cleanTotals', () => {
   it('keeps a column that behaves like running totals', () => {
@@ -108,6 +109,44 @@ describe('repairFrames', () => {
       17, 24, 31, 39, 48, 55, 75, 93, 101, 120,
     ]);
     expect(parseMarks(text(fixed)).rolls.length).toBeGreaterThan(0);
+  });
+});
+
+describe('pinfallsUpTo', () => {
+  const frames = scoreGame(parseMarks('X 81 9/ 7-').rolls).frames;
+
+  /** The pins a ball took, as a diagram that agrees with the marks would say. */
+  const took = (...pins: number[]) => pins;
+
+  it('keeps a frame whose diagram says what the marks say', () => {
+    const pins = [
+      [took(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)],
+      [took(1, 2, 3, 4, 5, 6, 7, 8), took(9)],
+    ];
+    expect(pinfallsUpTo(pins, frames)).toHaveLength(3);
+  });
+
+  it('stops at a frame whose diagram contradicts the marks', () => {
+    // The marks say eight fell and one followed; a diagram saying seven fell is
+    // a misreading of one or the other, and a leave that disagrees with the
+    // score looks like data.
+    const pins = [
+      [took(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)],
+      [took(1, 2, 3, 4, 5, 6, 7), took(9)],
+    ];
+    expect(pinfallsUpTo(pins, frames)).toHaveLength(1);
+  });
+
+  it('stops at a frame whose diagram could not be read', () => {
+    expect(pinfallsUpTo([[took(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)], null], frames)).toHaveLength(1);
+  });
+
+  it('offers nothing when the first frame already disagrees', () => {
+    expect(pinfallsUpTo([[took(1, 2)], null], frames)).toBeUndefined();
+  });
+
+  it('offers nothing when the sheet drew no diagrams', () => {
+    expect(pinfallsUpTo(undefined, frames)).toBeUndefined();
   });
 });
 

@@ -112,6 +112,9 @@ export function ScanScreen({ onImported }: { onImported: (gameId: string) => voi
     try {
       const saved = await importScannedGame(corrected.rolls, {
         bowler: 'You',
+        // Only if the marks were left as the scan read them: a corrected frame
+        // is one the diagram beside it no longer describes.
+        pinfalls: marks.trim() === review?.rawText.trim() ? review?.pinfalls : undefined,
         house: house.trim() || undefined,
         playedAt: playedAt ?? undefined,
         sheetImage: review?.image,

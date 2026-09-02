@@ -8,7 +8,7 @@
 
 import { getRecogniser, REVIEW_CONFIDENCE_THRESHOLD } from './ocr';
 import { tryParseMarks, type ParsedSheet } from './marks';
-import { checkAgainstTotals, cleanTotals, repairFrames } from './reconcile';
+import { checkAgainstTotals, cleanTotals, pinfallsUpTo, repairFrames } from './reconcile';
 import { scoreGame, type Scorecard } from './scoring';
 import { saveGame, type Game } from './db';
 import { shrinkForStorage } from './storage';
@@ -34,6 +34,12 @@ export interface ScanReview {
   matchesSheet: boolean;
   sheet: ParsedSheet | null;
   scorecard: Scorecard | null;
+  /**
+   * Which pins each ball took, from the diagrams under the row, as far as they
+   * agree with the marks. Undefined when the sheet drew none or none checked
+   * out.
+   */
+  pinfalls?: number[][];
   /** Set when the marks could not be made into a game at all. */
   error: string | null;
   warnings: string[];
@@ -72,6 +78,7 @@ export async function scanScoreSheet(
   const scorecard = scoreGame(parsed.rolls);
   const warnings = [...parsed.warnings];
 
+  const pinfalls = pinfallsUpTo(read.pins, scorecard.frames);
   const check = checkAgainstTotals(parsed.rolls, totals);
   // A game still waiting on its bonus balls has no total to compare in the
   // tenth, so agreeing everywhere else does not mean the sheet was read.
@@ -116,6 +123,7 @@ export async function scanScoreSheet(
     isConfident:
       matchesSheet || (confidence >= REVIEW_CONFIDENCE_THRESHOLD && parsed.warnings.length === 0),
     matchesSheet,
+    pinfalls,
     sheet: parsed,
     scorecard,
     error: null,
@@ -156,6 +164,8 @@ export async function importScannedGame(
     house?: string;
     playedAt?: number;
     sheetImage?: Blob;
+    /** Which pins each ball took, where the sheet's diagrams could be read. */
+    pinfalls?: number[][];
     /** Drop the photo — the way out when the device is out of room. */
     keepPhoto?: boolean;
   },
@@ -172,6 +182,9 @@ export async function importScannedGame(
     bowler: meta.bowler,
     house: meta.house,
     rolls,
+    // Only where they line up with the rolls the bowler is actually saving: a
+    // corrected frame invalidates the diagram that was read beside it.
+    pinfalls: meta.pinfalls && meta.pinfalls.length <= rolls.length ? meta.pinfalls : undefined,
     total: scorecard.total,
     isComplete: scorecard.isComplete,
     source: 'scan',

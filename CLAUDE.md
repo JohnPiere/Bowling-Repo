@@ -130,6 +130,16 @@ own rack stores, so a scan can feed the leave statistics instead of only the
 scores. The marks above the diagram are a checksum on it, and a leave that
 disagrees with the count is dropped rather than imported.
 
+They are wired all the way through to the saved game now, and kept as a
+*prefix*: `pinfallsUpTo` walks frame by frame and stops at the first diagram
+that cannot be confirmed against the marks, because `pinfalls` is read ball by
+ball against the rolls beside it and a gap in the middle would put every later
+ball against the wrong frame. On the four real sheets that prefix is currently
+one or two frames — `readDiagram` demands a clean 4/3/2/1 rack and two circles
+touching on a photograph cost it the whole frame. The mechanism is right and
+the reader is strict; making it read further is splitting merged blobs, and it
+is the next thing to do here rather than something already done.
+
 Within a row it finds the rules and reads each frame separately, because
 reading even one row in a single pass throws away the grid that says where
 frames end. The order that works is **horizontal first**: the borders of the
