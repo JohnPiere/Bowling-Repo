@@ -346,6 +346,20 @@ export const JA: Record<string, string> = {
   'Shared': '共有済み',
   'Scan': '撮影',
 
+  // ── The league table ──
+  'League table': 'リーグ表',
+  'Working out the standings…': '順位を計算中…',
+  'Best series': 'ベストシリーズ',
+  'Nobody has shared a game with this crew yet. A league needs a night bowled.':
+    'まだこのクルーに共有されたゲームがありません。リーグには1日分の記録が必要です。',
+  'Hdcp': 'ハンデ',
+  'Scratch': 'スクラッチ',
+  'Each bowler’s best night, with their handicap on every game of it. Ninety percent of the gap to 220 — a league is meant to be competitive, not level.':
+    '各ボウラーのベストの1日と、その全ゲーム分のハンデです。220との差の90%。リーグは接戦にするためのもので、全員を同じにするためのものではありません。',
+  'Night by night': '日ごと',
+  'A bowler who was not there is not on that night. Only games shared with the crew count — a season kept private is still a season, it is just not in this competition.':
+    'その日にいなかったボウラーは表示されません。クルーに共有したゲームのみが対象です。共有していないシーズンも記録ではありますが、この競技には入りません。',
+
   // ── Chat: sharing a game into the thread ──
   'Share a game': 'ゲームを共有',
   'Looking through your games…': 'ゲームを読み込み中…',

@@ -28,7 +28,8 @@ export type Route =
   | { name: 'day'; day: string }
   | { name: 'game'; gameId: string }
   | { name: 'shareGame'; gameId: string }
-  | { name: 'sharedGames'; groupId: string };
+  | { name: 'sharedGames'; groupId: string }
+  | { name: 'league'; groupId: string };
 
 export type RouteName = Route['name'];
 

@@ -24,6 +24,7 @@ import { MemberScreen } from './screens/MemberScreen';
 import { PlayDayScreen } from './screens/PlayDayScreen';
 import { PlayScreen } from './screens/PlayScreen';
 import { ScanScreen } from './screens/ScanScreen';
+import { LeagueScreen } from './screens/LeagueScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ShareScreen } from './screens/ShareScreen';
 import { SharedGamesScreen } from './screens/SharedGamesScreen';
@@ -280,6 +281,7 @@ export function App() {
             onOpenChat={() => nav.push({ name: 'chat', groupId: group.id })}
             onOpenSettings={() => nav.push({ name: 'groupSettings', groupId: group.id })}
             onOpenShared={() => nav.push({ name: 'sharedGames', groupId: group.id })}
+            onOpenLeague={() => nav.push({ name: 'league', groupId: group.id })}
           />
         )}
 
@@ -317,6 +319,8 @@ export function App() {
         {route.name === 'sharedGames' && group && (
           <SharedGamesScreen group={group} me={session.id} />
         )}
+
+        {route.name === 'league' && group && <LeagueScreen group={group} me={session.id} />}
 
         {route.name === 'game' && gameInView && (
           <GameScreen
@@ -443,6 +447,8 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('Share this game'), kicker: s('Game finished'), meta: '' };
     case 'sharedGames':
       return { title: s('Shared games'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'league':
+      return { title: s('League table'), kicker: groupName ?? s('Group'), meta: '' };
   }
 }
 
