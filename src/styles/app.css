@@ -2414,28 +2414,9 @@ body {
 }
 .swatch:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 
-.onboard__dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
-.onboard__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-neutral-800);
-  transition: background 0.2s ease, width 0.2s ease;
-}
-.onboard__dot--on { width: 18px; border-radius: 3px; background: var(--color-accent); }
-
-.onboard__lesson { display: flex; flex-direction: column; gap: 10px; padding: 22px 18px; }
-.onboard__icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: rgba(145, 132, 217, 0.1);
-  box-shadow: inset 0 0 0 1px currentColor;
-}
-.onboard__title { font-size: 19px; line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
-.onboard__body { font-size: 13px; line-height: 1.6; color: var(--color-neutral-400); margin: 0; }
+/* The language step: two buttons and nothing else, because the step exists to
+   be answered without reading the screen it is on. */
+.onboard__languages { display: flex; flex-direction: column; gap: 11px; margin-top: 18px; }
 
 /* A set with no order to it wraps rather than scrolls: a glyph sliced by the
    viewport edge reads as broken, not as more-to-the-right. */

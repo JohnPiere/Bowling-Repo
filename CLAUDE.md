@@ -344,6 +344,24 @@ what a backend for them would cost. A screen whose whole content is an apology
 for itself earns nothing, so it is gone rather than parked. Nothing links to it
 and the `videos` route no longer exists.
 
+**The league table is parked**, not deleted. `lib/league.ts`, its tests and
+`LeagueScreen.tsx` are intact and the `league` route still renders; nothing
+links to it. Putting it back is one `onOpenLeague` prop and one button in
+`GroupScreen.tsx`.
+
+**There is no tour.** There were four cards on the first run — the two scoring
+modes, the scanner, sharing, where the games live — and they are gone rather
+than parked. A first run is somebody standing at a lane wanting to score a game,
+and four screens of explanation before the first ball is four screens they will
+skip. What is left is the language, then the name and the tile, and those stay
+because they are what a crew sees and nobody goes back to change them.
+
+The language comes **before** the profile, and it is the one step that has to be
+answerable without reading the screen it is on: both options are written in
+their own language and nothing else is on the step. Asking somebody to read a
+screen in the wrong language before offering to change it is the wrong way
+round.
+
 **The scan button on the play screen is parked**, not deleted: `ScanScreen` and
 everything under `lib/ocr/` are intact and still reached by `?screen=scan`,
 which is how both browser checks drive them. The reader works on a real sheet

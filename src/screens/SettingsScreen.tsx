@@ -40,14 +40,11 @@ export function SettingsScreen({
   games,
   session,
   onRestored,
-  onReplayTour,
 }: {
   games: Game[];
   /** Who is signed in, which is what decides whether a backup is offered. */
   session: Session;
   onRestored?: () => void;
-  /** Runs the first-run tour again, without touching anything stored. */
-  onReplayTour?: () => void;
 }) {
   const { t } = useTranslation();
   const { preferences, update } = usePreferences();
@@ -224,12 +221,6 @@ export function SettingsScreen({
             />
           ))}
         </div>
-
-        {onReplayTour && (
-          <button type="button" className="btn-lg" style={{ marginTop: 14 }} onClick={onReplayTour}>
-            {t('Show the tour again')}
-          </button>
-        )}
       </div>
 
       <h2 className="section-title">{t('Sharing')}</h2>

@@ -281,7 +281,6 @@ export function App() {
             onOpenChat={() => nav.push({ name: 'chat', groupId: group.id })}
             onOpenSettings={() => nav.push({ name: 'groupSettings', groupId: group.id })}
             onOpenShared={() => nav.push({ name: 'sharedGames', groupId: group.id })}
-            onOpenLeague={() => nav.push({ name: 'league', groupId: group.id })}
           />
         )}
 
@@ -320,6 +319,8 @@ export function App() {
           <SharedGamesScreen group={group} me={session.id} />
         )}
 
+        {/* Parked, not deleted: nothing links here yet. Putting it back is one
+            `onOpenLeague` prop and one button in `GroupScreen.tsx`. */}
         {route.name === 'league' && group && <LeagueScreen group={group} me={session.id} />}
 
         {route.name === 'game' && gameInView && (
@@ -357,11 +358,8 @@ export function App() {
         )}
 
 
-        {route.name === 'tour' && <OnboardingScreen replay onDone={nav.back} />}
-
         {route.name === 'settings' && (
           <SettingsScreen
-            onReplayTour={() => nav.push({ name: 'tour' })}
             games={games}
             session={session}
             onRestored={refresh}
@@ -421,8 +419,6 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('Analytics'), kicker: s('Analytics'), meta: '' };
     case 'settings':
       return { title: s('Settings'), kicker: s('Preferences'), meta: '' };
-    case 'tour':
-      return { title: s('How it works'), kicker: s('Tour'), meta: '' };
     case 'day':
       return { title: s('Play day'), kicker: s('Session'), meta: '' };
     case 'auth':

@@ -34,7 +34,6 @@ interface Props {
   onOpenChat?: () => void;
   onOpenSettings?: () => void;
   onOpenShared?: () => void;
-  onOpenLeague?: () => void;
 }
 
 export function GroupScreen({
@@ -44,7 +43,6 @@ export function GroupScreen({
   onOpenChat,
   onOpenSettings,
   onOpenShared,
-  onOpenLeague,
 }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
   const { preferences } = usePreferences();
@@ -251,13 +249,6 @@ export function GroupScreen({
       <button type="button" className="btn-lg" style={{ marginTop: 4 }} onClick={onOpenShared}>
         <Icon name="share" size={18} />
         {t('Shared games')}
-      </button>
-
-      {/* The board above ranks averages; this ranks nights. Two different
-          questions, and a league only ever asked the second one. */}
-      <button type="button" className="btn-lg" style={{ marginTop: 9 }} onClick={onOpenLeague}>
-        <Icon name="trophy" size={18} />
-        {t('League table')}
       </button>
 
       <h2 className="section-title">{t('Your form against the crew')}</h2>

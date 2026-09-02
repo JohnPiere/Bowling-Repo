@@ -16,7 +16,6 @@ export type Route =
   | { name: 'history' }
   | { name: 'stats' }
   | { name: 'settings' }
-  | { name: 'tour' }
   | { name: 'auth'; then?: Route }
   | { name: 'groups' }
   | { name: 'group'; groupId: string }

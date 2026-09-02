@@ -1242,17 +1242,20 @@ async function main() {
         'the tab bar was reachable during the first run',
       );
 
+      // The language comes first, and is answerable without reading the screen
+      // it is on: both options are written in their own language.
+      await page.waitForSelector('.onboard__languages');
+      await page.getByRole('button', { name: 'English' }).click();
+
       await page.locator('.input').fill('Kenji Mori');
       await page.locator('.swatch').nth(3).click();
-      await page.getByRole('button', { name: /That/ }).click();
-      await page.waitForSelector('.onboard__lesson');
-
-      await page.getByRole('button', { name: 'Skip the tour' }).click();
+      await page.getByRole('button', { name: 'Start bowling' }).click();
       await page.waitForSelector('.tabbar', { timeout: 5000 });
 
       const stored = JSON.parse(
         await page.evaluate(() => localStorage.getItem('lane-log.preferences')),
       );
+      assert(stored.language === 'en', `the language stored as ${stored.language}`);
       assert(stored.playerName === 'Kenji Mori', `the name stored as ${stored.playerName}`);
       assert(stored.playerColour === 'teal', `the colour stored as ${stored.playerColour}`);
       assert(stored.onboardedAt > 0, 'the first run was not recorded as done');
@@ -1263,7 +1266,7 @@ async function main() {
       assert((await page.locator('.onboard').count()) === 0, 'it asked again after a reload');
 
       await first.close();
-      return 'named, coloured, toured, and does not ask twice';
+      return 'language, name and colour, and does not ask twice';
     });
 
     await check('clearing everything asks who you are again', async () => {

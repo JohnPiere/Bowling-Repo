@@ -35,33 +35,14 @@ export const JA: Record<string, string> = {
   'Your mark': 'マーク',
   'Your colour': 'カラー',
   'Initials': 'イニシャル',
-  'That’s me': 'これでOK',
   'Violet': 'バイオレット',
   'Rose': 'ローズ',
   'Amber': 'アンバー',
   'Teal': 'ティール',
   'Sky': 'スカイ',
   'Moss': 'モス',
-  'Next · {n} of {total}': '次へ · {n} / {total}',
   'Back': '戻る',
   'Start bowling': 'はじめる',
-  'Skip the tour': 'スキップ',
-  'Show the tour again': '使い方をもう一度見る',
-  'How it works': '使い方',
-  'Tour': 'ガイド',
-  'This is what your crew sees.': 'クルーにはこのように表示されます。',
-  'Tap the pins, not a number': '数字ではなくピンをタップ',
-  'Scoring on the rack records which pins fell, so a 10-pin and a 7-10 show up in your stats as themselves. There is a number pad too, if you are just keeping up with a league.':
-    'ラックで入力すると倒れたピンが記録されるので、10番ピンや7-10スプリットがそのまま統計に残ります。リーグに追いつきたいときは数字パッドも使えます。',
-  'Or photograph the sheet': 'シートを撮影しても入力できます',
-  'Slide the paper until one game sits inside the bar, like scanning a barcode. It reads that row only, and you check every frame before it saves.':
-    'バーコードを読むように、1ゲーム分の行がバーの中に入るまで紙を動かします。その行だけを読み取り、保存前に全フレームを確認できます。',
-  'A crew is opt-in, game by game': '共有は1ゲームずつ、あなたが決めます',
-  'Nothing you bowl is shared until you say so. Sharing sends that one game to one crew, and you can take it back down.':
-    'あなたが選ぶまで何も共有されません。共有すると、そのゲームだけが1つのクルーに送られ、いつでも取り消せます。',
-  'Your games live on this phone': 'ゲームはこの端末に保存されます',
-  'No account needed, and they work with no signal at all. Sign in and Settings will keep a copy on the server; without one, the export in Settings is the only copy there is.':
-    'アカウントは不要で、電波がなくても使えます。サインインすれば設定からサーバーに控えを保存できます。サインインしない場合は、設定から書き出すファイルが唯一の控えです。',
 
   'Nothing shared here yet.': 'まだ共有されたゲームはありません。',
 
