@@ -2,15 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { t } from '../lib/i18n';
 import { Icon } from './Icon';
 import { captureRegion, grabGrayFrame, type CaptureResult, type Region } from '../lib/camera';
-import { coverFit, projectRect, unprojectPoint, type Rect, type Size } from '../lib/cover';
-import {
-  detectGameRows,
-  rowStrip,
-  stableRows,
-  trackRows,
-  type TrackedRow,
-} from '../lib/ocr/rows';
-import { reticleFor, rowInReticle } from '../lib/reticle';
+import { coverFit, projectRect, unprojectPoint, type Size } from '../lib/cover';
+import { detectGameRows, stableRows, trackRows, type TrackedRow } from '../lib/ocr/rows';
+import { reticleFor, rowInReticle, snapReticle } from '../lib/reticle';
 
 /** How often detection runs. Eight a second looks live and leaves the video alone. */
 const DETECTIONS_PER_SECOND = 8;
@@ -26,9 +20,11 @@ const DETECTIONS_PER_SECOND = 8;
  * what anyone asked for anyway, which is the game they just bowled.
  *
  * Detection still runs, but only to lock on: when a row is found lying in the
- * bar, the brackets snap to the row's own edges and the capture takes those
- * instead of the bar. That is what makes a barcode reader feel certain, and it
- * costs the bowler nothing when it fails — the bar is still there.
+ * bar, the bar slides onto it, so the crop is centred on the paper's own rules
+ * rather than on wherever the hand was. It never changes size doing so — see
+ * `snapReticle`, and the sliver it used to shrink to. That is what makes a
+ * barcode reader feel certain, and it costs the bowler nothing when it fails,
+ * because the bar is what gets captured either way.
  */
 export function RowFinder({
   onCapture,
@@ -129,35 +125,26 @@ export function RowFinder({
     };
   }, [reticleInFrame]);
 
-  // Where the brackets are drawn: on the row if one is locked, else on the bar.
-  // A locked row is drawn as the strip it actually is — its own height, turned
-  // through its own tilt — inside the upright box the detector reported.
-  const strip = locked ? rowStrip(locked) : null;
-  const around = locked ? projectRect(locked, fit) : reticle;
-  const brackets: Rect = strip
-    ? {
-        x: around.x,
-        y: around.y + (around.height - strip.height * fit.scale) / 2,
-        width: around.width,
-        height: strip.height * fit.scale,
-      }
-    : around;
+  /** What will be captured: the bar, moved onto the locked row if there is one. */
+  const region = useMemo(() => snapReticle(reticleInFrame, locked), [locked, reticleInFrame]);
+
+  // The brackets are that same region drawn over the video, so what is outlined
+  // and what is taken are the same rectangle by construction.
+  const brackets = projectRect(region, fit);
 
   const shoot = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
 
     try {
-      // A locked row runs from the centre of one rule to the centre of the
-      // next, so the crop has to be opened out to take the borders with it. The
-      // bar needs far less: it is roomier than a row to begin with, and what
-      // the bowler put inside it is already what they meant.
-      const region = locked ?? reticleInFrame;
-      onCapture(await captureRegion(video, region, source, locked ? 0.3 : 0.12));
+      // A little wider than the bar on every side: the reader finds the frame
+      // grid from the row's outermost rules, so an edge that shaves one off
+      // shifts every frame along by a tenth.
+      onCapture(await captureRegion(video, region, source, 0.12));
     } catch (err) {
       onError(err instanceof Error ? err.message : String(err));
     }
-  }, [locked, onCapture, onError, reticleInFrame, source]);
+  }, [onCapture, onError, region, source]);
 
   return (
     <>
@@ -181,7 +168,6 @@ export function RowFinder({
             top: brackets.y,
             width: brackets.width,
             height: brackets.height,
-            transform: strip ? `rotate(${strip.angle}rad)` : undefined,
           }}
         >
           <span className="reticle__corner reticle__corner--tl" />

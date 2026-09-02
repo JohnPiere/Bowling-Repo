@@ -5,7 +5,6 @@ import {
   findPaper,
   gridScore,
   inkSpan,
-  rowStrip,
   stableRows,
   toInk,
   trackRows,
@@ -191,6 +190,21 @@ describe('detectGameRows', () => {
     expect(detectGameRows(gray, width, height)).toEqual([]);
   });
 
+  it('ignores the strip of frame numbers above a row', () => {
+    // The numbering strip is ruled top and bottom and crossed by every one of
+    // the row's vertical rules, so it scores as a perfect grid — while being a
+    // tenth of the height of the game it belongs to. Locking on to one crops a
+    // photo of "1 2 3 4 5 6 7 8 9 10" and no marks at all.
+    const { gray, width, height } = preview(320, 120, [
+      { top: 30, bottom: 38, left: 10, right: 310, dividers: 11 },
+      { top: 38, bottom: 74, left: 10, right: 310, dividers: 11 },
+    ]);
+
+    const boxes = detectGameRows(gray, width, height);
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0].height).toBeGreaterThan(30);
+  });
+
   it('ignores a band too tall to be a row of frames', () => {
     const { gray, width, height } = preview(200, 300, [
       { top: 20, bottom: 260, left: 10, right: 190, dividers: 11 },
@@ -272,32 +286,5 @@ describe('stableRows', () => {
       { ...({ x: 0, y: 20, width: 10, height: 5, dividers: 11, slope: 0, confidence: 1 } as RowBox), id: 2, hits: 4, misses: 0 },
     ];
     expect(stableRows(rows).map((r) => r.id)).toEqual([2]);
-  });
-});
-
-describe('rowStrip', () => {
-  it('is the whole box when the row is level', () => {
-    const strip = rowStrip({ x: 0, y: 0, width: 300, height: 40, dividers: 11, slope: 0, confidence: 1 });
-    expect(strip.height).toBe(40);
-    expect(strip.angle).toBe(0);
-  });
-
-  it('takes back the height the tilt added to the box', () => {
-    // A row tilted across 300px at 0.1 rise-over-run spans 30px more upright
-    // than the strip itself is tall.
-    const strip = rowStrip({ x: 0, y: 0, width: 300, height: 70, dividers: 11, slope: 0.1, confidence: 1 });
-    expect(strip.height).toBeCloseTo(40);
-    expect(strip.angle).toBeCloseTo(Math.atan(0.1));
-  });
-
-  it('turns the other way for the other tilt', () => {
-    const strip = rowStrip({ x: 0, y: 0, width: 300, height: 70, dividers: 11, slope: -0.1, confidence: 1 });
-    expect(strip.height).toBeCloseTo(40);
-    expect(strip.angle).toBeLessThan(0);
-  });
-
-  it('never gives back a strip with no height', () => {
-    const strip = rowStrip({ x: 0, y: 0, width: 300, height: 10, dividers: 11, slope: 0.5, confidence: 1 });
-    expect(strip.height).toBeGreaterThan(0);
   });
 });

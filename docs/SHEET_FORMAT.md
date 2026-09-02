@@ -70,6 +70,46 @@ Verified by hand against game one of the 08-29 sheet, marks
 `X X X 9/ 8− X 9− 9− 9− 8−`: frame 4 shows a single filled ball, frame 5 shows
 two stacked pairs and no filled ball, and every strike shows ten open rings.
 
+## The shape of a row, measured
+
+The numbers matter because everything that crops a row is sized off them, and
+the synthetic sheets `verify:scanner` generates had assumed something else. From
+the 09-01 sheet, straightened, with the ruled grid 2200px wide:
+
+| | Height | As an aspect |
+| --- | --- | --- |
+| The ruled box: frame numbers, marks, running totals | 147–169 px | **13–15 : 1** |
+| …its marks-and-totals band alone | 100–116 px | 19–22 : 1 |
+| …its frame-number strip alone | 47–53 px | **40–50 : 1** |
+| One game: the box plus the pin diagrams under it | 376–407 px | **5–6 : 1** |
+
+Three things follow, and each of them was a bug:
+
+- **The numbering strip is the most grid-like band on the page.** It is ruled
+  top and bottom and crossed by every one of the row's vertical rules, so it
+  scores as a perfect ten-frame grid while being a tenth of the height of the
+  game it belongs to. Anything that picks "the most convincing row" picks it.
+- **A bar shaped for the whole game is two and a half times taller than the
+  ruled box.** That is the right shape to *aim* with — the diagrams have to be
+  in the picture — but it means the crop is mostly not the row, and every
+  threshold downstream has to be measured off the box rather than off the crop.
+- **The frame rules only run the height of the box.** In a crop that includes
+  the diagrams they are not the tallest ink in the picture, so they have to be
+  looked for inside the box and not before it is found.
+
+## Why the marks still do not read
+
+The segmentation now finds the row, the box, the bands and the ten frames on
+these sheets. The characters that come back are still wrong, and the reason is
+in the table above: a strike is `⊠` and a spare is `◤`. Neither is a character.
+Tesseract is asked for `X0123456789/-` and hands back whatever of that alphabet
+those filled shapes most resemble, which is nothing in particular.
+
+Reading these needs the frames classified by shape the way the pin diagrams
+already are — a crossed box, a filled triangle, a digit — rather than recognised
+as text. That is the next piece of work, and it is much closer to
+`pindiagram.ts` than to OCR.
+
 ## What a photograph adds, that a synthetic sheet does not
 
 Measured on the 08-29 sheet, 3000×4000:

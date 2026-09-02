@@ -35,8 +35,14 @@ export async function startRearCamera(): Promise<MediaStream> {
         // "environment" rather than { exact: 'environment' }: an exact
         // constraint throws outright on laptops with only a front camera.
         facingMode: 'environment',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
+        // As many pixels as the camera will part with. Once a sheet fills the
+        // preview's width, one game's marks are about a fortieth of the frame's
+        // height, so a 1080p stream hands the recogniser digits twenty pixels
+        // tall — which is roughly where pencil stops being legible. `ideal`
+        // asks rather than demands, so a phone that cannot do this gives its
+        // best instead of refusing outright.
+        width: { ideal: 3840 },
+        height: { ideal: 2160 },
       },
       audio: false,
     });
@@ -138,6 +144,12 @@ export function grabGrayFrame(
 
   const context = scratch.getContext('2d', { willReadFrequently: true });
   if (!context) return null;
+  // A 4K frame reaching a 320-wide canvas is a seven-fold reduction, and the
+  // cheap filter a browser picks by default samples rather than averages —
+  // which drops a one-pixel printed rule entirely, about six times in seven.
+  // Those rules are the only thing this buffer exists to find.
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
   context.drawImage(video, 0, 0, width, height);
 
   const { data } = context.getImageData(0, 0, width, height);

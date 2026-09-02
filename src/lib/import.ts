@@ -69,7 +69,7 @@ export async function scanScoreSheet(
 
   if (otherRows && otherRows.length > 0) {
     warnings.push(
-      `This sheet has ${otherRows.length + 1} bowlers on it. The top row is shown — pick yours below if it is not.`,
+      `This sheet has ${otherRows.length + 1} bowlers on it. The row nearest the middle of the photo is shown — pick yours below if it is not.`,
     );
   }
 

@@ -49,7 +49,15 @@ const DEFAULTS = {
   // A ten-frame row is long and shallow. Six is loose enough for a sheet held
   // at an angle, where perspective shortens the far end.
   minAspect: 4,
-  maxAspect: 40,
+  // …and the far end matters here. A row's ruled grid on a real house sheet
+  // measures about fourteen wide to one tall, and the strip of frame numbers
+  // printed along the top of it — ruled top and bottom, and crossed by every
+  // one of the row's vertical rules, so it looks more like a grid than the row
+  // does — measures forty to fifty. Forty admitted those, and they are the
+  // reason a scan could come back holding nothing but "1 2 3 4 5 6 7 8 9 10".
+  // Twenty-four keeps the marks band of the shallowest row measured and
+  // refuses every numbering strip.
+  maxAspect: 24,
   // Ten frames need eleven rules. Half of them, found through a phone preview
   // at a glancing angle, is still unmistakably a grid.
   minDividers: 5,
@@ -342,9 +350,9 @@ export function projectRowsAt(
  * over several and flattens. Coarse pass then fine, and every other column,
  * because this runs on every preview frame.
  */
-export function estimateTilt(ink: Uint8Array, width: number, height: number): number {
+export function estimateTilt(ink: Uint8Array, width: number, height: number, step = 2): number {
   const peakiness = (slope: number) => {
-    const rows = projectRowsAt(ink, width, height, slope, 2);
+    const rows = projectRowsAt(ink, width, height, slope, step);
     let sum = 0;
     let squares = 0;
     for (const value of rows) {
@@ -400,23 +408,6 @@ function findRules(rows: number[], minShare = 0.4): number[] {
   }
 
   return rules;
-}
-
-/**
- * The tilted strip inside a row's upright box.
- *
- * `RowBox` reports the upright rectangle *around* the row, because that is what
- * a crop has to take and what a tap has to hit. Drawing that rectangle rotated
- * would be wrong twice over: it is taller than the row by however far the tilt
- * carries it, so rotating it overshoots the paper on both counts. This gives
- * back the strip itself — same centre, the row's own height, and the angle to
- * turn it through.
- */
-export function rowStrip(row: RowBox): { height: number; angle: number } {
-  return {
-    height: Math.max(1, row.height - Math.abs(row.slope * row.width)),
-    angle: Math.atan(row.slope),
-  };
 }
 
 /* ── Holding the boxes still ──────────────────────────────────────────────

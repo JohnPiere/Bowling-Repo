@@ -188,7 +188,20 @@ async function main() {
   const browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined,
   });
-  const page = await browser.newPage({ viewport: { width: 412, height: 892 } });
+  // Past the first run, which otherwise stands between the app and the Play
+  // tab. Seeded only when nothing is stored, so the app's own gate is what
+  // decides on a real first run.
+  const context = await browser.newContext({ viewport: { width: 412, height: 892 } });
+  await context.addInitScript(() => {
+    try {
+      if (localStorage.getItem('lane-log.preferences') === null) {
+        localStorage.setItem('lane-log.preferences', JSON.stringify({ onboardedAt: Date.now() }));
+      }
+    } catch {
+      /* No storage to seed; the app will show its first-run screen and fail loudly. */
+    }
+  });
+  const page = await context.newPage();
 
   // Draw the sheets in a blank page, where a canvas is available.
   await page.goto('about:blank');

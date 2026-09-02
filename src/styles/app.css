@@ -934,8 +934,7 @@ body {
     left 0.14s ease-out,
     top 0.14s ease-out,
     width 0.14s ease-out,
-    height 0.14s ease-out,
-    transform 0.14s ease-out;
+    height 0.14s ease-out;
 }
 .reticle--locked {
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);

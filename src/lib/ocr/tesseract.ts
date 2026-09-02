@@ -17,15 +17,15 @@
 import { createWorker, type Worker } from 'tesseract.js';
 import { cropRegion, preprocessForOcr, type Prepared } from './preprocess';
 import {
+  fitFrameGrid,
   findHorizontalRules,
-  findMarkBand,
-  findRules,
   findSheetBounds,
+  looksLikeFrameNumbers,
   looksLikeMarks,
-  projectColumns,
+  marksWithin,
   projectRows,
+  ruleCoverage,
   toBands,
-  toFrameCells,
   type Band,
   type Cell,
 } from './segment';
@@ -159,63 +159,92 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
   ): Promise<RecognitionResult | null> {
     const { binary, width, height, canvas } = prepared;
 
-    // The image was straightened during preprocessing, so a plain vertical
-    // projection is now the right one.
-    const rules = findRules(projectColumns(binary, width, height), height);
-    const grid = toFrameCells(rules, width);
+    // Horizontal first, and this order matters. The frame rules only run the
+    // height of the row's own box, so looking for them across the whole crop
+    // measures them against everything else in it — and a crop from the camera
+    // holds the pin diagrams above and below the row as well, which are taller
+    // than the rules are. Finding the box first gives the rules somewhere to be
+    // the tallest thing.
+    const rows = projectRows(binary, width, height);
+
+    // The strongest row is a border, so how much ink it holds is how wide the
+    // ruled part of this crop is. Measured, rather than assumed to be the whole
+    // image: a crop is rarely the sheet exactly.
+    const ruled = Math.max(...rows, 0);
+    if (ruled <= 0) return null;
+
+    const rough = findSheetBounds(rows, ruled);
+    if (!rough) return null;
+
+    const grid = fitFrameGrid(ruleCoverage(binary, width, rough), width, rough.bottom - rough.top);
     if (!grid) return null;
 
-    // Measure rows across the sheet's own columns, then cut off the running
-    // totals below the marks.
-    const sheetLeft = rules[0];
-    const sheetRight = rules[rules.length - 1];
-    const rows = projectRows(binary, width, height, sheetLeft, sheetRight);
+    // Now the grid says which columns are the sheet's, measure the rows again
+    // across those alone. A crop has margin either side, and counting it in
+    // holds every border below full strength — which moves the band a few
+    // pixels, and a few pixels is the top of a 9.
+    const left = grid.cells[0].x0;
+    const right = grid.cells[grid.cells.length - 1].x1;
+    const inside = projectRows(binary, width, height, left, right);
+    const sheetWidth = right - left;
 
-    const bounds = findSheetBounds(rows, sheetRight - sheetLeft);
-    if (!bounds) return null;
-
-    const sheetWidth = sheetRight - sheetLeft;
+    const bounds = findSheetBounds(inside, sheetWidth) ?? rough;
 
     // A league sheet stacks bowlers, so look for every band the rules make
     // rather than assuming one marks row over one row of totals.
-    const horizontals = findHorizontalRules(rows, sheetWidth, bounds);
-    let bands = toBands(horizontals);
+    const bands = toBands(findHorizontalRules(inside, sheetWidth, bounds));
 
-    if (bands.length === 0) {
-      // Only the borders: fall back to the single-row reading.
-      const band = findMarkBand(rows, sheetWidth, bounds);
-      if (!band) return null;
-      bands = [band];
-    }
+    // Only the borders: the whole box is one band, marks over totals.
+    if (bands.length === 0) bands.push(bounds);
 
     await this.useMode(worker, PSM_SINGLE_LINE);
 
-    const readRows: { text: string; confidence: number; frames: number }[] = [];
+    const readRows: {
+      text: string;
+      perFrame: string[];
+      confidence: number;
+      frames: number;
+      middle: number;
+    }[] = [];
     let done = 0;
     const totalCells = bands.length * grid.cells.length;
 
     for (const band of bands) {
-      const row = await this.readBand(worker, canvas, grid.cells, band, () => {
+      // Marks sit over the total they make, and a cell read whole turns "9/"
+      // into "9/135".
+      const marks = marksWithin(inside, band);
+      const row = await this.readBand(worker, canvas, grid.cells, marks, () => {
         done += 1;
         onProgress?.(0.15 + (0.8 * done) / totalCells);
       });
 
-      // Skip the running totals under each bowler, and any band of ruling
-      // that carried nothing.
-      if (row && row.frames >= 3 && looksLikeMarks(row.text)) readRows.push(row);
+      // Skip the strip that numbers the frames, the running totals under each
+      // bowler, and any band of ruling that carried nothing.
+      if (row && row.frames >= 3 && !looksLikeFrameNumbers(row.perFrame) && looksLikeMarks(row.text)) {
+        readRows.push({ ...row, middle: (band.top + band.bottom) / 2 });
+      }
     }
 
     if (readRows.length === 0) return null;
 
-    const [first, ...rest] = readRows;
+    // Nearest the middle first, not topmost. Every crop that reaches here was
+    // drawn *around* one row — the camera's bar, or the box on a picked photo —
+    // so when a crop catches the neighbour above as well, the row in the middle
+    // is the one that was aimed at. Reading the topmost quietly imported
+    // somebody else's game, and it looked entirely plausible.
+    const middle = height / 2;
+    const [first, ...rest] = [...readRows].sort(
+      (a, b) => Math.abs(a.middle - middle) - Math.abs(b.middle - middle),
+    );
 
     return {
       // Frames are space-separated, which is exactly what the mark parser
       // expects — and here the separation is the paper's, not a guess.
       text: first.text,
-      // Discount by how regular the grid was: a doubtful grid should not
-      // produce a confident-looking read.
-      confidence: first.confidence * (0.7 + 0.3 * grid.regularity),
+      // Discount by how much of the grid was actually on the paper: a grid
+      // half of which was placed rather than found should not produce a
+      // confident-looking read.
+      confidence: first.confidence * (0.7 + 0.3 * grid.certainty),
       strategy: 'per-frame',
       framesRead: first.frames,
       otherRows: rest.map((row) => row.text),
@@ -229,7 +258,7 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     cells: Cell[],
     band: Band,
     onCell: () => void,
-  ): Promise<{ text: string; confidence: number; frames: number } | null> {
+  ): Promise<{ text: string; perFrame: string[]; confidence: number; frames: number } | null> {
     // Inset past the rules themselves, which read as stray marks.
     const top = band.top + 2;
     const bottom = band.bottom - 2;
@@ -261,7 +290,12 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     const mean =
       confidences.length === 0 ? 0 : confidences.reduce((a, b) => a + b, 0) / confidences.length;
 
-    return { text: frames.join(' ').trim(), confidence: mean, frames: read.length };
+    return {
+      text: frames.join(' ').trim(),
+      perFrame: frames,
+      confidence: mean,
+      frames: read.length,
+    };
   }
 
   async dispose(): Promise<void> {

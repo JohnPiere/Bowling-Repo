@@ -16,7 +16,7 @@ import {
   swapsAxes,
   type Orientation,
 } from './orientation';
-import { estimateShear } from './segment';
+import { estimateTilt } from './rows';
 import { findSheetBox, hasDarkSurround, insetBox, otsuThreshold, type SheetBox } from './sheet';
 
 /** Long edge to scale to. Bigger is slower with little accuracy to show for it. */
@@ -57,10 +57,13 @@ export async function preprocessForOcr(image: Blob): Promise<Prepared> {
     const crop = findPaper(bitmap);
 
     const upright = rasterise(bitmap, 0, crop);
-    const shear = estimateShear(upright.binary, upright.width, upright.height);
+    // Every other column would be enough on a preview frame; on a 1600-pixel
+    // photograph the tilt is just as findable from a quarter of them.
+    const step = Math.max(2, Math.round(upright.width / 400));
+    const tilt = estimateTilt(upright.binary, upright.width, upright.height, step);
 
     // Under about a quarter of a degree, redrawing costs more than it buys.
-    const prepared = Math.abs(shear) < 0.004 ? upright : rasterise(bitmap, shear, crop);
+    const prepared = Math.abs(tilt) < 0.004 ? upright : rasterise(bitmap, tilt, crop);
 
     const blob = await new Promise<Blob | null>((resolve) =>
       prepared.canvas.toBlob(resolve, 'image/png'),
@@ -177,15 +180,17 @@ function findPaper(bitmap: ImageBitmap): SheetBox | null {
 /**
  * Draw the photo at working size, straightened, and threshold it.
  *
- * A true rotation rather than the horizontal shear the column projection uses.
- * A shear straightens vertical rules but leaves horizontal ones tilted, and
- * the sheet's top and bottom borders are horizontal — tilted, they smear
- * across thirty rows and never form the peak that locates the sheet. Rotating
- * fixes both directions at once.
+ * A true rotation rather than a horizontal shear. A shear straightens vertical
+ * rules but leaves horizontal ones tilted, and the sheet's top and bottom
+ * borders are horizontal — tilted, they smear across thirty rows and never form
+ * the peak that locates the sheet. Rotating fixes both directions at once.
+ *
+ * `tilt` is the sheet's own rise over run, as `estimateTilt` measures it off
+ * the horizontal rules.
  */
 function rasterise(
   bitmap: ImageBitmap,
-  shear: number,
+  tilt: number,
   crop: SheetBox | null,
 ): Omit<Prepared, 'blob'> {
   const source = crop ?? { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
@@ -205,11 +210,11 @@ function rasterise(
   context.fillStyle = '#ffffff';
   context.fillRect(0, 0, width, height);
 
-  if (shear !== 0) {
-    // The shear that straightens the columns is x' = x + shear·(y - cy); the
-    // equivalent rotation for a small angle is -atan(shear) about the centre.
+  if (tilt !== 0) {
+    // Positive tilt is a line falling to the right, so the image turns the
+    // other way to bring it level.
     context.translate(width / 2, height / 2);
-    context.rotate(-Math.atan(shear));
+    context.rotate(-Math.atan(tilt));
     context.translate(-width / 2, -height / 2);
   }
   context.drawImage(
@@ -321,3 +326,4 @@ function toBlackAndWhite(data: Uint8ClampedArray, width: number, height: number)
 
   return binary;
 }
+

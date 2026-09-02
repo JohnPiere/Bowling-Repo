@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  estimateShear,
+  fitFrameGrid,
   findHorizontalRules,
-  findMarkBand,
-  findRules,
   findSheetBounds,
-  looksLikeMarks,
-  toBands,
   idealRules,
-  projectColumns,
+  looksLikeFrameNumbers,
+  looksLikeMarks,
+  marksWithin,
   projectRows,
-  regularity,
-  toFrameCells,
+  ruleCoverage,
+  toBands,
 } from '../src/lib/ocr/segment';
 
 /** Draw a synthetic score sheet: vertical rules, plus optional ink blobs. */
@@ -56,15 +54,6 @@ function sheet(
   return { binary, width, height };
 }
 
-describe('projectColumns', () => {
-  it('counts dark pixels per column', () => {
-    const { binary, width, height } = sheet(10, 8, { ruleColumns: [3] });
-    const projection = projectColumns(binary, width, height);
-    expect(projection[3]).toBe(8);
-    expect(projection[2]).toBe(0);
-  });
-});
-
 describe('projectRows', () => {
   it('counts dark pixels per row', () => {
     const { binary, width, height } = sheet(10, 8, { dividerRow: 5 });
@@ -73,100 +62,65 @@ describe('projectRows', () => {
   });
 });
 
-describe('findRules', () => {
-  it('finds full-height rules', () => {
-    const { binary, width, height } = sheet(60, 40, { ruleColumns: [10, 30, 50] });
-    const rules = findRules(projectColumns(binary, width, height), height);
-    expect(rules).toEqual([10, 30, 50]);
+describe('ruleCoverage', () => {
+  const band = { top: 5, bottom: 45 };
+
+  it('measures how much of the band a column is inked over', () => {
+    const { binary, width } = sheet(60, 50, { ruleColumns: [10], ruleTop: 5, ruleHeight: 41 });
+    expect(ruleCoverage(binary, width, band)[10]).toBe(41);
+    expect(ruleCoverage(binary, width, band)[30]).toBe(0);
   });
 
-  it('collapses a thick rule to its centre', () => {
-    const { binary, width, height } = sheet(60, 40, { ruleColumns: [20, 21, 22] });
-    expect(findRules(projectColumns(binary, width, height), height)).toEqual([21]);
+  it('scores a rule broken by thresholding for what is left of it', () => {
+    // A printed rule under alley lighting comes through in pieces. Counting
+    // the longest unbroken piece throws away most of the evidence that it is
+    // a rule at all.
+    const width = 60;
+    const binary = new Uint8Array(width * 50);
+    for (let y = 5; y <= 45; y++) if (y % 3 !== 0) binary[y * width + 10] = 1;
+    expect(ruleCoverage(binary, width, band)[10]).toBeGreaterThan(25);
   });
 
-  it('ignores ink that does not run the height', () => {
-    // A mark is tall-ish but nowhere near a full rule.
-    const { binary, width, height } = sheet(60, 40, {
+  it('forgives a rule that drifts by a pixel', () => {
+    // Straightening and scaling leave a rule very slightly off vertical.
+    const width = 60;
+    const binary = new Uint8Array(width * 50);
+    for (let y = 5; y <= 45; y++) binary[y * width + 10 + (y > 25 ? 1 : 0)] = 1;
+    expect(ruleCoverage(binary, width, band)[10]).toBe(41);
+  });
+
+  it('is unmoved by the ink around it', () => {
+    const { binary, width } = sheet(60, 50, {
       ruleColumns: [10],
-      blobs: [{ x: 30, y: 5, w: 3, h: 8 }],
+      ruleTop: 5,
+      ruleHeight: 41,
+      blobs: [{ x: 30, y: 10, w: 3, h: 8 }],
     });
-    expect(findRules(projectColumns(binary, width, height), height)).toEqual([10]);
-  });
-
-  it('finds nothing on a blank sheet', () => {
-    const { binary, width, height } = sheet(60, 40);
-    expect(findRules(projectColumns(binary, width, height), height)).toEqual([]);
-  });
-
-  it('finds rules on a sheet that fills only part of the photo', () => {
-    // The regression this guards: a photographed sheet has margin above and
-    // below, so its rules are far shorter than the image and a threshold
-    // anchored to image height finds nothing at all.
-    const { binary, width, height } = sheet(330, 400, {
-      ruleColumns: idealRules(300).map((x) => x + 15),
-      ruleTop: 130,
-      ruleHeight: 150,
-    });
-    expect(findRules(projectColumns(binary, width, height), height).length).toBe(11);
+    const coverage = ruleCoverage(binary, width, band);
+    expect(coverage[31]).toBe(8);
+    expect(coverage[10]).toBe(41);
   });
 });
 
-describe('estimateShear', () => {
-  it('is about zero for a square sheet', () => {
-    const { binary, width, height } = sheet(330, 200, {
-      ruleColumns: idealRules(300).map((x) => x + 15),
-      ruleTop: 25,
-      ruleHeight: 150,
-    });
-    expect(Math.abs(estimateShear(binary, width, height))).toBeLessThan(0.01);
-  });
+describe('fitFrameGrid', () => {
+  /** Where a row of ten frames rules a 330-wide crop, with margin either side. */
+  const RULES = idealRules(300).map((x) => x + 15);
 
-  it('recovers a tilted sheet so its rules project as spikes', () => {
-    const tilted = sheet(330, 260, {
-      ruleColumns: idealRules(300).map((x) => x + 15),
-      ruleTop: 55,
-      ruleHeight: 150,
-      rotate: 1.6,
-    });
+  /** Coverage as a well-ruled row of ten frames would produce it. */
+  const ruled = (width: number, bandHeight: number, rules = RULES) => {
+    const coverage = new Array<number>(width).fill(0);
+    for (const x of rules) if (x < width) coverage[x] = bandHeight;
+    return coverage;
+  };
 
-    const shear = estimateShear(tilted.binary, tilted.width, tilted.height);
-    const straight = projectColumns(tilted.binary, tilted.width, tilted.height, shear);
-    const asIs = projectColumns(tilted.binary, tilted.width, tilted.height);
-
-    // A tilt spreads each rule's ink over several columns. Deskewing puts it
-    // back into one, which is what turns a smear into a spike — on a real
-    // photo, with marks competing, that is the difference between finding the
-    // grid and not.
-    expect(Math.max(...straight)).toBeGreaterThan(Math.max(...asIs));
-    expect(findRules(straight, tilted.height).length).toBeGreaterThanOrEqual(10);
-  });
-});
-
-describe('regularity', () => {
-  it('scores evenly spaced positions as 1', () => {
-    expect(regularity([0, 10, 20, 30, 40])).toBe(1);
-  });
-
-  it('scores uneven spacing lower', () => {
-    expect(regularity([0, 2, 30, 33, 90])).toBeLessThan(0.5);
-  });
-
-  it('needs at least three positions', () => {
-    expect(regularity([0, 10])).toBe(0);
-  });
-});
-
-describe('toFrameCells', () => {
-  it('cuts a well-ruled sheet into ten frames', () => {
-    const grid = toFrameCells(idealRules(330), 330);
-    expect(grid).not.toBeNull();
+  it('cuts a well-ruled row into ten frames', () => {
+    const grid = fitFrameGrid(ruled(330, 40), 330, 40);
     expect(grid?.cells).toHaveLength(10);
-    expect(grid?.regularity).toBeGreaterThan(0.9);
+    expect(grid?.certainty).toBeGreaterThan(0.9);
   });
 
   it('produces cells in order and without overlap', () => {
-    const cells = toFrameCells(idealRules(330), 330)!.cells;
+    const cells = fitFrameGrid(ruled(330, 40), 330, 40)!.cells;
     for (let i = 1; i < cells.length; i++) {
       expect(cells[i].x0).toBeGreaterThan(cells[i - 1].x1);
     }
@@ -174,25 +128,50 @@ describe('toFrameCells', () => {
     expect(cells[9].x1).toBeLessThanOrEqual(330);
   });
 
-  it('survives a missing rule by fitting the span', () => {
-    // Drop the sixth rule, as a faint printed line would be.
-    const rules = idealRules(330).filter((_, i) => i !== 5);
-    const grid = toFrameCells(rules, 330);
+  it('places the rules that thresholding lost', () => {
+    // Half the grid gone, which is an ordinary photograph of a printed sheet.
+    const grid = fitFrameGrid(ruled(330, 40, RULES.filter((_, i) => i % 2 === 0)), 330, 40);
     expect(grid?.cells).toHaveLength(10);
+    // The second frame still starts where its rule would have been.
+    expect(grid!.cells[1].x0).toBeGreaterThan(RULES[1] - 4);
+    expect(grid!.cells[1].x0).toBeLessThan(RULES[1] + 6);
   });
 
-  it('refuses too few rules to be a sheet', () => {
-    expect(toFrameCells([10, 50, 90], 330)).toBeNull();
+  it('does not fit the mark boxes printed inside each frame', () => {
+    // This is the failure it exists to prevent: a box drawn inside every frame
+    // offers a grid of twice as many rules, fits perfectly, and puts every
+    // frame boundary through the middle of a frame.
+    const coverage = ruled(330, 40);
+    // …and a half-height box border halfway through each frame.
+    for (const x of RULES) if (x + 15 < 330) coverage[x + 15] = 22;
+
+    const grid = fitFrameGrid(coverage, 330, 40)!;
+    expect(grid.cells[0].x1 - grid.cells[0].x0).toBeGreaterThan(20);
+  });
+
+  it('is not dragged along by a column of stacked digits', () => {
+    // A totals column beyond the tenth frame carries far more ink than a rule,
+    // and uncapped it drags the whole comb a frame to the right — every mark
+    // then lands one frame along, which reads as a real game and is not one.
+    const coverage = ruled(330, 40);
+    coverage[325] = 400;
+
+    const grid = fitFrameGrid(coverage, 330, 40)!;
+    expect(grid.cells[0].x0).toBeLessThan(RULES[1]);
+  });
+
+  it('refuses a row with no grid to find', () => {
+    expect(fitFrameGrid(new Array(330).fill(0), 330, 40)).toBeNull();
   });
 
   it('refuses rules crowded into one corner', () => {
-    const crowded = Array.from({ length: 11 }, (_, i) => i * 8);
-    expect(toFrameCells(crowded, 330)).toBeNull();
+    const coverage = new Array<number>(330).fill(0);
+    for (let i = 0; i < 11; i++) coverage[i * 8] = 40;
+    expect(fitFrameGrid(coverage, 330, 40)).toBeNull();
   });
 
-  it('refuses a badly irregular grid', () => {
-    const ragged = [0, 4, 9, 60, 63, 140, 141, 200, 260, 300, 330];
-    expect(toFrameCells(ragged, 330)).toBeNull();
+  it('refuses a band too short to hold a row', () => {
+    expect(fitFrameGrid(ruled(330, 4), 330, 4)).toBeNull();
   });
 });
 
@@ -234,35 +213,49 @@ describe('findSheetBounds', () => {
   });
 });
 
-describe('findMarkBand', () => {
-  const bounds = { top: 10, bottom: 110 };
+describe('marksWithin', () => {
+  const band = { top: 10, bottom: 110 };
 
-  it('cuts at the rule dividing marks from the running total', () => {
+  it('cuts at the boxes dividing marks from the running total', () => {
     const width = 200;
     const height = 120;
     const binary = new Uint8Array(width * height);
-    for (const y of [10, 70, 110]) {
-      for (let x = 0; x < width; x++) binary[y * width + x] = 1;
-    }
+    for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
+    // The divider is not a rule across the sheet: it is a row of little boxes,
+    // one per frame, so it covers half the width and no more.
+    for (let x = 0; x < width; x += 2) binary[70 * width + x] = 1;
+
     const rows = projectRows(binary, width, height);
-    expect(findMarkBand(rows, width, bounds)).toEqual({ top: 10, bottom: 70 });
+    expect(marksWithin(rows, band)).toEqual({ top: 10, bottom: 70 });
   });
 
-  it('ignores the sheet borders themselves', () => {
+  it('keeps a band with nothing dividing it', () => {
     const width = 200;
     const height = 120;
     const binary = new Uint8Array(width * height);
-    // Only the two borders, no interior divider.
-    for (const y of [10, 110]) {
-      for (let x = 0; x < width; x++) binary[y * width + x] = 1;
-    }
+    for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
+
     const rows = projectRows(binary, width, height);
-    // No interior rule is a legitimate sheet: keep the whole band.
-    expect(findMarkBand(rows, width, bounds)).toEqual({ top: 10, bottom: 110 });
+    expect(marksWithin(rows, band)).toEqual(band);
   });
 
-  it('refuses a band too short to hold marks', () => {
-    expect(findMarkBand(new Array(120).fill(0), 200, { top: 10, bottom: 15 })).toBeNull();
+  it('is not fooled by a band of ordinary writing', () => {
+    const width = 200;
+    const height = 120;
+    const binary = new Uint8Array(width * height);
+    for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
+    // Digits across the whole band, thickest in the middle of a glyph.
+    for (let y = 30; y < 90; y++) for (let x = 0; x < 40; x++) binary[y * width + x] = 1;
+
+    const rows = projectRows(binary, width, height);
+    expect(marksWithin(rows, band)).toEqual(band);
+  });
+
+  it('leaves a band too short to divide alone', () => {
+    expect(marksWithin(new Array(120).fill(0), { top: 10, bottom: 15 })).toEqual({
+      top: 10,
+      bottom: 15,
+    });
   });
 });
 
@@ -336,6 +329,36 @@ describe('looksLikeMarks', () => {
 
   it('rejects totals even when they are read imperfectly', () => {
     expect(looksLikeMarks('20 37 46 74 92')).toBe(false);
+  });
+});
+
+describe('looksLikeFrameNumbers', () => {
+  it('recognises the strip that numbers the frames', () => {
+    const header = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    expect(looksLikeFrameNumbers(header)).toBe(true);
+  });
+
+  it('recognises it through the mistakes OCR makes on it', () => {
+    // The tenth reads as "1" as often as "10", and the first is easily lost.
+    expect(looksLikeFrameNumbers(['', '2', '3', '4', '5', '6', '7', '8', '9', '1'])).toBe(true);
+  });
+
+  it('leaves a game alone, however tidy', () => {
+    expect(looksLikeFrameNumbers(['9/', '81', 'X', '7-', '90', 'X', '5/', '63', 'X', 'XX9'])).toBe(
+      false,
+    );
+  });
+
+  it('leaves a game that opens 1 2 3 alone', () => {
+    // Three frames agreeing with their own number is a coincidence, not a
+    // header — and a header is ten of them.
+    expect(looksLikeFrameNumbers(['1', '2', '3', '72', '81', '9-', '45', '63', 'X', '9/'])).toBe(
+      false,
+    );
+  });
+
+  it('needs a row long enough to be a sheet', () => {
+    expect(looksLikeFrameNumbers(['1', '2', '3'])).toBe(false);
   });
 });
 

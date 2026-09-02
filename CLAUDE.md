@@ -103,10 +103,14 @@ So the unit of a scan is **one row**, and the bowler says which:
 
 - **The camera is a barcode reader.** A fixed bar sits in the middle of the
   preview (`lib/reticle.ts`) and the sheet is slid until one row lies inside
-  it. Only that strip is captured. Detection still runs on the preview at 8 Hz
-  and, when it finds a row lying in the bar, the brackets snap to the row's own
-  rules and the capture takes those instead — lock-on, not selection, so a miss
-  costs nothing.
+  it. **The bar is the crop.** Detection still runs on the preview at 8 Hz, and
+  a row found lying in the bar slides the bar onto it — re-centred, never
+  resized, so the amount of paper taken is always the amount the bowler was
+  shown. It used to crop to the row it had found, and that was the bug behind
+  "the scan bar gets smaller and it can't get the numbers": what detection is
+  surest of on a real sheet is the strip that numbers the frames, a tenth of the
+  height of the game it belongs to. The bar shrank to it and photographed
+  "1 2 3 4 5 6 7 8 9 10".
 - **A picked photo gets a box to drag** (`components/RegionPicker.tsx`), seeded
   on whichever row `detectGameRows` likes best. The seed is opened out past the
   row's rules on purpose: the band runs from one rule's centre to the next, and
@@ -128,17 +132,35 @@ disagrees with the count is dropped rather than imported.
 
 Within a row it finds the rules and reads each frame separately, because
 reading even one row in a single pass throws away the grid that says where
-frames end.
+frames end. The order that works is **horizontal first**: the borders of the
+row's ruled box, then the bands between them, and only then the frame rules
+*inside* that box. The frame rules are only as tall as the box, so in a crop
+that also holds the pin diagrams they are not the tallest ink in the picture and
+cannot be found first.
 
-Three mistakes that are easy to repeat:
+**The frame grid is fitted, not found.** Eleven rules are a comb with two
+unknowns — the spacing and where it starts — and searching those two beats
+detecting eleven lines, because on a photograph about half of them do not
+survive thresholding. `fitFrameGrid` scores a comb by how much *rule* each tooth
+lands on: not ink, but how much of the box's height the column is inked over,
+which is the one thing that tells a frame rule from the border of a mark box
+printed inside the frame. Ink alone fits the mark boxes perfectly at half the
+true spacing and puts every frame boundary through the middle of a frame.
+
+Four mistakes that are easy to repeat:
 
 1. **Thresholds must be relative to what was found, not to the image.** A
    photographed sheet fills part of the frame, so a threshold anchored to
    image height or sheet width demands rules bigger than the sheet and finds
    nothing. This bit twice — once for vertical rules, once for horizontal.
-2. **Straightening must be a rotation, not a shear.** A shear fixes vertical
-   rules and leaves horizontal ones tilted — and the horizontal borders are
-   what locate the sheet at all.
+2. **Straightening must be a rotation, not a shear, and the angle comes from
+   the horizontal rules.** A shear fixes vertical rules and leaves horizontal
+   ones tilted — and the horizontal borders are what locate the sheet at all.
+   The angle itself was measured off the *columns* until a real sheet arrived:
+   a crop that includes the pin diagrams is two thirds lattice of printed
+   circles, the column projection locks on to that lattice, and straightening
+   then *adds* two degrees of tilt to a row that was level. `estimateTilt`
+   measures rows, where the box's borders are the longest lines on the page.
 3. **Live detection must crop to the paper first, but only when there is
    paper to crop to.** A sheet on a table is a bright rectangle on something
    darker; thresholded, that darker something is ink across every row it
@@ -153,6 +175,20 @@ both bugs. `npm run verify:scanner` generates sheets that imitate a photograph
 (tilt, uneven light, noise, pencil, four bowlers stacked) and is what actually
 catches this class of thing. Its sheets are seeded — do not make them random,
 or a pass stops being attributable to the code.
+
+It stands at **5 of 6**. The one that fails is the noisiest sheet, on one
+character: a pencil `9` that reads as nothing, so `9/` comes back as `/`. It is
+a knife edge rather than a fault to find — shifting every frame boundary by one
+pixel flips it back, and widening the cells by five does not — and tuning a
+constant until that sheet passes would be fitting the code to the fixture.
+
+**What still does not work is the marks themselves, on a real Korona sheet.**
+The row, the box, the bands and the ten frames all come out right; the
+characters do not, because that sheet writes a strike as a crossed box and a
+spare as a filled triangle. Neither is a character, and an OCR engine asked for
+`X0123456789/-` returns whichever of those it thinks a filled shape resembles.
+Those frames want classifying by shape, the way `pindiagram.ts` classifies pins
+— see `docs/SHEET_FORMAT.md`.
 
 It compares the resulting **game**, not the mark string: `9/` and `91` are the
 same two throws, so a scanner that reads one for the other is still right.
