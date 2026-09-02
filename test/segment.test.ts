@@ -149,14 +149,15 @@ describe('fitFrameGrid', () => {
     expect(grid.cells[0].x1 - grid.cells[0].x0).toBeGreaterThan(20);
   });
 
-  it('is not dragged along by a column of stacked digits', () => {
-    // A totals column beyond the tenth frame carries far more ink than a rule,
-    // and uncapped it drags the whole comb a frame to the right — every mark
-    // then lands one frame along, which reads as a real game and is not one.
-    const coverage = ruled(330, 40);
-    coverage[325] = 400;
+  it('is not dragged a frame along by the sheet\'s totals column', () => {
+    // A house sheet rules a column for the running total beyond the tenth
+    // frame. A comb shifted one frame right lands on ten real rules and that
+    // one, which scores as well as the truth — and puts every mark a frame out,
+    // which reads as a real game and is not one. The wider grid wins.
+    const coverage = ruled(360, 40);
+    coverage[RULES[10] + 30] = 40;
 
-    const grid = fitFrameGrid(coverage, 330, 40)!;
+    const grid = fitFrameGrid(coverage, 360, 40)!;
     expect(grid.cells[0].x0).toBeLessThan(RULES[1]);
   });
 
@@ -215,40 +216,29 @@ describe('findSheetBounds', () => {
 
 describe('marksWithin', () => {
   const band = { top: 10, bottom: 110 };
+  const width = 200;
+  const height = 120;
 
-  it('cuts at the boxes dividing marks from the running total', () => {
-    const width = 200;
-    const height = 120;
+  /** A band with writing on the given rows, between two borders. */
+  const written = (rows: number[][]) => {
     const binary = new Uint8Array(width * height);
     for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
-    // The divider is not a rule across the sheet: it is a row of little boxes,
-    // one per frame, so it covers half the width and no more.
-    for (let x = 0; x < width; x += 2) binary[70 * width + x] = 1;
+    for (const [from, to] of rows) {
+      for (let y = from; y <= to; y++) for (let x = 0; x < width; x += 3) binary[y * width + x] = 1;
+    }
+    return projectRows(binary, width, height);
+  };
 
-    const rows = projectRows(binary, width, height);
-    expect(marksWithin(rows, band)).toEqual({ top: 10, bottom: 70 });
+  it('cuts at the paper between the marks and the running totals', () => {
+    // Two rows of writing with a lane of white between them. What divides them
+    // on a real sheet is not a rule — some sheets draw one and some do not —
+    // it is the gap.
+    expect(marksWithin(written([[20, 60], [80, 105]]), band).bottom).toBeGreaterThan(60);
+    expect(marksWithin(written([[20, 60], [80, 105]]), band).bottom).toBeLessThan(80);
   });
 
-  it('keeps a band with nothing dividing it', () => {
-    const width = 200;
-    const height = 120;
-    const binary = new Uint8Array(width * height);
-    for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
-
-    const rows = projectRows(binary, width, height);
-    expect(marksWithin(rows, band)).toEqual(band);
-  });
-
-  it('is not fooled by a band of ordinary writing', () => {
-    const width = 200;
-    const height = 120;
-    const binary = new Uint8Array(width * height);
-    for (const y of [10, 110]) for (let x = 0; x < width; x++) binary[y * width + x] = 1;
-    // Digits across the whole band, thickest in the middle of a glyph.
-    for (let y = 30; y < 90; y++) for (let x = 0; x < 40; x++) binary[y * width + x] = 1;
-
-    const rows = projectRows(binary, width, height);
-    expect(marksWithin(rows, band)).toEqual(band);
+  it('keeps a band holding one row of writing', () => {
+    expect(marksWithin(written([[20, 100]]), band)).toEqual(band);
   });
 
   it('leaves a band too short to divide alone', () => {
@@ -256,6 +246,10 @@ describe('marksWithin', () => {
       top: 10,
       bottom: 15,
     });
+  });
+
+  it('leaves a band with nothing written in it', () => {
+    expect(marksWithin(new Array(120).fill(0), band)).toEqual(band);
   });
 });
 

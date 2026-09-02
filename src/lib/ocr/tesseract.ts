@@ -15,20 +15,24 @@
  */
 
 import { createWorker, type Worker } from 'tesseract.js';
+import { findGlyphs, type FoundGlyph } from './markglyphs';
 import { cropRegion, preprocessForOcr, type Prepared } from './preprocess';
 import {
   fitFrameGrid,
   findHorizontalRules,
   findSheetBounds,
+  bandsHeight,
   looksLikeFrameNumbers,
   looksLikeMarks,
   marksWithin,
   projectRows,
+  rackColumns,
   ruleCoverage,
   toBands,
   type Band,
   type Cell,
 } from './segment';
+import { FRAMES_PER_GAME } from '../scoring';
 import type { RecognitionResult, ScoreSheetRecogniser } from './types';
 
 /**
@@ -36,7 +40,60 @@ import type { RecognitionResult, ScoreSheetRecogniser } from './types';
  * the single biggest accuracy win available — it stops "X" being read as "K"
  * and "0" as "O", which the mark parser would then have to guess at.
  */
-const SHEET_ALPHABET = 'X0123456789/-';
+const SHEET_ALPHABET = 'XG0123456789/-';
+
+/**
+ * How much to believe a mark read as a shape rather than as a character.
+ *
+ * High, and it should be: the two printed glyphs are machine-drawn, identical
+ * on every sheet, and told apart by which corners of a square are inked. That
+ * is a measurement. It is not 1, because the shape still had to be found in the
+ * right frame.
+ */
+const GLYPH_CONFIDENCE = 0.95;
+
+/**
+ * The strip with any ink that runs off its ends trimmed away.
+ *
+ * What runs off the end of a strip cut between two frames is the printed rule
+ * that divides them, and a rule beside a digit reads as a 1 — which is a ball
+ * nobody threw, on whichever frames the crop happens to clip.
+ */
+function trimToPaper(
+  prepared: Prepared,
+  from: number,
+  to: number,
+  top: number,
+  bottom: number,
+): { x0: number; x1: number } {
+  const { binary, width } = prepared;
+
+  // A rule runs the height of the strip; a digit that happens to reach the edge
+  // does not. Trimming on any ink at all takes the edge off the digit too, and
+  // a digit read from a crop that clips it is a different digit.
+  const span = Math.max(1, bottom - top + 1);
+  const isRule = (x: number) => {
+    let inked = 0;
+    for (let y = top; y <= bottom; y++) if (binary[y * width + x]) inked += 1;
+    return inked >= span * 0.6;
+  };
+
+  let x0 = Math.max(0, from);
+  let x1 = Math.min(width, to);
+  // A quarter of the strip at most: past that it is not a rule being trimmed.
+  const limit = Math.max(1, Math.round((x1 - x0) * 0.25));
+
+  for (let i = 0; i < limit && x0 < x1 && isRule(x0); i++) x0 += 1;
+  for (let i = 0; i < limit && x1 - 1 > x0 && isRule(x1 - 1); i++) x1 -= 1;
+
+  return { x0, x1 };
+}
+
+/** The mark a printed shape stands for. A count is a digit and read separately. */
+function symbolFor(glyph: FoundGlyph['glyph']): string {
+  if (glyph === 'strike') return 'X';
+  return glyph === 'spare' ? '/' : '-';
+}
 
 /** Tesseract page segmentation modes, by name rather than magic number. */
 const PSM_SINGLE_LINE = '7';
@@ -157,7 +214,7 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     prepared: Prepared,
     onProgress?: (fraction: number) => void,
   ): Promise<RecognitionResult | null> {
-    const { binary, width, height, canvas } = prepared;
+    const { binary, width, height } = prepared;
 
     // Horizontal first, and this order matters. The frame rules only run the
     // height of the row's own box, so looking for them across the whole crop
@@ -176,7 +233,17 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     const rough = findSheetBounds(rows, ruled);
     if (!rough) return null;
 
-    const grid = fitFrameGrid(ruleCoverage(binary, width, rough), width, rough.bottom - rough.top);
+    // The bands the row is ruled into, so a column can be scored by the weakest
+    // of them rather than over the box as a whole — see `ruleCoverage`.
+    const roughBands = toBands(findHorizontalRules(rows, ruled, rough));
+    if (roughBands.length === 0) roughBands.push(rough);
+
+    const grid = fitFrameGrid(
+      ruleCoverage(binary, width, roughBands),
+      width,
+      bandsHeight(roughBands),
+      rackColumns(binary, width, height, rough),
+    );
     if (!grid) return null;
 
     // Now the grid says which columns are the sheet's, measure the rows again
@@ -213,7 +280,7 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       // Marks sit over the total they make, and a cell read whole turns "9/"
       // into "9/135".
       const marks = marksWithin(inside, band);
-      const row = await this.readBand(worker, canvas, grid.cells, marks, () => {
+      const row = await this.readBand(worker, prepared, grid.cells, marks, () => {
         done += 1;
         onProgress?.(0.15 + (0.8 * done) / totalCells);
       });
@@ -254,7 +321,7 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
   /** Read one horizontal band, cell by cell. */
   private async readBand(
     worker: Worker,
-    canvas: HTMLCanvasElement,
+    prepared: Prepared,
     cells: Cell[],
     band: Band,
     onCell: () => void,
@@ -267,26 +334,21 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
     const frames: string[] = [];
     const confidences: number[] = [];
 
-    for (const cell of cells) {
-      const crop = await cropRegion(canvas, {
-        x: cell.x0,
-        y: top,
-        width: cell.x1 - cell.x0,
-        height: bottom - top,
-      });
-      onCell();
-      if (!crop) continue;
+    for (let index = 0; index < cells.length; index++) {
+      const cell = cells[index];
+      const glyphs = findGlyphs(prepared.binary, prepared.width, cell, { top, bottom });
+      const tenth = index === FRAMES_PER_GAME - 1;
 
-      const { data } = await worker.recognize(crop);
-      const marks = (data.text ?? '').replace(/[^X0-9/-]/gi, '').toUpperCase();
+      const read = await this.readCell(worker, prepared, cell, top, bottom, glyphs, tenth);
+      onCell();
 
       // A blank frame is a real answer on a partly played sheet; keep the slot
       // so later frames do not shift left.
-      frames.push(marks);
-      if (marks) confidences.push(Math.max(0, Math.min(1, (data.confidence ?? 0) / 100)));
+      frames.push(read.marks);
+      if (read.marks) confidences.push(read.confidence);
     }
 
-    const read = frames.filter(Boolean);
+    const marked = frames.filter(Boolean);
     const mean =
       confidences.length === 0 ? 0 : confidences.reduce((a, b) => a + b, 0) / confidences.length;
 
@@ -294,8 +356,159 @@ export class TesseractRecogniser implements ScoreSheetRecogniser {
       text: frames.join(' ').trim(),
       perFrame: frames,
       confidence: mean,
-      frames: read.length,
+      frames: marked.length,
     };
+  }
+
+  /**
+   * One frame, as a mark string.
+   *
+   * A printed strike or spare settles the frame without any recognition at all,
+   * and settles it better: those two are shapes rather than characters (see
+   * `markglyphs.ts`), so what OCR makes of them is a coin toss. A strike is the
+   * whole frame; a spare is its second ball, so only what lies to the left of it
+   * is a number worth reading. Neither leaves anything to the right that is not
+   * an empty printed box, and reading one of those produces a mark nobody wrote.
+   *
+   * The tenth is the exception, because it re-racks: three balls, up to three
+   * shapes, and every gap between them can hold a count.
+   */
+  private async readCell(
+    worker: Worker,
+    prepared: Prepared,
+    cell: Cell,
+    top: number,
+    bottom: number,
+    glyphs: FoundGlyph[],
+    tenth: boolean,
+  ): Promise<{ marks: string; confidence: number }> {
+    const frame = cell.x1 - cell.x0;
+    // Keep the recogniser off the shape's own box: its border reads as a 1.
+    const clear = Math.max(2, Math.round(frame * 0.03));
+    const enough = Math.max(10, Math.round(frame * 0.12));
+
+    if (glyphs.length === 0) {
+      return this.readText(worker, prepared, cell.x0, cell.x1, top, bottom, enough);
+    }
+
+    if (!tenth) {
+      const [shape] = glyphs;
+      if (shape.glyph === 'strike') return { marks: 'X', confidence: GLYPH_CONFIDENCE };
+
+      // A ringed count is the first ball, so the rest of the frame still has to
+      // be read: fall through to the walk below, which handles both.
+      if (shape.glyph === 'count') return this.walkCell(worker, prepared, cell, top, bottom, glyphs);
+
+      const before = await this.readText(
+        worker,
+        prepared,
+        cell.x0,
+        shape.left - clear,
+        top,
+        bottom,
+        enough,
+      );
+      // One character, because the first ball of a frame is one throw. What
+      // else comes back is the edge of the shape's own box read as a 1, and it
+      // would turn a 9 into a 91 on every spare on the sheet.
+      return {
+        marks: before.marks.slice(0, 1) + symbolFor(shape.glyph),
+        confidence: (before.confidence + GLYPH_CONFIDENCE) / 2,
+      };
+    }
+
+    return this.walkCell(worker, prepared, cell, top, bottom, glyphs);
+  }
+
+  /**
+   * A frame read left to right: what is written, then a shape, then what is
+   * written after it.
+   *
+   * Used for the tenth, which throws up to three balls and can hold three
+   * shapes, and for any frame carrying a ringed count — that one is a number
+   * rather than a mark, so the frame is not settled by having found it.
+   */
+  private async walkCell(
+    worker: Worker,
+    prepared: Prepared,
+    cell: Cell,
+    top: number,
+    bottom: number,
+    glyphs: FoundGlyph[],
+  ): Promise<{ marks: string; confidence: number }> {
+    const frame = cell.x1 - cell.x0;
+    const clear = Math.max(2, Math.round(frame * 0.03));
+    const enough = Math.max(10, Math.round(frame * 0.12));
+
+    let marks = '';
+    let confidence = GLYPH_CONFIDENCE;
+    let at = cell.x0;
+
+    for (const shape of glyphs) {
+      const before = await this.readText(worker, prepared, at, shape.left - clear, top, bottom, enough);
+      marks += before.marks;
+      if (before.marks) confidence = (confidence + before.confidence) / 2;
+
+      if (shape.glyph === 'count') {
+        // The digit lives inside the ring; the ring itself is what OCR cannot
+        // read, so it is cropped away.
+        const inset = Math.round((shape.right - shape.left) * 0.22);
+        const inside = await this.readText(
+          worker,
+          prepared,
+          shape.left + inset,
+          shape.right - inset,
+          top,
+          bottom,
+          8,
+        );
+        marks += inside.marks.slice(0, 1);
+        if (inside.marks) confidence = (confidence + inside.confidence) / 2;
+      } else {
+        marks += symbolFor(shape.glyph);
+      }
+
+      at = shape.right + clear;
+    }
+
+    const after = await this.readText(worker, prepared, at, cell.x1, top, bottom, enough);
+    marks += after.marks;
+    if (after.marks) confidence = (confidence + after.confidence) / 2;
+
+    return { marks, confidence };
+  }
+
+  /** Recognise one strip of a frame as marks. */
+  private async readText(
+    worker: Worker,
+    prepared: Prepared,
+    from: number,
+    to: number,
+    top: number,
+    bottom: number,
+    enough: number,
+  ): Promise<{ marks: string; confidence: number }> {
+    // Any ink running to the edge of the strip is the frame's own rule, or the
+    // border of the box beside it, and reads as a 1 in front of every count on
+    // the sheet. The strip starts and ends at paper.
+    const { x0, x1 } = trimToPaper(prepared, from, to, top, bottom);
+
+    // Narrower than a digit is the gap beside a shape, not a number. Reading it
+    // anyway returns a stray mark, and a stray mark is a ball nobody threw.
+    if (x1 - x0 < enough) return { marks: '', confidence: 0 };
+
+    const crop = await cropRegion(prepared.canvas, {
+      x: x0,
+      y: top,
+      width: x1 - x0,
+      height: bottom - top,
+    });
+    if (!crop) return { marks: '', confidence: 0 };
+
+    const { data } = await worker.recognize(crop);
+    const marks = (data.text ?? '').replace(/[^XG0-9/-]/gi, '').toUpperCase();
+
+    return { marks, confidence: Math.max(0, Math.min(1, (data.confidence ?? 0) / 100)) };
   }
 
   async dispose(): Promise<void> {

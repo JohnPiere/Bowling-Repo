@@ -104,39 +104,51 @@ export function findSheetBounds(
  * comes through the threshold in pieces — a third of them, measured on real
  * sheets, survive as less than half their length in one go.
  *
+ * Given the row's bands rather than its outline, each column is scored by the
+ * *weakest* band it crosses. That matters on a bent sheet, where the rules at
+ * the ends of the row drift out from under a column and the shorter mark boxes
+ * do not: measured over the whole box the boxes then win, and the grid lands
+ * half a frame out. No mark box reaches the strip that numbers the frames, so
+ * the weakest band settles it.
+ *
  * A pixel of drift either side is allowed: a rule that has been through
  * straightening and scaling is rarely exactly vertical.
  */
-export function ruleCoverage(binary: Binary, width: number, band: Band): number[] {
-  const coverage = new Array<number>(width).fill(0);
-  const top = Math.max(0, band.top);
+export function ruleCoverage(binary: Binary, width: number, bands: Band | Band[]): number[] {
+  const all = Array.isArray(bands) ? bands : [bands];
+  const height = bandsHeight(all);
+  const coverage = new Array<number>(width).fill(height);
 
-  for (let x = 0; x < width; x++) {
-    let inked = 0;
+  for (const band of all) {
+    const top = Math.max(0, band.top);
+    const span = band.bottom - top + 1;
+    if (span <= 1) continue;
 
-    for (let y = top; y <= band.bottom; y++) {
-      const row = y * width;
-      const drifted =
-        binary[row + x] || (x > 0 && binary[row + x - 1]) || (x + 1 < width && binary[row + x + 1]);
-      if (drifted) inked += 1;
+    for (let x = 0; x < width; x++) {
+      if (coverage[x] === 0) continue;
+
+      let inked = 0;
+      for (let y = top; y <= band.bottom; y++) {
+        const row = y * width;
+        const drifted =
+          binary[row + x] || (x > 0 && binary[row + x - 1]) || (x + 1 < width && binary[row + x + 1]);
+        if (drifted) inked += 1;
+      }
+
+      // The weakest band a column crosses is the one that decides it. A rule
+      // dividing two frames is in every band of the row; the border of a mark
+      // box printed inside a frame is in one of them, and the strip that
+      // numbers the frames above it is untouched — which is the difference a
+      // photograph of a bent sheet leaves standing when nothing else is.
+      coverage[x] = Math.min(coverage[x], (inked / span) * height);
     }
-
-    coverage[x] = inked;
   }
 
   return coverage;
 }
 
-/**
- * Past this share of the band's height a column is a rule, and more is not
- * more of one. Without the cap a column of stacked digits outscores a rule, and
- * three such columns can drag the whole comb a frame to the right — which is
- * worse than not finding it, because every mark then lands one frame along.
- */
-const RULE_ENOUGH = 0.7;
-
 /** A tooth counts as having found its rule at this share of the band's height. */
-const RULE_SHARE = 0.4;
+const RULE_SHARE = 0.3;
 
 /** Ten frames must reach across at least this much of the crop. */
 const MIN_SPAN = 0.5;
@@ -144,46 +156,80 @@ const MIN_SPAN = 0.5;
 /** …and more than half the eleven rules have to be there at all. */
 const MIN_RULES_FOUND = 6;
 
+/** Below this much ink per column, whatever is outside the row is not diagrams. */
+const RACK_INK = 2;
+
+interface Comb {
+  step: number;
+  first: number;
+}
+
 /**
- * Fit ten evenly spaced frames across a band.
- *
- * Not "find the rules and divide between them": that needs every rule to
- * survive thresholding, and on a photograph of pencil under alley lighting
- * about half of them do. A frame grid is a comb of eleven teeth, and the only
- * questions are how far apart they are and where the first one falls. Both are
- * searched, scored by how much rule each tooth lands on, so the rules that did
- * survive place the ones that did not.
+ * The best comb of eleven teeth under a given score, or null.
  *
  * The spacing is bounded below by ten frames having to span half the crop. A
  * comb at half the true spacing fits the mark boxes inside each frame just as
  * well as the real one fits the frames — that is the answer this gives without
  * the bound, and every mark then lands on a boundary.
  */
-export function fitFrameGrid(coverage: number[], width: number, bandHeight: number): Grid | null {
-  if (coverage.length !== width || bandHeight < 8) return null;
-
-  const enough = bandHeight * RULE_ENOUGH;
-  const capped = coverage.map((value) => Math.min(value, enough));
-
-  const teeth = FRAMES_PER_GAME + 1;
+function bestComb(width: number, score: (step: number, first: number) => number): Comb | null {
   const smallest = (width * MIN_SPAN) / FRAMES_PER_GAME;
   const largest = width / FRAMES_PER_GAME;
 
-  let best: { step: number; first: number } | null = null;
+  let best: Comb | null = null;
   let bestScore = 0;
 
-  for (let step = smallest; step <= largest; step += 0.5) {
+  // Widest first, and strictly better to displace it: where two spacings fit
+  // equally well the wider one is the answer, because a sheet's totals column
+  // beyond the tenth frame offers a grid one frame to the right that lands on
+  // exactly as many rules.
+  for (let step = largest; step >= smallest; step -= 0.5) {
     const span = step * FRAMES_PER_GAME;
     for (let first = 0; first + span < width; first++) {
-      let score = 0;
-      for (let i = 0; i < teeth; i++) score += capped[Math.round(first + i * step)] ?? 0;
-      if (score > bestScore) {
-        bestScore = score;
+      const value = score(step, first);
+      if (value > bestScore) {
+        bestScore = value;
         best = { step, first };
       }
     }
   }
 
+  return best;
+}
+
+/**
+ * Fit ten evenly spaced frames across a row.
+ *
+ * Not "find the rules and divide between them": that needs every rule to
+ * survive thresholding, and on a photograph about half of them do not. A frame
+ * grid is a comb of eleven teeth, and the only questions are how far apart they
+ * are and where the first one falls.
+ *
+ * Given `racks` — the ink above and below the row's ruled box — those two
+ * questions are answered by the pin diagrams instead of by the rules, and that
+ * is much the better evidence. A Japanese house sheet draws a rack of ten
+ * circles under every frame, centred in it, with a lane of white paper between
+ * one rack and the next: bold, printed solid, and lying exactly where the frame
+ * boundaries are. The rules have a rival that the racks do not — the sheet
+ * numbers each frame in its middle and prints the second ball's box there too,
+ * so the *centre* of a frame carries ink in every band the same way its edge
+ * does, and on a bent sheet it carries more. That ambiguity put the grid half a
+ * frame out on real photographs; the racks settle it, because a comb half a
+ * frame out cuts every one of them in two.
+ *
+ * The rules still place the teeth exactly: the racks find the grid, and then
+ * each tooth moves to the printed rule nearest it.
+ */
+export function fitFrameGrid(
+  coverage: number[],
+  width: number,
+  bandHeight: number,
+  racks?: number[],
+): Grid | null {
+  if (coverage.length !== width || bandHeight < 8) return null;
+
+  const teeth = FRAMES_PER_GAME + 1;
+  const best = combFromRacks(racks, width) ?? combFromRules(coverage, width);
   if (!best) return null;
 
   const wanted = bandHeight * RULE_SHARE;
@@ -192,10 +238,11 @@ export function fitFrameGrid(coverage: number[], width: number, bandHeight: numb
     if ((coverage[Math.round(best.first + i * best.step)] ?? 0) >= wanted) found += 1;
   }
 
-  // Half the grid missing is not a grid. A sheet with no rules at all lands
-  // here, and the caller falls back to reading it whole rather than cutting it
-  // into ten cells picked out of nowhere.
-  if (found < MIN_RULES_FOUND) return null;
+  // Half the grid missing is not a grid — unless the diagrams found it, which
+  // is evidence of its own and better than the rules. A sheet with neither
+  // lands here, and the caller falls back to reading it whole rather than
+  // cutting it into ten cells picked out of nowhere.
+  if (found < MIN_RULES_FOUND && !racksUsable(racks, width)) return null;
 
   // The comb is even and a photographed row is not: hold a phone over a sheet
   // and the far end of the row is a few per cent narrower than the near one.
@@ -224,6 +271,87 @@ export function fitFrameGrid(coverage: number[], width: number, bandHeight: numb
   }
 
   return { cells, certainty: found / teeth };
+}
+
+/** Whether what lies outside the row's box holds enough ink to be diagrams. */
+function racksUsable(racks: number[] | undefined, width: number): boolean {
+  if (!racks || racks.length !== width) return false;
+  return racks.reduce((sum, value) => sum + value, 0) >= width * RACK_INK;
+}
+
+/**
+ * The comb the pin diagrams describe: a rack in every cell, a lane at every
+ * tooth.
+ *
+ * Scored as the ink at the ten cell centres less the ink at the eleven teeth,
+ * so a comb is rewarded for landing between the racks and punished for landing
+ * on them. Smoothed by a couple of columns either way, because a lane one pixel
+ * wide is a gap between two circles rather than the gap between two frames.
+ */
+function combFromRacks(racks: number[] | undefined, width: number): Comb | null {
+  if (!racksUsable(racks, width)) return null;
+  const ink = racks as number[];
+
+  const smoothed = ink.map(
+    (_, x) =>
+      (ink[x - 2] ?? 0) + (ink[x - 1] ?? 0) + ink[x] + (ink[x + 1] ?? 0) + (ink[x + 2] ?? 0),
+  );
+
+  return bestComb(width, (step, first) => {
+    let score = 0;
+    for (let i = 0; i < FRAMES_PER_GAME; i++) score += smoothed[Math.round(first + (i + 0.5) * step)] ?? 0;
+    for (let i = 0; i <= FRAMES_PER_GAME; i++) score -= smoothed[Math.round(first + i * step)] ?? 0;
+    return score;
+  });
+}
+
+/**
+ * The comb the printed rules describe, for a sheet with no diagrams on it.
+ *
+ * Squared, so one column that is unmistakably a rule outweighs two that are
+ * merely dark: on a bent sheet the rules at the ends of a row drift out from
+ * under any straight comb, and what is left to decide it is the few in the
+ * middle that came through whole.
+ */
+function combFromRules(coverage: number[], width: number): Comb | null {
+  const scored = coverage.map((value) => value * value);
+
+  return bestComb(width, (step, first) => {
+    let score = 0;
+    for (let i = 0; i <= FRAMES_PER_GAME; i++) score += scored[Math.round(first + i * step)] ?? 0;
+    return score;
+  });
+}
+
+/** How many rows a set of bands covers between them. */
+export function bandsHeight(bands: Band[]): number {
+  return bands.reduce((sum, band) => sum + (band.bottom - band.top + 1), 0);
+}
+
+/**
+ * Column ink from everything outside the row's own box.
+ *
+ * On a house sheet that is the pin diagrams — one rack per frame, above and
+ * below — and they are the surest guide there is to where the frames divide.
+ * On a sheet without them it comes back nearly empty, which is the signal to
+ * fall back to the rules.
+ */
+export function rackColumns(
+  binary: Binary,
+  width: number,
+  height: number,
+  box: Band,
+  clear = 6,
+): number[] {
+  const columns = new Array<number>(width).fill(0);
+
+  for (let y = 0; y < height; y++) {
+    if (y > box.top - clear && y < box.bottom + clear) continue;
+    const row = y * width;
+    for (let x = 0; x < width; x++) if (binary[row + x]) columns[x] += 1;
+  }
+
+  return columns;
 }
 
 /**
@@ -379,41 +507,46 @@ export function looksLikeFrameNumbers(cells: string[]): boolean {
  * The part of a band holding the marks, with the running totals cut off.
  *
  * A sheet writes the marks over the total they make. Recognising a whole cell
- * reads both and turns "9/" into "9/135", so the band is cut at the rule
- * between them — which is not a rule across the sheet but a row of little
- * boxes, one per frame, and so is found by standing out from the band it is in
- * rather than by reaching across the paper. Anchoring it to the sheet's width
- * instead missed it by a hair's breadth on a real sheet, which is the kind of
- * threshold this file has been bitten by twice before.
+ * reads both and turns "9/" into "9/135", so the band has to be cut between
+ * them — and what separates them is not a rule but a lane of white paper. That
+ * is what is looked for here: the quietest row inside the band, taken only when
+ * it is markedly quieter than the writing around it.
  *
- * Returns the band unchanged when there is nothing dividing it, which is a
- * legitimate sheet design rather than a failure.
+ * Looking for a line instead is what this did first, and it worked on the sheet
+ * it was written for, where the boxes holding each second ball happen to draw
+ * one. On a sheet whose boxes are open at the bottom there is no line to find,
+ * the totals stay in the crop, and every frame comes back as a mark and a score
+ * run together.
+ *
+ * Returns the band unchanged when nothing divides it, which is a legitimate
+ * sheet design rather than a failure.
  */
 export function marksWithin(rows: number[], band: Band): Band {
   const span = band.bottom - band.top;
-  if (span < 12) return band;
+  if (span < 24) return band;
 
-  // Stay clear of the band's own borders, which are stronger than anything
-  // printed between them.
-  const margin = Math.max(3, Math.round(span * 0.15));
+  // Stay clear of the band's own borders, and of the top of the writing.
+  const margin = Math.max(3, Math.round(span * 0.35));
   const from = band.top + margin;
-  const to = band.bottom - margin;
+  const to = band.bottom - Math.max(3, Math.round(span * 0.15));
   if (to <= from) return band;
 
-  const inside = rows.slice(from, to).sort((a, b) => a - b);
+  const inside = rows.slice(band.top, band.bottom).sort((a, b) => a - b);
   const typical = inside[Math.floor(inside.length / 2)] ?? 0;
+  if (typical <= 0) return band;
 
-  // Clearly stronger than an ordinary row of writing, or it is writing.
-  let strongest = Math.max(typical * 2.5, 1);
-  let divider = -1;
+  let quietest = -1;
+  let least = Infinity;
   for (let y = from; y < to; y++) {
-    if (rows[y] > strongest) {
-      strongest = rows[y];
-      divider = y;
+    if (rows[y] < least) {
+      least = rows[y];
+      quietest = y;
     }
   }
 
-  return divider < 0 ? band : { top: band.top, bottom: divider };
+  // Quiet enough to be paper rather than a gap in the writing.
+  if (quietest < 0 || least > typical * 0.35) return band;
+  return { top: band.top, bottom: quietest };
 }
 
 /** Rules positions for a synthetic evenly-ruled sheet. Used by the tests. */

@@ -34,6 +34,10 @@ const CHARACTER_FIXES: Record<string, string> = {
   '—': '-',
   '−': '-',
   '_': '-',
+  // A gutter ball. Sheets the world over write G for it, and it is a miss by
+  // another name — no pins. Lower-case g is the far commoner misreading of a 9,
+  // which is why the two cases part company here.
+  G: '-',
   o: '0',
   O: '0',
   Q: '0',
