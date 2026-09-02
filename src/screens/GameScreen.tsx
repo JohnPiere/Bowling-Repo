@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { t } from '../lib/i18n';
 import { downloadHtml, gameSheetHtml } from '../lib/exporting';
+import { shareScorecard } from '../lib/scorecard';
+import { loadPreferences } from '../lib/preferences';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import type { Group } from '../lib/social';
@@ -35,6 +37,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [draft, setDraft] = useState('');
   const [house, setHouse] = useState(game.house ?? '');
   const [note, setNote] = useState(game.note ?? '');
+  const [cardState, setCardState] = useState<'idle' | 'working' | 'saved' | 'failed'>('idle');
 
   const card = scoreGame(game.rolls);
   const strikes = card.frames.filter((f) => f.isStrike).length;
@@ -99,6 +102,24 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
       onChanged();
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * The game as a picture, into the share sheet.
+   *
+   * A score travels between people as an image — LINE, a group chat, a story —
+   * and none of those will take the HTML sheet beside this button.
+   */
+  async function shareAsImage() {
+    setCardState('working');
+    try {
+      const outcome = await shareScorecard(game, loadPreferences().playerName);
+      // Backing out of the share sheet is not a failure, and saying so would be
+      // telling somebody off for changing their mind.
+      setCardState(outcome === 'saved' ? 'saved' : 'idle');
+    } catch {
+      setCardState('failed');
     }
   }
 
@@ -257,6 +278,23 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
       )}
 
       <h2 className="section-title">{t('Keep a copy')}</h2>
+      <button
+        type="button"
+        className="btn-lg btn-lg--primary"
+        onClick={shareAsImage}
+        disabled={cardState === 'working'}
+      >
+        <Icon name="share" size={18} />
+        {cardState === 'working' ? t('Drawing the card…') : t('Share as an image')}
+      </button>
+      <p className="footnote" style={{ marginBottom: 11 }}>
+        {cardState === 'saved'
+          ? t('Saved to this device — this browser will not hand a file to another app.')
+          : cardState === 'failed'
+            ? t('The card could not be drawn. The export below still works.')
+            : t('A picture of the scorecard, for a chat that will not take a file.')}
+      </p>
+
       <button
         type="button"
         className="btn-lg"

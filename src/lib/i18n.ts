@@ -346,6 +346,16 @@ export const JA: Record<string, string> = {
   'Shared': '共有済み',
   'Scan': '撮影',
 
+  // ── The scorecard as a picture ──
+  'Share as an image': '画像で共有',
+  'Drawing the card…': '画像を作成中…',
+  'A picture of the scorecard, for a chat that will not take a file.':
+    'ファイルを送れないチャット向けの、スコア表の画像です。',
+  'Saved to this device — this browser will not hand a file to another app.':
+    'この端末に保存しました。このブラウザは他のアプリにファイルを渡せません。',
+  'The card could not be drawn. The export below still works.':
+    '画像を作成できませんでした。下の書き出しは使えます。',
+
   // ── The league table ──
   'League table': 'リーグ表',
   'Working out the standings…': '順位を計算中…',

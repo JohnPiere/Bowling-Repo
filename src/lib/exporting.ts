@@ -15,7 +15,8 @@
 
 import type { Game } from './db';
 import type { DayGroup } from './history';
-import { frameMarks, scoreGame, FRAMES_PER_GAME } from './scoring';
+import { scoreGame, FRAMES_PER_GAME } from './scoring';
+import { scorecardCells } from './scorecard';
 import { formatDateTime, formatLongDate } from './datetime';
 
 export function escapeHtml(value: string): string {
@@ -26,17 +27,19 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** One game's frames: the marks over the running total, as a sheet prints it. */
+/**
+ * One game's frames: the marks over the running total, as a sheet prints it.
+ *
+ * The cells come from `scorecard.ts`, which is also what the shareable image
+ * draws. Two renderings of one game that worked out their own marks would be
+ * free to disagree about a tenth frame, and only one of them would be looked at
+ * closely enough for anyone to notice.
+ */
 export function gameRowsHtml(game: Game): string {
-  const card = scoreGame(game.rolls);
-  const frames = card.frames.slice(0, FRAMES_PER_GAME);
+  const cells = scorecardCells(game);
 
-  const marks = frames
-    .map((frame) => `<td>${escapeHtml(frameMarks(frame).join(' ')) || '&nbsp;'}</td>`)
-    .join('');
-  const totals = frames
-    .map((frame) => `<td class="run">${frame.score ?? '&nbsp;'}</td>`)
-    .join('');
+  const marks = cells.map((cell) => `<td>${escapeHtml(cell.marks) || '&nbsp;'}</td>`).join('');
+  const totals = cells.map((cell) => `<td class="run">${cell.total || '&nbsp;'}</td>`).join('');
 
   return `<tr class="marks">${marks}</tr><tr class="totals">${totals}</tr>`;
 }
