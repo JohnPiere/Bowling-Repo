@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { tf, useTranslation } from '../lib/i18n';
-import { AVATARS, usePreferences } from '../lib/preferences';
+import { AVATARS, colourOf, DEFAULTS, PLAYER_COLOURS, usePreferences } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
+import { Avatar } from '../components/Avatar';
+import { initialsOf } from '../lib/social';
 import { clearAllGames, putGames, type Game } from '../lib/db';
 import {
   getInstallState,
@@ -36,10 +38,13 @@ export function SettingsScreen({
   games,
   onOpenVideos,
   onRestored,
+  onReplayTour,
 }: {
   games: Game[];
   onOpenVideos?: () => void;
   onRestored?: () => void;
+  /** Runs the first-run tour again, without touching anything stored. */
+  onReplayTour?: () => void;
 }) {
   const { t } = useTranslation();
   const { preferences, update } = usePreferences();
@@ -111,6 +116,15 @@ export function SettingsScreen({
     setMessage(null);
     try {
       const removed = await clearAllGames();
+      // Including who you were. "Clear all data" that kept your name, tile and
+      // colour would be the app holding on to a piece of somebody who asked to
+      // be gone — and the next screen is the one that asks for them again.
+      update({
+        playerName: DEFAULTS.playerName,
+        playerIcon: DEFAULTS.playerIcon,
+        playerColour: DEFAULTS.playerColour,
+        onboardedAt: null,
+      });
       setCleared(removed);
       setConfirmClear(false);
       onRestored?.();
@@ -145,6 +159,21 @@ export function SettingsScreen({
 
       <h2 className="section-title">{t('Player profile')}</h2>
       <div className="card">
+        <div className="row" style={{ gap: 12, marginBottom: 12 }}>
+          <Avatar
+            initials={preferences.playerIcon || initialsOf(preferences.playerName)}
+            size={52}
+            square
+            tint={colourOf(preferences.playerColour)}
+          />
+          <span className="grow">
+            <span className="profile__name">{preferences.playerName}</span>
+            <span className="game-row__sub" style={{ display: 'block', marginTop: 2 }}>
+              {t('This is what your crew sees.')}
+            </span>
+          </span>
+        </div>
+
         <label style={{ display: 'block' }}>
           <span className="hero__label">{t('Player name')}</span>
           <input
@@ -159,7 +188,7 @@ export function SettingsScreen({
         <div className="hero__label" style={{ marginTop: 12 }}>
           {t('Profile icon')}
         </div>
-        <div className="chips" style={{ marginTop: 5 }} role="group" aria-label={t('Profile icon')}>
+        <div className="chips chips--wrap" role="group" aria-label={t('Profile icon')}>
           {AVATARS.map((glyph) => (
             <button
               key={glyph}
@@ -168,10 +197,36 @@ export function SettingsScreen({
               aria-pressed={preferences.playerIcon === glyph}
               onClick={() => update({ playerIcon: glyph })}
             >
-              {glyph || 'Initials'}
+              {glyph || t('Initials')}
             </button>
           ))}
         </div>
+
+        <div className="hero__label" style={{ marginTop: 12 }}>
+          {t('Your colour')}
+        </div>
+        <div className="swatches" role="group" aria-label={t('Your colour')}>
+          {PLAYER_COLOURS.map((colour) => (
+            <button
+              key={colour.key}
+              type="button"
+              className="swatch"
+              aria-pressed={preferences.playerColour === colour.key}
+              aria-label={t(colour.label)}
+              // Also `color`, because the selected ring is drawn with
+              // `currentColor` — without it the ring inherits the page's text
+              // colour and comes out black on a dark ground.
+              style={{ background: colour.hex, color: colour.hex }}
+              onClick={() => update({ playerColour: colour.key })}
+            />
+          ))}
+        </div>
+
+        {onReplayTour && (
+          <button type="button" className="btn-lg" style={{ marginTop: 14 }} onClick={onReplayTour}>
+            {t('Show the tour again')}
+          </button>
+        )}
       </div>
 
       <h2 className="section-title">{t('Sharing')}</h2>

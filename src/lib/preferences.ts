@@ -18,6 +18,17 @@ export interface Preferences {
   playerName: string;
   /** One of AVATARS, drawn on the profile tile. */
   playerIcon: string;
+  /** A key from PLAYER_COLOURS. Tints the avatar wherever it is drawn. */
+  playerColour: string;
+  /**
+   * When the bowler finished setting themselves up, or null if they have not.
+   *
+   * A timestamp rather than a boolean because it answers a second question for
+   * free — how long this install has been in use — and because `false` and
+   * "stored by a version that had no such field" are indistinguishable, while
+   * `null` and a number are not.
+   */
+  onboardedAt: number | null;
   /**
    * Push every finished game to the crew as it is saved.
    *
@@ -34,12 +45,35 @@ export interface Preferences {
  * The avatar tile's mark. The empty string means "use my initials", which is
  * how the handoff draws it and so the default.
  */
-export const AVATARS = ['', '◆', '●', '▲', '★', '◼', '✚'];
+export const AVATARS = ['', '◆', '●', '▲', '★', '◼', '✚', '☗', '✦', '⬢'];
+
+/**
+ * What the avatar is tinted.
+ *
+ * Six, not a colour wheel: these sit on a dark ground beside an accent the
+ * whole app already uses, and the ones that work there are a narrow set. Each
+ * is bright enough to read a dark glyph against, which is what the tile does.
+ */
+export const PLAYER_COLOURS: { key: string; hex: string; label: string }[] = [
+  { key: 'accent', hex: '#9184d9', label: 'Violet' },
+  { key: 'rose', hex: '#d97b93', label: 'Rose' },
+  { key: 'amber', hex: '#d9a441', label: 'Amber' },
+  { key: 'teal', hex: '#4fb3a5', label: 'Teal' },
+  { key: 'sky', hex: '#6f9ad9', label: 'Sky' },
+  { key: 'moss', hex: '#74c17a', label: 'Moss' },
+];
+
+/** The hex for a stored key, falling back to the app's own accent. */
+export function colourOf(key: string): string {
+  return (PLAYER_COLOURS.find((colour) => colour.key === key) ?? PLAYER_COLOURS[0]).hex;
+}
 
 export const DEFAULTS: Preferences = {
   language: 'en',
   playerName: 'You',
   playerIcon: '',
+  playerColour: 'accent',
+  onboardedAt: null,
   autoShare: false,
   autoShareGroupId: null,
 };

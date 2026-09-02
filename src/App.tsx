@@ -6,6 +6,8 @@ import { listGames, type Game } from './lib/db';
 import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/navigation';
 import { translate, useTranslation } from './lib/i18n';
 import type { Language } from './lib/preferences';
+import { OnboardingScreen } from './screens/OnboardingScreen';
+import { usePreferences } from './lib/preferences';
 import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
 import { AuthScreen } from './screens/AuthScreen';
@@ -81,6 +83,7 @@ export function App() {
   );
 
   const { route } = nav;
+  const { preferences } = usePreferences();
   const crews = useCrews(session);
   // The crew a nested screen is looking at. Fetched on its own rather than
   // picked out of the list: the list carries rosters but not the shared games
@@ -114,6 +117,18 @@ export function App() {
 
   // The chat pins its composer, so it manages its own scrolling.
   const isChat = route.name === 'chat';
+
+  if (preferences.onboardedAt === null) {
+    return (
+      <div className="app">
+        <main className="screen" aria-label={t('Welcome')}>
+          {/* No tab bar and no header. A first run has one thing to do, and
+              four ways out of it is three too many. */}
+          <OnboardingScreen onDone={refresh} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -340,8 +355,11 @@ export function App() {
 
         {route.name === 'videos' && <VideosScreen onScan={() => nav.push({ name: 'scan' })} />}
 
+        {route.name === 'tour' && <OnboardingScreen replay onDone={nav.back} />}
+
         {route.name === 'settings' && (
           <SettingsScreen
+            onReplayTour={() => nav.push({ name: 'tour' })}
             games={games}
             onOpenVideos={() => nav.push({ name: 'videos' })}
             onRestored={refresh}
@@ -401,6 +419,8 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('Analytics'), kicker: s('Analytics'), meta: '' };
     case 'settings':
       return { title: s('Settings'), kicker: s('Preferences'), meta: '' };
+    case 'tour':
+      return { title: s('How it works'), kicker: s('Tour'), meta: '' };
     case 'day':
       return { title: s('Play day'), kicker: s('Session'), meta: '' };
     case 'videos':

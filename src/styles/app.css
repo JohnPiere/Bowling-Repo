@@ -2244,3 +2244,80 @@ body {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-accent-700), #b5abfc);
 }
+
+/* ── First run ─────────────────────────────────────────────────────────── */
+
+.onboard { display: flex; flex-direction: column; }
+
+.onboard__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 18px;
+}
+.onboard__previewname {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Colour is the one choice here with no text on it, so the targets have to be
+   generous: 34px painted, 44px to the thumb through the pseudo-element. */
+.swatches { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+.swatch {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.swatch::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+}
+.swatch[aria-pressed='true'] {
+  transform: scale(1.06);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 0 2px var(--color-bg),
+    0 0 0 4px currentColor;
+}
+.swatch:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+.onboard__dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+.onboard__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-neutral-800);
+  transition: background 0.2s ease, width 0.2s ease;
+}
+.onboard__dot--on { width: 18px; border-radius: 3px; background: var(--color-accent); }
+
+.onboard__lesson { display: flex; flex-direction: column; gap: 10px; padding: 22px 18px; }
+.onboard__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(145, 132, 217, 0.1);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.onboard__title { font-size: 19px; line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
+.onboard__body { font-size: 13px; line-height: 1.6; color: var(--color-neutral-400); margin: 0; }
+
+/* A set with no order to it wraps rather than scrolls: a glyph sliced by the
+   viewport edge reads as broken, not as more-to-the-right. */
+.chips--wrap {
+  flex-wrap: wrap;
+  overflow: visible;
+  margin-top: 0;
+  row-gap: 8px;
+}

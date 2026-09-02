@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CrewTrendChart } from '../components/charts/CrewTrendChart';
 import { t, tf } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
+import { colourOf, usePreferences } from '../lib/preferences';
 import { Icon } from '../components/Icon';
 import { activityFrom, loadSharedGames, type Activity } from '../lib/social';
 import type { Group } from '../lib/social';
@@ -44,6 +45,8 @@ export function GroupScreen({
   onOpenShared,
 }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
+  const { preferences } = usePreferences();
+  const myColour = colourOf(preferences.playerColour);
   const [feed, setFeed] = useState<Activity[]>([]);
 
   useEffect(() => {
@@ -185,6 +188,7 @@ export function GroupScreen({
                 size={slot.avatarSize}
                 isMe={member.isMe}
                 isLeader={isLeader}
+                tint={member.isMe ? myColour : undefined}
               />
               <div
                 className="podium__name"

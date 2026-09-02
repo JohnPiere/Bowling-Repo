@@ -16,6 +16,7 @@ export type Route =
   | { name: 'history' }
   | { name: 'stats' }
   | { name: 'settings' }
+  | { name: 'tour' }
   | { name: 'videos' }
   | { name: 'auth'; then?: Route }
   | { name: 'groups' }

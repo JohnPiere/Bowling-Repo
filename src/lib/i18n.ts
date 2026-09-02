@@ -24,6 +24,45 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── First run ──
+  'Welcome': 'ようこそ',
+  'Welcome to Lane Log': 'レーンログへようこそ',
+  'First, who are you?': 'まず、あなたのことを教えてください',
+  'This is the name and tile your crew sees. Both change later in settings.':
+    'クルーに表示される名前とアイコンです。どちらも後から設定で変更できます。',
+  'Your name': '名前',
+  'Bowler': 'ボウラー',
+  'Your mark': 'マーク',
+  'Your colour': 'カラー',
+  'Initials': 'イニシャル',
+  'That’s me': 'これでOK',
+  'Violet': 'バイオレット',
+  'Rose': 'ローズ',
+  'Amber': 'アンバー',
+  'Teal': 'ティール',
+  'Sky': 'スカイ',
+  'Moss': 'モス',
+  'Next · {n} of {total}': '次へ · {n} / {total}',
+  'Back': '戻る',
+  'Start bowling': 'はじめる',
+  'Skip the tour': 'スキップ',
+  'Show the tour again': '使い方をもう一度見る',
+  'How it works': '使い方',
+  'Tour': 'ガイド',
+  'This is what your crew sees.': 'クルーにはこのように表示されます。',
+  'Tap the pins, not a number': '数字ではなくピンをタップ',
+  'Scoring on the rack records which pins fell, so a 10-pin and a 7-10 show up in your stats as themselves. There is a number pad too, if you are just keeping up with a league.':
+    'ラックで入力すると倒れたピンが記録されるので、10番ピンや7-10スプリットがそのまま統計に残ります。リーグに追いつきたいときは数字パッドも使えます。',
+  'Or photograph the sheet': 'シートを撮影しても入力できます',
+  'Slide the paper until one game sits inside the bar, like scanning a barcode. It reads that row only, and you check every frame before it saves.':
+    'バーコードを読むように、1ゲーム分の行がバーの中に入るまで紙を動かします。その行だけを読み取り、保存前に全フレームを確認できます。',
+  'A crew is opt-in, game by game': '共有は1ゲームずつ、あなたが決めます',
+  'Nothing you bowl is shared until you say so. Sharing sends that one game to one crew, and you can take it back down.':
+    'あなたが選ぶまで何も共有されません。共有すると、そのゲームだけが1つのクルーに送られ、いつでも取り消せます。',
+  'Your games live on this phone': 'ゲームはこの端末に保存されます',
+  'No account needed, and they work with no signal at all. That also means a lost phone is a lost season — Settings has an export, and it is the only copy there is.':
+    'アカウントは不要で、電波がなくても使えます。ただし端末をなくすとシーズンごと失われます。設定から書き出せるファイルが唯一の控えです。',
+
   'Nothing shared here yet.': 'まだ共有されたゲームはありません。',
 
   // ── Chat and sharing ──
@@ -238,7 +277,6 @@ export const JA: Record<string, string> = {
   'History': '履歴',
   'Stats': '分析',
   'Crew': 'クルー',
-  'Back': '戻る',
   'Settings': '設定',
   'Lane Log': 'レーンログ',
   'Dashboard': 'ダッシュボード',
@@ -261,7 +299,6 @@ export const JA: Record<string, string> = {
   'Social': 'ソーシャル',
   'Group': 'グループ',
   'Group chat': 'グループチャット',
-  'Bowler': 'ボウラー',
   'Group settings': 'グループ設定',
   'Create a group': 'グループを作成',
   'Join a group': 'グループに参加',
@@ -467,7 +504,6 @@ export const JA: Record<string, string> = {
   'Player profile': 'プロフィール',
   'Player name': '選手名',
   'Profile icon': 'アイコン',
-  'Initials': 'イニシャル',
   'Share finished games with your crew': '終了したゲームをクルーに共有',
   'Off by default. Turn it on and every game you save is posted to the crew as soon as it is finished.': '初期設定はオフです。オンにすると、保存したゲームが終了時にクルーへ投稿されます。',
   'Install': 'インストール',

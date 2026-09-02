@@ -128,6 +128,36 @@ async function drawSheet(page) {
   return dataUrl.split(',')[1];
 }
 
+/**
+ * A browser context that opens past the first run.
+ *
+ * Every check below opens the app expecting the app, and a fresh profile now
+ * opens on "who are you?" instead. Seeding the preference before any script
+ * runs is what a bowler who has already answered has stored, so the checks
+ * start where a returning one does — and as an init script it covers every
+ * navigation in the context rather than each `goto` remembering.
+ *
+ * The first run gets a check of its own, which uses a bare context.
+ */
+async function newContext(browser, options = {}) {
+  const context = await browser.newContext(options);
+  await context.addInitScript(() => {
+    try {
+      // Only when nothing is stored at all. Seeding whenever `onboardedAt` is
+      // null would also re-arm it straight after a wipe, and the check that a
+      // wipe returns you to the first run would then be checking this script
+      // rather than the app.
+      if (localStorage.getItem('lane-log.preferences') === null) {
+        localStorage.setItem('lane-log.preferences', JSON.stringify({ onboardedAt: Date.now() }));
+      }
+    } catch {
+      // No storage to seed. The onboarding check covers the case where the
+      // gate is meant to show.
+    }
+  });
+  return context;
+}
+
 /** Bowl a full game of strikes through the counting pad. */
 async function bowlPerfectGame(page) {
   await page.getByRole('button', { name: 'Play', exact: true }).click();
@@ -222,7 +252,7 @@ async function main() {
 
   // ── Progressive web app basics ────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage();
     const pageErrors = [];
     page.on('pageerror', (e) => pageErrors.push(String(e)));
@@ -277,7 +307,7 @@ async function main() {
 
   // ── Scoring, storage and offline ──────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage();
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => navigator.serviceWorker.ready);
@@ -436,7 +466,7 @@ async function main() {
 
   // ── Push ──────────────────────────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     await context.grantPermissions(['notifications'], { origin: BASE });
     const page = await context.newPage();
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
@@ -507,7 +537,7 @@ async function main() {
 
   // ── The social flow ───────────────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage();
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
@@ -800,7 +830,7 @@ async function main() {
 
   // ── Touch targets ─────────────────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.setViewportSize({ width: 412, height: 892 });
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
@@ -962,7 +992,7 @@ async function main() {
   // Two contexts, because the point of a backup is moving a season to a
   // different device — restoring onto the phone that made it proves nothing.
   {
-    const source = await browser.newContext({ acceptDownloads: true });
+    const source = await newContext(browser, { acceptDownloads: true });
     const page = await source.newPage();
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
@@ -1010,7 +1040,7 @@ async function main() {
 
     await source.close();
 
-    const fresh = await browser.newContext();
+    const fresh = await newContext(browser);
     const other = await fresh.newPage();
     await other.goto(BASE, { waitUntil: 'networkidle' });
     await other.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -1082,12 +1112,12 @@ async function main() {
 
   // ── Failure containment ───────────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('blocked storage is explained, not shown as an empty season', async () => {
-      const blocked = await browser.newContext();
+      const blocked = await newContext(browser);
       const denied = await blocked.newPage({ viewport: { width: 412, height: 892 } });
 
       // What a private window, or a browser set to block site data, does.
@@ -1191,9 +1221,102 @@ async function main() {
 
   // ── Focus and motion ──────────────────────────────────────────────────
   {
-    const context = await browser.newContext();
+    const context = await newContext(browser);
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+
+    await check('a first run asks who you are, then stays out of the way', async () => {
+      // A bare context: this is the one check that wants the gate.
+      const first = await browser.newContext();
+      const page = await first.newPage({ viewport: { width: 390, height: 844 } });
+      await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+
+      await page.waitForSelector('.onboard', { timeout: 15000 });
+      assert(
+        (await page.locator('.tabbar').count()) === 0,
+        'the tab bar was reachable during the first run',
+      );
+
+      await page.locator('.input').fill('Kenji Mori');
+      await page.locator('.swatch').nth(3).click();
+      await page.getByRole('button', { name: /That/ }).click();
+      await page.waitForSelector('.onboard__lesson');
+
+      await page.getByRole('button', { name: 'Skip the tour' }).click();
+      await page.waitForSelector('.tabbar', { timeout: 5000 });
+
+      const stored = JSON.parse(
+        await page.evaluate(() => localStorage.getItem('lane-log.preferences')),
+      );
+      assert(stored.playerName === 'Kenji Mori', `the name stored as ${stored.playerName}`);
+      assert(stored.playerColour === 'teal', `the colour stored as ${stored.playerColour}`);
+      assert(stored.onboardedAt > 0, 'the first run was not recorded as done');
+
+      // And it must not ask again.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.tabbar', { timeout: 5000 });
+      assert((await page.locator('.onboard').count()) === 0, 'it asked again after a reload');
+
+      await first.close();
+      return 'named, coloured, toured, and does not ask twice';
+    });
+
+    await check('clearing everything asks who you are again', async () => {
+      const context = await newContext(browser);
+      const page = await context.newPage({ viewport: { width: 390, height: 844 } });
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+
+      // A name to forget, and a game to delete — the clear button is rightly
+      // disabled with nothing stored, so the flow needs something in it.
+      await page.evaluate(async () => {
+        const stored = JSON.parse(localStorage.getItem('lane-log.preferences') ?? '{}');
+        localStorage.setItem(
+          'lane-log.preferences',
+          JSON.stringify({ ...stored, playerName: 'Kenji Mori', playerColour: 'rose' }),
+        );
+
+        const db = await new Promise((res) => {
+          const request = indexedDB.open('lane-log');
+          request.onsuccess = () => res(request.result);
+        });
+        const tx = db.transaction('games', 'readwrite');
+        tx.objectStore('games').put({
+          id: 'wipe-me',
+          bowler: 'You',
+          rolls: new Array(12).fill(10),
+          total: 300,
+          isComplete: true,
+          source: 'manual',
+          playedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        await new Promise((res) => {
+          tx.oncomplete = res;
+        });
+      });
+      await page.reload({ waitUntil: 'networkidle' });
+
+      await page.getByRole('button', { name: 'Settings' }).click();
+      await page.getByRole('button', { name: 'Clear all data', exact: true }).click();
+      await page.getByRole('button', { name: 'Yes, delete everything' }).click();
+      await page.waitForTimeout(900);
+
+      const stored = JSON.parse(
+        await page.evaluate(() => localStorage.getItem('lane-log.preferences')),
+      );
+      assert(stored.onboardedAt === null, 'the first run was not re-armed');
+      assert(
+        stored.playerName === 'You' && stored.playerColour === 'accent',
+        `it kept ${stored.playerName} in ${stored.playerColour}`,
+      );
+
+      // A reload lands on the first run, not on a dashboard with no name.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.onboard', { timeout: 5000 });
+
+      await context.close();
+      return 'name, colour and the flag all cleared';
+    });
 
     await check('navigating moves focus to the new screen', async () => {
       // Without this the tapped control unmounts and focus falls to the body,
@@ -1221,7 +1344,7 @@ async function main() {
   }
 
   {
-    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const context = await newContext(browser, { reducedMotion: 'reduce' });
     const page = await context.newPage({ viewport: { width: 412, height: 892 } });
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
