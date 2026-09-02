@@ -24,6 +24,13 @@ import { loadPreferences, usePreferences, type Language } from './preferences';
  * character from the straight one and will not match if it is typed wrong.
  */
 export const JA: Record<string, string> = {
+  // ── Chat and sharing ──
+  'Loading the thread…': 'メッセージを読み込み中…',
+  'Nothing said yet. Start it off.': 'まだ投稿がありません。最初のひとことをどうぞ。',
+  'Message {crew}': '{crew}にメッセージ',
+  'Already shared with {crews}.': '共有済み：{crews}',
+  'a crew you have left': '退会したクルー',
+
   // ── Crews ──
   'Loading your crews…': 'クルーを読み込み中…',
   'Loading the crew…': 'クルーを読み込み中…',

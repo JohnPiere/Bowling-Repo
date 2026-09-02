@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
-import { GROUPS } from '../data/groups';
-import { shareGame, type Game } from '../lib/db';
+import type { Group } from '../data/groups';
+import { describeBackendFailure } from '../lib/backend';
+import { shareGame as shareLocally, type Game } from '../lib/db';
+import { shareGame as postToCrew } from '../lib/social';
 import { notifyGroup } from '../lib/push';
 import { scoreGame } from '../lib/scoring';
 
 interface Props {
   game: Game;
+  /** The crews this bowler is in. */
+  crews: Group[];
+  /** Who is posting — the profile the row is written against. */
+  me: string;
   onShared: (groupId: string) => void;
   onCancel: () => void;
 }
@@ -20,13 +26,14 @@ interface Props {
  * retracting it later only drops the reference. What travels is the score
  * sheet — and, for a scanned game, optionally the photo it came from.
  */
-export function ShareScreen({ game, onShared, onCancel }: Props) {
+export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
   const alreadyIn = game.sharedTo ?? [];
-  const available = GROUPS.filter((group) => !alreadyIn.includes(group.id));
+  const available = crews.filter((group) => !alreadyIn.includes(group.id));
 
   const [groupId, setGroupId] = useState(available[0]?.id ?? '');
   const [withSheet, setWithSheet] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [tellCrew, setTellCrew] = useState(true);
 
   const card = scoreGame(game.rolls);
@@ -35,11 +42,24 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
   async function share() {
     if (!groupId) return;
     setBusy(true);
+    setError(null);
     try {
-      await shareGame(game.id, groupId, { withSheet: hasPhoto && withSheet });
+      // The crew's copy first. If this fails there is nothing to undo, whereas
+      // marking the game shared locally and then failing to post it would
+      // leave a game that says it is on a board it never reached.
+      await postToCrew({
+        groupId,
+        me,
+        localId: game.id,
+        rolls: game.rolls,
+        total: game.total,
+        house: game.house,
+        playedAt: game.playedAt,
+      });
+      await shareLocally(game.id, groupId, { withSheet: hasPhoto && withSheet });
 
       if (tellCrew) {
-        const group = GROUPS.find((entry) => entry.id === groupId);
+        const group = crews.find((entry) => entry.id === groupId);
         // Deliberately not awaited for its success: the share is already done,
         // and a push server that is down must not look like a failed share.
         void notifyGroup({
@@ -51,6 +71,8 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
       }
 
       onShared(groupId);
+    } catch (err) {
+      setError(describeBackendFailure(err));
     } finally {
       setBusy(false);
     }
@@ -70,9 +92,7 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
 
       <h2 className="section-title">{t('Which crew')}</h2>
       {available.length === 0 ? (
-        <p className="empty">
-          {t('This game is already on every board you belong to.')}
-        </p>
+        <p className="empty">{t('This game is already on every board you belong to.')}</p>
       ) : (
         available.map((group) => (
           <button
@@ -92,13 +112,17 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
 
       {alreadyIn.length > 0 && (
         <p className="muted">
-          Already shared with{' '}
-          {alreadyIn
-            .map((id) => GROUPS.find((g) => g.id === id)?.name ?? id)
-            .join(', ')}
-          .
+          {tf('Already shared with {crews}.', {
+            // A crew you have since left still has the game; naming it by its
+            // id would be worse than saying a crew you can no longer see.
+            crews: alreadyIn
+              .map((id) => crews.find((g) => g.id === id)?.name ?? t('a crew you have left'))
+              .join(', '),
+          })}
         </p>
       )}
+
+      {error && <div className="note note--bad">{error}</div>}
 
       <h2 className="section-title">{t('What goes with it')}</h2>
       <button
@@ -110,7 +134,9 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         <span className="grow">
           <span className="choice__label">{t('Score sheet only')}</span>
           <span className="choice__note">
-            {t('The frames, marks and totals. A couple of kilobytes — instant, and it works offline.')}
+            {t(
+              'The frames, marks and totals. A couple of kilobytes — instant, and it works offline.',
+            )}
           </span>
         </span>
       </button>
@@ -125,7 +151,11 @@ export function ShareScreen({ game, onShared, onCancel }: Props) {
         <span className="grow">
           <span className="choice__label">
             Score sheet and the photo
-            {!hasPhoto && <span className="pill" style={{ marginLeft: 8 }}>{t('No photo')}</span>}
+            {!hasPhoto && (
+              <span className="pill" style={{ marginLeft: 8 }}>
+                {t('No photo')}
+              </span>
+            )}
           </span>
           <span className="choice__note">
             {hasPhoto

@@ -421,7 +421,19 @@ export async function leaveGroup(groupId: string, me: string): Promise<void> {
 
 // ── Chat ───────────────────────────────────────────────────────────────────
 
-export async function loadMessages(groupId: string, me: string): Promise<ChatMessage[]> {
+export interface Thread {
+  messages: ChatMessage[];
+  /**
+   * The crew, by profile id.
+   *
+   * Handed back with the messages because a row arriving live carries an
+   * author id and nothing else — without this the sender of every incoming
+   * message reads as "Someone" until the screen is opened again.
+   */
+  authors: Map<string, ProfileRow>;
+}
+
+export async function loadMessages(groupId: string, me: string): Promise<Thread> {
   const db = await backend();
   const [messages, roster] = await Promise.all([
     db
@@ -436,9 +448,12 @@ export async function loadMessages(groupId: string, me: string): Promise<ChatMes
   if (roster.error) throw roster.error;
 
   const authors = authorMap(roster.data);
-  return ((messages.data ?? []) as unknown as MessageRow[]).map((row) =>
-    toMessage(row, authors, me),
-  );
+  return {
+    messages: ((messages.data ?? []) as unknown as MessageRow[]).map((row) =>
+      toMessage(row, authors, me),
+    ),
+    authors,
+  };
 }
 
 export async function sendMessage(

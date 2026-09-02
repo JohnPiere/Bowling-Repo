@@ -319,6 +319,8 @@ export function App() {
 
         {route.name === 'shareGame' && gameInView && (
           <ShareScreen
+            crews={crews.data}
+            me={session.id}
             game={gameInView}
             onCancel={nav.back}
             onShared={(groupId) => {

@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { t } from '../lib/i18n';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { t, tf } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
-import { SAMPLE_MESSAGES, type ChatMessage, type Group } from '../data/groups';
+import { describeBackendFailure } from '../lib/backend';
+import {
+  loadMessages,
+  markRead,
+  sendMessage,
+  toMessage,
+  watchMessages,
+  type ProfileRow,
+} from '../lib/social';
+import type { ChatMessage, Group } from '../data/groups';
 import type { Session } from '../lib/session';
 
 interface Props {
@@ -17,39 +26,92 @@ interface Props {
  * scroll away under tonight's lane talk.
  */
 export function ChatScreen({ group, session }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    () => SAMPLE_MESSAGES[group.id] ?? [],
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(!session.isGuest);
+  const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+  /** In a ref, not state: the socket callback needs the current one without
+      being torn down and re-subscribed every time the roster resolves. */
+  const authorsRef = useRef<Map<string, ProfileRow>>(new Map());
+
+  const add = useCallback((message: ChatMessage) => {
+    // Keyed by the row's own id, so a message that arrives both down the socket
+    // and in the reply to our own insert lands once.
+    setMessages((current) =>
+      current.some((m) => m.id === message.id) ? current : [...current, message],
+    );
+  }, []);
+
+  useEffect(() => {
+    if (session.isGuest) return;
+
+    let live = true;
+    setLoading(true);
+    setError(null);
+
+    loadMessages(group.id, session.id)
+      .then((thread) => {
+        if (!live) return;
+        authorsRef.current = thread.authors;
+        setMessages(thread.messages);
+      })
+      .catch((err) => {
+        if (live) setError(describeBackendFailure(err));
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+
+    // Opening the chat is reading it. The marker is per device, so this is the
+    // moment the crew list's unread badge is allowed to clear.
+    markRead(group.id);
+
+    const stop = watchMessages(group.id, (row) => {
+      if (live) add(toMessage(row, authorsRef.current, session.id));
+    });
+
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [group.id, session.id, session.isGuest, add]);
 
   // Land at the newest message, the way every chat is expected to open.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [messages.length]);
 
-  function send() {
+  async function send() {
     const body = draft.trim();
-    if (!body) return;
+    if (!body || sending) return;
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: `local-${Date.now()}`,
-        authorId: session.id,
-        author: 'You',
-        initials: 'YOU',
-        // 24-hour, to match the rest of the thread.
-        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-        body,
-      },
-    ]);
-    setDraft('');
+    setSending(true);
+    setError(null);
+    try {
+      await sendMessage(group.id, session.id, body);
+      // Not added locally: the row comes back down the socket with the id and
+      // timestamp the database gave it. Echoing it here first would show a
+      // message that has not been stored, which is the one lie a chat must not
+      // tell.
+      setDraft('');
+    } catch (err) {
+      setError(describeBackendFailure(err));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
     <div className="chat">
       <div className="chat__thread">
+        {loading && messages.length === 0 && <p className="empty">{t('Loading the thread…')}</p>}
+        {!loading && !error && messages.length === 0 && (
+          <p className="empty">{t('Nothing said yet. Start it off.')}</p>
+        )}
+        {error && <div className="note note--bad">{error}</div>}
+
         {messages.map((message) => {
           const isMine = message.author === 'You';
           return (
@@ -99,14 +161,14 @@ export function ChatScreen({ group, session }: Props) {
                 send();
               }
             }}
-            placeholder={`Message ${group.name}`}
+            placeholder={tf('Message {crew}', { crew: group.name })}
             aria-label={t('Message')}
           />
           <button
             type="button"
             className="iconbtn iconbtn--accent"
             onClick={send}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || sending}
             aria-label={t('Send')}
           >
             ↑
