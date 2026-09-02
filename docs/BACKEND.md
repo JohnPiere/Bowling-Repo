@@ -30,18 +30,29 @@ without a paid Apple Developer account (currently $99/yr), so it is left out
 rather than drawn as a button that can only refuse. Adding it later is that
 account, one `Provider` type widened, and one button.
 
-1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) →
-   **Create credentials** → **OAuth client ID** → *Web application*.
-2. Under **Authorized redirect URIs**, add exactly:
+1. [Google Cloud Console](https://console.cloud.google.com/auth/clients) →
+   **Create client** → *Web application*.
+2. Under **Authorised redirect URIs**, add exactly:
 
    ```
    https://kbfzyfbwnwpntiknhyjc.supabase.co/auth/v1/callback
    ```
 
-   That is Supabase's callback, not the app's. Google talks to Supabase;
-   Supabase talks to the app.
-3. Copy the **Client ID** and **Client secret** into Supabase dashboard →
+3. Leave **Authorised JavaScript origins** empty.
+4. Copy the **Client ID** and **Client secret** into Supabase dashboard →
    **Authentication → Sign In / Providers → Google**, and switch it on.
+
+**No GitHub Pages URL goes anywhere in Google.** Every address in that form is
+Supabase's, because during sign-in the browser is *on* supabase.co when it
+talks to Google — the app only reappears at the very end, and that last hop is
+Supabase's business, configured in step 3 below.
+
+Putting `https://johnpiere.github.io/Bowling-Repo/` into JavaScript origins is
+the mistake the form invites, and it fails twice over: an origin is scheme and
+host only, so a path and a trailing slash are both refused. The two fields have
+opposite rules and sit next to each other — a redirect URI *must* carry the
+`/auth/v1/callback` path, an origin must carry no path at all — so read which
+one you are in before pasting.
 
 ### 3. Tell Supabase where the app lives
 
@@ -54,9 +65,10 @@ Dashboard → **Authentication → URL Configuration**.
 | Redirect URLs | `http://localhost:4173/` |
 | Redirect URLs | `http://localhost:5173/` |
 
-The **trailing slash matters** and so does the `/Bowling-Repo/` path. A GitHub
-Pages project site is served from a subdirectory, and a redirect to the bare
-origin lands on a different page entirely. The app builds this URL itself in
+The **trailing slash matters** here and so does the `/Bowling-Repo/` path —
+the exact opposite of Google's origins rule one step above. A GitHub Pages
+project site is served from a subdirectory, and a redirect to the bare origin
+lands on a different page entirely. The app builds this URL itself in
 `redirectUrl()` — if the two ever disagree, Supabase refuses the redirect rather
 than following it, which is the failure you want but an opaque one to read.
 
