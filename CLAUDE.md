@@ -41,12 +41,15 @@ src/lib/
   framestrip.ts   the play screen's ten cells: boxes, totals, pins per frame
   dashboard.ts    what the home screen shows, and where you stand in your crew
   leaderboard.ts  ranking, bar scaling, podium order, movement
-  stats.ts        season summary, trend, outcomes, first-ball buckets, leaves
+  stats.ts        season summary, trend, outcomes, buckets, leaves, houses
+  league.ts       the crew as nights: series, handicap, week by week
   pins.ts         the rack, adjacency, split detection, leave names
   history.ts      sorting, searching and grouping games into sessions
   datetime.ts     input round-trips, and every date the app prints
+  scorecard.ts    the ten cells, printed and drawn
   ocr/            segmentation, preprocessing, the recogniser interface
   db.ts           IndexedDB
+  cloud.ts        the account's copy of the season, and what a sync changes
   navigation.ts   the screen stack
 ```
 
@@ -87,6 +90,12 @@ instead is explanation — the legend, the leave caption, the axis labels, the
 tenth's note, in that order. Anything added here has to earn its height
 against something already there; `scrollHeight - clientHeight` on `.screen` is
 the test.
+
+**A note belongs to the bowler, not to the crew.** `Game.note` is the one field
+that is somebody's own sentence rather than a number, and sharing a game does
+not send it unless the switch on the share screen is turned on — it is off every
+time. "Oily left, wrong ball" is written for yourself, and the crew reading it
+should be a decision rather than a consequence of having kept one.
 
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
@@ -278,19 +287,56 @@ they are a guest.
 
 Standings — average, handicap, improvement — are computed in `lib/social.ts`,
 not in SQL. One definition of what an average means; a Postgres view would be a
-second copy of it, free to drift.
+second copy of it, free to drift. `lib/league.ts` builds on that rather than
+beside it: `allowanceFor` is `handicap(avg) - avg`, so the board and the league
+cannot disagree about what a handicap is.
+
+**A night is a day, and `history.ts` decides where it ends.** The league's unit
+is the series — every game bowled on one evening — and it has to use the same
+boundary the history screen does, or the two will disagree about which games
+were "that Tuesday". The handicap in a series is **per game**: three games earn
+three allowances, and one per series would quietly halve the handicap of anyone
+who bowls more than one.
+
+**Reactions are counted on the client.** `loadSharedGames` reads the reaction
+rows for the posts it is about to draw and folds them in with `heartsBy`, rather
+than a `count` per post. That query is allowed to fail on its own — a board that
+draws without its hearts beats one that does not draw.
 
 There is no `src/data/` any more. Crews, chat and shared games all read the
 database; the shapes the screens render live in `lib/social.ts` beside the code
 that fills them. A fictional Tuesday Crew sitting next to a real one was worse
 than an empty screen.
 
+## The backup, which is not the social layer
+
+`game_backups` (migration 0002) lives in the same database because that is the
+database there is, and every policy on it says `owner_id = auth.uid()` and
+nothing else. Sharing a game with a crew is a deliberate act per game that
+writes `shared_games`; this table is a safe, and its only reader is the account
+that filled it.
+
+**`updated_at` is the device's clock, not the server's.** It settles a conflict
+between two phones, and `now()` would turn "newest wins" into "whichever synced
+last" — losing a week of offline edits to whichever phone opened the app first.
+
+**A deletion has to be told, not inferred.** `deleteGame` writes a tombstone
+(its own IndexedDB store, added at DB version 3) and the sync sends those first.
+Without them a pull is an undelete: the row is still on the server, the game is
+not on the phone, and "missing here" looks exactly like "bowled on the other
+phone". Writing a game with the same id clears its tombstone.
+
+Rows coming back go through `problemWith` in `lib/backup.ts` — the same check a
+restored file gets, because both are outside data that ends up persisted and
+then rendered. Photos are not carried, and the sync is a button: an alley is a
+reliably bad place for a network, so a background sync would mostly run at the
+worst moment and fail quietly.
+
 ## Not built
 
 Apple sign-in — the design has the button, and Apple will not issue the key
 Supabase needs without a paid developer account, so it is not drawn rather than
-drawn refusing. Also no cloud backup of games, and no reactions on a shared game
-beyond the schema that holds them.
+drawn refusing.
 
 **Video is out, and its screen with it.** The handoff has a Videos tab and there
 was a screen explaining why it was empty — the arithmetic of storing clips, and
