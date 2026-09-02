@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import { dayKey, groupByDay, sessionSpan } from '../lib/history';
 import { scoreGame } from '../lib/scoring';
-import { ballOutcomes } from '../lib/stats';
+import { ballOutcomes, sessionSwing } from '../lib/stats';
 import { formatLongDate, formatTime, formatWeekday } from '../lib/datetime';
 
 /**
@@ -56,6 +56,9 @@ export function PlayDayScreen({
 
   const frames = outcomes ? outcomes.strikes + outcomes.spares + outcomes.opens : 0;
   const attempts = outcomes ? outcomes.spares + outcomes.opens : 0;
+  // 150-160-170 and 170-160-150 have the same series and the same average, and
+  // are not the same evening.
+  const swing = sessionSwing(group.games.map((game) => game.total));
 
   return (
     <div className="stats">
@@ -77,6 +80,16 @@ export function PlayDayScreen({
           </div>
         </div>
       </div>
+
+      {swing !== null && (
+        <p className="footnote" style={{ marginTop: 2 }}>
+          {swing === 0
+            ? t('Finished where you started.')
+            : tf(swing > 0 ? 'Up {n} from the first game to the last.' : 'Down {n} from the first game to the last.', {
+                n: Math.abs(swing),
+              })}
+        </p>
+      )}
 
       <div className="daystats">
         <DayStat value={group.high} label="Best game" />
@@ -146,6 +159,21 @@ export function PlayDayScreen({
           </span>
         </button>
       ))}
+
+      {group.games.some((game) => game.note) && (
+        <div className="card" style={{ marginTop: 4 }}>
+          <span className="hero__label">{t('What you wrote')}</span>
+          {group.games.map((game, index) =>
+            game.note ? (
+              <p key={game.id} className="gamenote">
+                <span className="muted">{tf('Game {n}', { n: index + 1 })}</span>
+                {'\n'}
+                {game.note}
+              </p>
+            ) : null,
+          )}
+        </div>
+      )}
 
       <button type="button" className="btn-lg" style={{ marginTop: 4 }} onClick={onExport}>
         {t('Export this day')}

@@ -50,6 +50,13 @@ describe('searchGames', () => {
   it('survives a game with no house', () => {
     expect(searchGames([game(120, at(4))], 'rose')).toHaveLength(0);
   });
+
+  it('matches what the bowler wrote about the game', () => {
+    // The reason the box is worth having: a house name narrows a season to
+    // dozens of games, "left the ten" narrows it to the nights in question.
+    const noted = { ...game(140, at(18)), note: 'Left the ten pin four times' };
+    expect(searchGames([...games, noted], 'ten pin')).toHaveLength(1);
+  });
 });
 
 describe('groupByDay', () => {

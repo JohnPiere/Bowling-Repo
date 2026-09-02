@@ -58,6 +58,7 @@ function gameBlock(game: Game, label: string): string {
         </thead>
         <tbody>${gameRowsHtml(game)}</tbody>
       </table>
+      ${game.note ? `<p class="note">${escapeHtml(game.note)}</p>` : ''}
     </section>`;
 }
 
@@ -77,6 +78,7 @@ const STYLE = `
   th { font-size: 10px; font-weight: 500; background: #f2f2f5; }
   .marks td { height: 28px; font-weight: 600; letter-spacing: 0.08em; }
   .totals td { height: 22px; font-size: 11px; font-variant-numeric: tabular-nums; background: #fafafb; }
+  .note { margin: 6px 0 0; font-size: 11px; font-style: italic; color: #555; white-space: pre-wrap; }
   footer { margin-top: 24px; color: #888; font-size: 10px; }
   @media print { body { margin: 0; } }
 `;

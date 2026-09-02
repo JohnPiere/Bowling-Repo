@@ -34,6 +34,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [house, setHouse] = useState(game.house ?? '');
+  const [note, setNote] = useState(game.note ?? '');
 
   const card = scoreGame(game.rolls);
   const strikes = card.frames.filter((f) => f.isStrike).length;
@@ -83,6 +84,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
         .trim(),
     );
     setHouse(game.house ?? '');
+    setNote(game.note ?? '');
     setEditing(true);
   }
 
@@ -92,7 +94,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
 
     setBusy(true);
     try {
-      await reviseGame(game.id, { rolls: parsed.rolls, house });
+      await reviseGame(game.id, { rolls: parsed.rolls, house, note });
       setEditing(false);
       onChanged();
     } finally {
@@ -172,6 +174,18 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           />
         </label>
 
+        <label style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">{t('Anything worth remembering')}</span>
+          <textarea
+            className="input"
+            style={{ marginTop: 5, minHeight: 66 }}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('Lane 7, oily left, switched balls at the fifth')}
+            rows={2}
+          />
+        </label>
+
         <button
           type="button"
           className="btn-lg btn-lg--primary"
@@ -215,6 +229,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           </div>
         )}
         <Scorecard scorecard={card} />
+        {game.note && <p className="gamenote">{game.note}</p>}
       </div>
 
       <div className="quickstats">

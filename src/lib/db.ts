@@ -18,6 +18,12 @@ export interface Game {
   bowler: string;
   /** Where it was bowled, if the bowler said. */
   house?: string;
+  /**
+   * Whatever the numbers cannot say: the lane, the oil, a ball changed at the
+   * fifth. Months later this is the only part of a game that explains it, and
+   * it is why `searchGames` looks here as well as at the house.
+   */
+  note?: string;
   /** Pin counts in the order they were thrown. */
   rolls: number[];
   /**
@@ -182,7 +188,7 @@ export async function saveGame(
  */
 export async function reviseGame(
   id: string,
-  changes: { rolls?: number[]; house?: string; playedAt?: number },
+  changes: { rolls?: number[]; house?: string; note?: string; playedAt?: number },
 ): Promise<Game | undefined> {
   const game = await getGame(id);
   if (!game) return undefined;
@@ -196,6 +202,7 @@ export async function reviseGame(
     total: card.total,
     isComplete: card.isComplete,
     house: changes.house === undefined ? game.house : changes.house || undefined,
+    note: changes.note === undefined ? game.note : changes.note.trim() || undefined,
     playedAt: changes.playedAt ?? game.playedAt,
     updatedAt: Date.now(),
     // A corrected game has to be re-synced.

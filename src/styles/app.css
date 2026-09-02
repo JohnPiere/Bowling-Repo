@@ -221,6 +221,23 @@ body {
 .muted { color: var(--color-neutral-500); font-size: 11px; }
 .footnote { font-size: 11px; color: var(--color-neutral-600); margin-top: 10px; }
 
+/*
+ * A note the bowler wrote about a game.
+ *
+ * Set in the reading face rather than the interface one, and italic, because
+ * it is the only text on the screen that is somebody's own sentence rather
+ * than a label. `pre-wrap` keeps the line breaks they typed.
+ */
+.gamenote {
+  margin: 10px 0 0; padding-top: 10px;
+  border-top: 1px solid var(--color-divider);
+  font-size: 12.5px; line-height: 1.5; font-style: italic;
+  color: var(--color-neutral-500); white-space: pre-wrap;
+}
+/* Directly under a label the rule is redundant — the label already separates
+   it from what came before. */
+.hero__label + .gamenote { border-top: 0; padding-top: 6px; }
+
 /* Buttons: 52px min-height for primary actions, per the hit-target spec. */
 .btn-lg {
   display: flex;
@@ -2270,6 +2287,11 @@ body {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-accent-700), #b5abfc);
+}
+/* On every other bar in the app a long one is good news; on the practice list
+   it is the opposite, so it is not drawn in the accent that means progress. */
+.leave-row__fill--cost {
+  background: linear-gradient(90deg, rgba(224, 163, 182, 0.55), var(--negative));
 }
 
 /* ── First run ─────────────────────────────────────────────────────────── */

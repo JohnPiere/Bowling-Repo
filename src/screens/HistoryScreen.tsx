@@ -62,7 +62,7 @@ export function HistoryScreen({
             className="input search__field"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('Search house or date')}
+            placeholder={t('Search house, note or date')}
             aria-label={t('Search games')}
             autoCorrect="off"
             spellCheck={false}

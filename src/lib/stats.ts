@@ -532,3 +532,171 @@ export function conversionByType(games: Game[]): ConversionByType {
 
   return result;
 }
+
+export interface PracticeTarget extends LeaveRecord {
+  /** Times the next ball did not clear it. */
+  missed: number;
+  /** How many pins stayed standing because of it, across the range. */
+  pinsLost: number;
+  /** 0..100. */
+  rate: number;
+}
+
+/**
+ * What to work on, in the order it is costing pins.
+ *
+ * `leaveRecords` is sorted by how often a leave comes up, which puts the head
+ * pin miss you convert every time above the 10-pin you never do. That ordering
+ * answers "what do I leave", and the question a bowler actually wants answered
+ * is "what is it costing me" — so this multiplies the misses by the pins left
+ * standing and sorts on that.
+ *
+ * The number is deliberately **pins on the deck, not points**: a missed spare
+ * also costs the bonus ball, which depends on what came next and therefore
+ * differs every time the same leave is missed. Pins left standing is the part
+ * that is the same on every occurrence and the part practice moves, so it is
+ * the honest thing to rank on. The 4-pin missed twelve times has cost 48 pins
+ * whatever followed it.
+ *
+ * Leaves that are always converted score zero and are dropped: a list of things
+ * to work on should not contain things that are working.
+ */
+export function practiceTargets(games: Game[], limit = 5): PracticeTarget[] {
+  return leaveRecords(games)
+    .map((leave) => {
+      const missed = leave.times - leave.converted;
+      return {
+        ...leave,
+        missed,
+        pinsLost: missed * leave.pins.length,
+        rate: Math.round((leave.converted / leave.times) * 100),
+      };
+    })
+    .filter((target) => target.pinsLost > 0)
+    .sort(
+      (a, b) =>
+        b.pinsLost - a.pinsLost ||
+        b.missed - a.missed ||
+        // On a tie the easier one first: it is the one to fix.
+        a.pins.length - b.pins.length,
+    )
+    .slice(0, limit);
+}
+
+export interface HouseStat {
+  house: string;
+  games: number;
+  average: number;
+  high: number;
+  /** When this bowler was last there. */
+  lastAt: number;
+}
+
+/**
+ * How the season looks house by house.
+ *
+ * `house` is stored on every game and until now was only ever printed as a
+ * label. It is worth more than that: lanes differ, and a bowler averaging 20
+ * pins better at one house than another is looking at the oil pattern rather
+ * than at themselves.
+ *
+ * Ordered by average rather than by how often each was visited, because the
+ * comparison is the whole point of the list. The game count rides along beside
+ * it so a house visited once is visibly that, rather than a claim.
+ *
+ * Games with no house are left out entirely rather than pooled into an
+ * "unknown" row — a bucket holding the games from six different alleys has an
+ * average that describes nowhere.
+ */
+export function houseStats(games: Game[]): HouseStat[] {
+  const byHouse = new Map<string, Game[]>();
+
+  for (const game of games) {
+    const house = game.house?.trim();
+    if (!house) continue;
+
+    // Keyed case-insensitively so "Rose Bowl" and "rose bowl" are one alley,
+    // and displayed as it was first written.
+    const key = house.toLowerCase();
+    const seen = byHouse.get(key);
+    if (seen) seen.push(game);
+    else byHouse.set(key, [game]);
+  }
+
+  const stats: HouseStat[] = [...byHouse.values()].map((played) => {
+    const total = played.reduce((sum, game) => sum + game.total, 0);
+
+    return {
+      house: played[0].house!.trim(),
+      games: played.length,
+      average: Math.round(total / played.length),
+      high: Math.max(...played.map((game) => game.total)),
+      lastAt: Math.max(...played.map((game) => game.playedAt)),
+    };
+  });
+
+  return stats.sort((a, b) => b.average - a.average || b.games - a.games);
+}
+
+export interface PositionStat {
+  /** Which game of the night: 1 for the first, 2 for the second. */
+  position: number;
+  /** Nights that got this far. */
+  sessions: number;
+  average: number;
+  high: number;
+}
+
+/**
+ * How a night goes: the average of the first game, the second, the third.
+ *
+ * The question underneath it is whether a bowler warms up or fades, and it is
+ * one the game-by-game chart cannot answer — there, a night's three games are
+ * three points on one line and the shape of the night is lost in the shape of
+ * the season.
+ *
+ * Two things about the reading, both of which the screen has to say out loud:
+ *
+ * - It is **not** a fair comparison past the point where the nights stop being
+ *   the same nights. Game 5 is averaged over the nights that reached a fifth
+ *   game, and those are league nights and good nights, not a random sample of
+ *   evenings. So positions reached by fewer than `minSessions` nights are
+ *   dropped rather than drawn as though they carried the same weight.
+ * - Games are in the order they were bowled within a day, which is what
+ *   `groupByDay` guarantees.
+ */
+export function positionStats(games: Game[], minSessions = 2): PositionStat[] {
+  const byPosition = new Map<number, number[]>();
+
+  for (const day of groupByDay(games, 'old')) {
+    day.games.forEach((game, index) => {
+      const seen = byPosition.get(index + 1);
+      if (seen) seen.push(game.total);
+      else byPosition.set(index + 1, [game.total]);
+    });
+  }
+
+  return [...byPosition.entries()]
+    .filter(([, scores]) => scores.length >= minSessions)
+    .map(([position, scores]) => ({
+      position,
+      sessions: scores.length,
+      average: Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length),
+      high: Math.max(...scores),
+    }))
+    .sort((a, b) => a.position - b.position);
+}
+
+/**
+ * Whether the night went up or down, from its first game to its last.
+ *
+ * The one number a session screen can add to a list of scores: three games of
+ * 150, 160, 170 and three of 170, 160, 150 have the same series and the same
+ * average, and are not the same evening.
+ *
+ * Null for a single game, which has no shape.
+ */
+export function sessionSwing(scores: number[]): number | null {
+  if (scores.length < 2) return null;
+  return scores[scores.length - 1] - scores[0];
+}

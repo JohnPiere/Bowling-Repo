@@ -13,6 +13,7 @@ import {
   ballOutcomes,
   bestStrikeRun,
   firstBallDistribution,
+  houseStats,
   leaveRecords,
   conversionByType,
   dailySeries,
@@ -21,6 +22,8 @@ import {
   metricChange,
   metricSeries,
   personalRecords,
+  positionStats,
+  practiceTargets,
   RANGES,
   spareBreakdown,
   splitSummary,
@@ -85,6 +88,9 @@ export function StatsScreen({
   const daily = useMemo(() => dailySeries(days), [days]);
   const leaves = useMemo(() => leaveRecords(inRange), [inRange]);
   const splits = useMemo(() => splitSummary(inRange), [inRange]);
+  const targets = useMemo(() => practiceTargets(inRange), [inRange]);
+  const positions = useMemo(() => positionStats(inRange), [inRange]);
+  const houses = useMemo(() => houseStats(inRange), [inRange]);
 
   if (summary.games === 0) {
     return (
@@ -241,6 +247,53 @@ export function StatsScreen({
         </>
       )}
 
+      {positions.length > 1 && (
+        <>
+          <h2 className="section-title">{t('How a night goes')}</h2>
+          <div className="card">
+            {/* Bars against the best position, so the shape of an evening is
+                the thing you see: rising means you warm up, falling means the
+                last game is the one costing you. */}
+            {positions.map((position) => (
+              <div key={position.position} className="leave-row">
+                <span className="grow">
+                  <span style={{ display: 'block', fontSize: 13 }}>
+                    {tf('Game {n} of the night', { n: position.position })}
+                  </span>
+                  <span className="muted tnum">
+                    {tf(position.sessions === 1 ? '{n} night' : '{n} nights', {
+                      n: position.sessions,
+                    })}
+                  </span>
+                </span>
+                <span className="leave-row__bar">
+                  <span
+                    className="leave-row__fill"
+                    style={{
+                      width: `${Math.max(
+                        4,
+                        Math.round(
+                          (position.average / Math.max(...positions.map((p) => p.average))) * 100,
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </span>
+                <span className="tnum" style={{ fontSize: 13, minWidth: 34, textAlign: 'right' }}>
+                  {position.average}
+                </span>
+              </div>
+            ))}
+
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {t(
+                'Averaged across your sessions. A position only two nights reached is left off — later games happen on league nights and good nights, which is not the same as an average evening.',
+              )}
+            </p>
+          </div>
+        </>
+      )}
+
       <h2 className="section-title">{t('Spare analysis')}</h2>
       <SpareAnalysis breakdown={spares} conversion={conversion} games={rackGames} />
 
@@ -307,6 +360,102 @@ export function StatsScreen({
               From {splits.framesWithPins} frame{splits.framesWithPins === 1 ? '' : 's'} scored on
               the rack. Games entered by count, or imported from a sheet, know how many pins fell
               but not which.
+            </p>
+          </div>
+        </>
+      )}
+
+      {targets.length > 0 && (
+        <>
+          <h2 className="section-title">{t('What to work on')}</h2>
+          <div className="card">
+            {/* The list above is ordered by how often a leave comes up, which
+                puts the head pin — converted every time — at the top. This one
+                is ordered by what each is costing, so the row at the top is
+                the one practice would pay for. */}
+            <div className="row row--between" style={{ marginBottom: 6 }}>
+              <span className="hero__label">{t('What was left')}</span>
+              <span className="hero__label">{t('Pins lost')}</span>
+            </div>
+
+            {targets.map((target) => (
+              <div key={target.pins.join('-')} className="leave-row">
+                <span className="grow">
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      color: target.isSplit ? 'var(--negative)' : 'var(--color-text)',
+                    }}
+                  >
+                    {target.label}
+                  </span>
+                  <span className="muted tnum">
+                    {tf('Missed {missed} of {times} · {rate}% picked up', {
+                      missed: target.missed,
+                      times: target.times,
+                      rate: target.rate,
+                    })}
+                  </span>
+                </span>
+                {/* Length is what this leave cost against the worst one, so
+                    the longest bar is the one to take to practice. Coloured
+                    away from the accent used elsewhere: on every other bar in
+                    the app a long one is good news, and on this one it is
+                    not. */}
+                <span className="leave-row__bar">
+                  <span
+                    className="leave-row__fill leave-row__fill--cost"
+                    style={{
+                      width: `${Math.max(4, Math.round((target.pinsLost / targets[0].pinsLost) * 100))}%`,
+                    }}
+                  />
+                </span>
+                <span className="tnum" style={{ fontSize: 13, minWidth: 34, textAlign: 'right' }}>
+                  {target.pinsLost}
+                </span>
+              </div>
+            ))}
+
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {t(
+                'Pins left standing, not points: a missed spare also costs the bonus ball, and what that was worth depends on the ball after it. This counts the part that is the same every time.',
+              )}
+            </p>
+          </div>
+        </>
+      )}
+
+      {houses.length > 1 && (
+        <>
+          <h2 className="section-title">{t('Your houses')}</h2>
+          <div className="card">
+            {/* Best average first, with the game count beside it — a house
+                visited once is visibly that rather than a claim about the
+                lanes. */}
+            <div className="days">
+              <div className="days__row days__row--head">
+                <span>{t('Alley')}</span>
+                <span />
+                <span>{t('Average')}</span>
+                <span>{t('Best')}</span>
+              </div>
+              {houses.map((house) => (
+                <div className="days__row" key={house.house}>
+                  <span className="days__when" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                    {house.house}
+                  </span>
+                  <span className="days__count">
+                    {tf(house.games === 1 ? '{n} game' : '{n} games', { n: house.games })}
+                  </span>
+                  <span className="tnum">{house.average}</span>
+                  <span className="days__high tnum">{house.high}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {t('Only games that said where. Lanes differ, and so does the oil.')}
             </p>
           </div>
         </>

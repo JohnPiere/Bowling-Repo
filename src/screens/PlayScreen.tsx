@@ -52,6 +52,7 @@ export function PlayScreen({ onSaved }: Props) {
   /** Pins marked as down by the ball being entered, before it is committed. */
   const [pending, setPending] = useState<number[]>([]);
   const [house, setHouse] = useState('');
+  const [note, setNote] = useState('');
   // When it was bowled. Seeded from the clock and editable, because a game is
   // often written up afterwards — in the car, or the next morning — and filing
   // it under the moment it was typed puts it on the wrong day.
@@ -120,6 +121,7 @@ export function PlayScreen({ onSaved }: Props) {
       const saved = await saveGame({
         bowler: 'You',
         house: house.trim() || undefined,
+        note: note.trim() || undefined,
         rolls,
         // Only when every ball was entered on the rack; a half-recorded game
         // would make the leave statistics quietly wrong.
@@ -133,6 +135,7 @@ export function PlayScreen({ onSaved }: Props) {
       setPinfalls([]);
       setPending([]);
       setHouse('');
+      setNote('');
       setDay(toDateInput(Date.now()));
       setTime(toTimeInput(Date.now()));
       setStarted(false);
@@ -233,6 +236,21 @@ export function PlayScreen({ onSaved }: Props) {
             />
           </label>
         </div>
+
+        <label className="field" style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">{t('Anything worth remembering')}</span>
+          <textarea
+            className="input"
+            style={{ marginTop: 5, minHeight: 66 }}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('Lane 7, oily left, switched balls at the fifth')}
+            rows={2}
+          />
+        </label>
+        <p className="footnote" style={{ margin: '-6px 0 12px' }}>
+          {t('Optional, and searchable later. The numbers will not remember this part.')}
+        </p>
 
         {playedAt === null && (
           <div className="note note--warn">

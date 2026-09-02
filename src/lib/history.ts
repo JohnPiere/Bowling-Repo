@@ -31,6 +31,10 @@ export function dayKey(at: number): string {
  * Matches the house and the date as it is written on screen, which is what
  * someone typing "rose" or "aug" is looking at. Empty query matches everything
  * rather than nothing — a cleared box should not empty the screen.
+ *
+ * Notes are searched too, and they are the reason the box is worth having: a
+ * house name narrows a season to a few dozen games, but "left the ten" or "new
+ * ball" finds the four nights someone is actually looking for.
  */
 export function searchGames(games: Game[], query: string): Game[] {
   const q = query.trim().toLowerCase();
@@ -38,13 +42,19 @@ export function searchGames(games: Game[], query: string): Game[] {
 
   return games.filter((game) => {
     const house = (game.house ?? '').toLowerCase();
+    const note = (game.note ?? '').toLowerCase();
     const date = new Date(game.playedAt).toLocaleDateString(dateLocale(), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
-    return house.includes(q) || date.toLowerCase().includes(q) || String(game.total) === q;
+    return (
+      house.includes(q) ||
+      note.includes(q) ||
+      date.toLowerCase().includes(q) ||
+      String(game.total) === q
+    );
   });
 }
 

@@ -328,6 +328,10 @@ export const JA: Record<string, string> = {
   'No photo': '写真なし',
   'Not now': '今はしない',
   'Where you bowled': 'ボウリング場',
+  'Anything worth remembering': 'メモ',
+  'Lane 7, oily left, switched balls at the fifth': '7レーン、左が重い、5フレームでボール交換',
+  'Optional, and searchable later. The numbers will not remember this part.':
+    '任意です。あとから検索できます。数字には残らない部分をどうぞ。',
   'Home alley': 'ホーム場',
   'Home alley (optional)': 'ホーム場（任意）',
   'Details': '詳細',
@@ -340,6 +344,33 @@ export const JA: Record<string, string> = {
   'Sharing': '共有',
   'Shared': '共有済み',
   'Scan': '撮影',
+
+  // ── One night ──
+  'Finished where you started.': '始めたときと同じ点数で終わりました。',
+  'Up {n} from the first game to the last.': '1ゲーム目から最終ゲームで{n}点アップ。',
+  'Down {n} from the first game to the last.': '1ゲーム目から最終ゲームで{n}点ダウン。',
+  'What you wrote': 'メモ',
+  'Game {n}': '{n}ゲーム目',
+
+  // ── Stats: how a night goes ──
+  'How a night goes': '1日の流れ',
+  'Game {n} of the night': '{n}ゲーム目',
+  '{n} night': '{n}日',
+  '{n} nights': '{n}日',
+  'Averaged across your sessions. A position only two nights reached is left off — later games happen on league nights and good nights, which is not the same as an average evening.':
+    'これまでのセッションの平均です。2日に満たないゲーム番号は除いています。後半のゲームはリーグや調子のいい日に偏るためです。',
+
+  // ── Stats: practice list and houses ──
+  'What to work on': '練習したいところ',
+  'Missed {missed} of {times} · {rate}% picked up': '{times}回中{missed}回失敗 · 成功率{rate}%',
+  'What was left': '残ったピン',
+  'Pins lost': '失った本数',
+  'Pins left standing, not points: a missed spare also costs the bonus ball, and what that was worth depends on the ball after it. This counts the part that is the same every time.':
+    '点数ではなく残ったピンの本数です。スペアを外すとボーナスも失いますが、その価値は次の球しだいで変わります。ここでは毎回同じ部分だけを数えています。',
+  'Your houses': 'ボウリング場ごと',
+  'Alley': 'ボウリング場',
+  'Only games that said where. Lanes differ, and so does the oil.':
+    '場所を記録したゲームのみ。レーンもオイルも場所ごとに違います。',
 
   // ── Home ──
   'Your average': 'アベレージ',
@@ -357,7 +388,7 @@ export const JA: Record<string, string> = {
   'Highest': '高得点順',
   'Lowest': '低得点順',
   'Search games': 'ゲームを検索',
-  'Search house or date': 'ボウリング場・日付で検索',
+  'Search house, note or date': 'ボウリング場・メモ・日付で検索',
   'Grouped by the day you bowled. Tap a day for the whole session.': 'プレイした日ごとにまとめています。日付をタップするとその日の全ゲームを表示します。',
   'Series total': 'シリーズ合計',
   'Across the session': 'セッション全体',

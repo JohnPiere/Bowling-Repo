@@ -7,10 +7,14 @@ import {
   dailySeries,
   dailyStats,
   firstBallDistribution,
+  houseStats,
   leaveRecords,
   metricChange,
+  practiceTargets,
   metricSeries,
+  positionStats,
   scoreTrend,
+  sessionSwing,
   splitSummary,
   summarise,
 } from '../src/lib/stats';
@@ -381,5 +385,163 @@ describe('dailySeries', () => {
 
   it('has nothing to plot without days', () => {
     expect(dailySeries([])).toEqual([]);
+  });
+});
+
+describe('practiceTargets', () => {
+  const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  /** A game where every frame leaves `leave` and converts it or not. */
+  function rackGame(leave: number[], convert: boolean, id = 'p'): Game {
+    const firstBall = FULL.filter((p) => !leave.includes(p));
+    const rolls: number[] = [];
+    const pinfalls: number[][] = [];
+
+    for (let f = 0; f < 10; f++) {
+      rolls.push(firstBall.length);
+      pinfalls.push(firstBall);
+      rolls.push(convert ? leave.length : 0);
+      pinfalls.push(convert ? leave : []);
+    }
+    if (convert) {
+      rolls.push(0);
+      pinfalls.push([]);
+    }
+
+    const card = scoreGame(rolls);
+    return {
+      id, bowler: 'You', rolls, pinfalls, total: card.total,
+      isComplete: card.isComplete, source: 'manual',
+      playedAt: NOW, updatedAt: NOW,
+    };
+  }
+
+  it('counts the pins a missed leave left standing', () => {
+    // Nine frames — the tenth is not a spare attempt — each leaving one pin.
+    const [worst] = practiceTargets([rackGame([10], false)]);
+    expect(worst.missed).toBe(9);
+    expect(worst.pinsLost).toBe(9);
+    expect(worst.rate).toBe(0);
+  });
+
+  it('puts the costlier leave above the commoner one', () => {
+    // Both come up nine times and both are missed every time, but one leaves
+    // three pins standing and the other leaves one. Sorted by frequency they
+    // would tie; sorted by what they cost, they do not.
+    const targets = practiceTargets([rackGame([10], false, 'a'), rackGame([4, 7, 8], false, 'b')]);
+    expect(targets[0].pins).toEqual([4, 7, 8]);
+    expect(targets[0].pinsLost).toBe(27);
+    expect(targets[1].pins).toEqual([10]);
+  });
+
+  it('leaves out what is already going down', () => {
+    // A list of things to work on should not contain things that are working.
+    expect(practiceTargets([rackGame([10], true)])).toEqual([]);
+  });
+
+  it('shows only the handful worth practising', () => {
+    const many = [
+      rackGame([10], false, 'a'),
+      rackGame([7], false, 'b'),
+      rackGame([4], false, 'c'),
+      rackGame([6], false, 'd'),
+      rackGame([3], false, 'e'),
+      rackGame([2], false, 'f'),
+    ];
+    expect(practiceTargets(many)).toHaveLength(5);
+    expect(practiceTargets(many, 2)).toHaveLength(2);
+  });
+
+  it('has nothing to say without pin data', () => {
+    expect(practiceTargets([game(open4s)])).toEqual([]);
+  });
+});
+
+describe('houseStats', () => {
+  const at = (house: string | undefined, total: number, daysAgo = 0) =>
+    game(open4s, daysAgo, { house, total, id: `${house ?? 'none'}-${total}-${daysAgo}` });
+
+  it('averages each alley separately', () => {
+    const stats = houseStats([at('Rose Bowl', 180), at('Rose Bowl', 160), at('Korona', 120)]);
+    expect(stats).toHaveLength(2);
+    expect(stats[0]).toMatchObject({ house: 'Rose Bowl', games: 2, average: 170, high: 180 });
+    expect(stats[1]).toMatchObject({ house: 'Korona', games: 1, average: 120 });
+  });
+
+  it('treats one alley written two ways as one alley', () => {
+    const stats = houseStats([at('Rose Bowl', 180), at('rose bowl', 160)]);
+    expect(stats).toHaveLength(1);
+    expect(stats[0].games).toBe(2);
+  });
+
+  it('leaves out the games that never said where', () => {
+    // Pooled together they would average a place that does not exist.
+    expect(houseStats([at(undefined, 200), at('Korona', 120)])).toHaveLength(1);
+  });
+
+  it('remembers when you were last there', () => {
+    const stats = houseStats([at('Korona', 120, 0), at('Korona', 140, 30)]);
+    expect(stats[0].lastAt).toBe(NOW);
+  });
+
+  it('has nothing to compare when no game says where', () => {
+    expect(houseStats([at(undefined, 150)])).toEqual([]);
+  });
+});
+
+describe('positionStats', () => {
+  /** A game bowled on a given day at a given hour, so days group as nights. */
+  const night = (day: number, hour: number, total: number): Game => ({
+    id: `n${day}-${hour}`,
+    bowler: 'You',
+    rolls: [],
+    total,
+    isComplete: true,
+    source: 'manual',
+    playedAt: new Date(2026, 7, day, hour).getTime(),
+    updatedAt: NOW,
+  });
+
+  it('averages the first game of a night against the second', () => {
+    const stats = positionStats([
+      night(4, 19, 140), night(4, 20, 180),
+      night(11, 19, 160), night(11, 20, 200),
+    ]);
+    expect(stats).toHaveLength(2);
+    expect(stats[0]).toMatchObject({ position: 1, sessions: 2, average: 150, high: 160 });
+    expect(stats[1]).toMatchObject({ position: 2, sessions: 2, average: 190, high: 200 });
+  });
+
+  it('drops a position only one night ever reached', () => {
+    // Averaged over one long night, "game 4" is that night rather than a
+    // reading about fourth games.
+    const stats = positionStats([
+      night(4, 19, 140), night(4, 20, 180), night(4, 21, 200),
+      night(11, 19, 160), night(11, 20, 170),
+    ]);
+    expect(stats.map((s) => s.position)).toEqual([1, 2]);
+  });
+
+  it('counts games in the order they were bowled, not the order stored', () => {
+    // listGames returns newest first; the second game of the night is still
+    // the second.
+    const stats = positionStats([night(4, 21, 200), night(4, 19, 140)], 1);
+    expect(stats[0].average).toBe(140);
+    expect(stats[1].average).toBe(200);
+  });
+
+  it('has nothing to say about a season of one game', () => {
+    expect(positionStats([night(4, 19, 150)])).toEqual([]);
+  });
+});
+
+describe('sessionSwing', () => {
+  it('says how far the night moved from first game to last', () => {
+    expect(sessionSwing([150, 160, 170])).toBe(20);
+    expect(sessionSwing([170, 160, 150])).toBe(-20);
+  });
+
+  it('has no shape to report for a single game', () => {
+    expect(sessionSwing([150])).toBeNull();
   });
 });

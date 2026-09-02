@@ -155,6 +155,11 @@ function describeProblem(entry: unknown): string | null {
     if (!ballsAreValid) return 'the pin data is not a list of pin numbers';
   }
 
+  // Both are rendered straight into a screen, and React throws on an object
+  // where it expected text rather than showing the rest of the game.
+  if (game.house !== undefined && typeof game.house !== 'string') return 'the house is not text';
+  if (game.note !== undefined && typeof game.note !== 'string') return 'the note is not text';
+
   if (game.sharedTo !== undefined) {
     if (!Array.isArray(game.sharedTo) || game.sharedTo.some((id) => typeof id !== 'string')) {
       return 'the sharing list is not a list of group ids';
