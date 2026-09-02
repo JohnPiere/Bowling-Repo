@@ -36,13 +36,16 @@ function skip(name, why) {
 }
 
 /**
- * Whether the crew screens have a server to talk to.
+ * Whether *this machine* can reach the project.
  *
- * They are the only part of this app that needs one, and asking is cheap. A
- * check that needs a live backend and cannot have one is *skipped*, not
- * failed: reporting six red lines on a machine with no route to Supabase says
- * the app is broken when what is broken is the network, and a suite that cries
- * wolf gets ignored on the day it is right.
+ * Not whether one exists — it does, and it is hosted. This asks only whether
+ * the machine running the checks has a route to it, which a sandbox, a
+ * firewall or an aeroplane can each answer no to.
+ *
+ * A check that needs the database and cannot reach it is *skipped*, not
+ * failed: six red lines on a machine with no route says the app is broken when
+ * what is broken is the connection, and a suite that cries wolf gets ignored
+ * on the day it is right.
  */
 let reachable = null;
 
@@ -66,7 +69,7 @@ async function backendReachable(page) {
 /** Run a check only when the backend answers; otherwise say why it did not. */
 async function checkOnline(page, name, fn) {
   if (await backendReachable(page)) return check(name, fn);
-  skip(name, 'needs a reachable backend — the crew screens have no local mode');
+  skip(name, 'this machine cannot reach the database — the crew screens have no offline mode');
 }
 
 async function check(name, fn) {
@@ -1391,7 +1394,10 @@ async function main() {
 
   console.log(`\n${ran.length - failed.length}/${ran.length} checks passed.`);
   if (skipped.length > 0) {
-    console.log(`${skipped.length} skipped for want of a backend.`);
+    console.log(
+      `${skipped.length} skipped: no route to the database from this machine. ` +
+        'They exercise the crew screens, which need it — this says nothing about the app.',
+    );
   }
   process.exit(failed.length === 0 ? 0 : 1);
 }

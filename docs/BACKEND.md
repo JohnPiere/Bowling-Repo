@@ -8,6 +8,11 @@ other people read.
 It is Supabase, on the free tier. One Postgres database, its built-in OAuth,
 and a websocket for the chat.
 
+**Nothing here is a server you run.** Supabase hosts all of it; the app is a
+static bundle on GitHub Pages that talks to a URL. There is no machine to keep
+switched on, no process to restart, and nothing to deploy but the front end.
+What follows is three forms to fill in once, not an installation.
+
 ## What you have to do once
 
 Three of these are dashboard steps that only the project's owner can do. None of
