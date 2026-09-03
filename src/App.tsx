@@ -12,6 +12,8 @@ import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
 import { applyUpdate, onUpdateWaiting } from './lib/updates';
 import { SignedInDialog } from './components/SignedInDialog';
+import { ChallengesScreen } from './screens/ChallengesScreen';
+import { EventsScreen } from './screens/EventsScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { CreateGroupScreen } from './screens/CreateGroupScreen';
@@ -331,6 +333,8 @@ export function App() {
             onOpenChat={() => nav.push({ name: 'chat', groupId: group.id })}
             onOpenSettings={() => nav.push({ name: 'groupSettings', groupId: group.id })}
             onOpenShared={() => nav.push({ name: 'sharedGames', groupId: group.id })}
+            onOpenChallenges={() => nav.push({ name: 'challenges', groupId: group.id })}
+            onOpenEvents={() => nav.push({ name: 'events', groupId: group.id })}
           />
         )}
 
@@ -377,6 +381,10 @@ export function App() {
             }}
           />
         )}
+
+        {route.name === 'challenges' && group && <ChallengesScreen group={group} me={session.id} />}
+
+        {route.name === 'events' && group && <EventsScreen group={group} me={session.id} />}
 
         {route.name === 'sharedGames' && group && (
           <SharedGamesScreen group={group} me={session.id} />
@@ -473,6 +481,8 @@ function isTabActive(tab: RouteName, route: Route): boolean {
       'createGroup',
       'joinGroup',
       'sharedGames',
+      'challenges',
+      'events',
     ].includes(route.name);
   }
   if (tab === 'play') return route.name === 'scan';
@@ -519,6 +529,10 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('Share this game'), kicker: s('Game finished'), meta: '' };
     case 'sharedGames':
       return { title: s('Shared games'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'challenges':
+      return { title: s('Challenges'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'events':
+      return { title: s('Calendar'), kicker: groupName ?? s('Group'), meta: '' };
     case 'league':
       return { title: s('League table'), kicker: groupName ?? s('Group'), meta: '' };
   }

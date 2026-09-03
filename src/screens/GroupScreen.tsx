@@ -34,6 +34,8 @@ interface Props {
   onOpenChat?: () => void;
   onOpenSettings?: () => void;
   onOpenShared?: () => void;
+  onOpenChallenges?: () => void;
+  onOpenEvents?: () => void;
 }
 
 export function GroupScreen({
@@ -43,6 +45,8 @@ export function GroupScreen({
   onOpenChat,
   onOpenSettings,
   onOpenShared,
+  onOpenChallenges,
+  onOpenEvents,
 }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
   const { preferences } = usePreferences();
@@ -251,6 +255,20 @@ export function GroupScreen({
         <Icon name="share" size={18} />
         {t('Shared games')}
       </button>
+
+      {/* The two things a crew does besides compare scores: agree to meet, and
+          agree to chase something. Side by side because neither is the more
+          important one and both are one tap from here. */}
+      <div className="row" style={{ gap: 11, marginTop: 11 }}>
+        <button type="button" className="btn-lg grow" onClick={onOpenEvents}>
+          <Icon name="history" size={18} />
+          {t('Calendar')}
+        </button>
+        <button type="button" className="btn-lg grow" onClick={onOpenChallenges}>
+          <Icon name="target" size={18} />
+          {t('Challenges')}
+        </button>
+      </div>
 
       <h2 className="section-title">{t('Your form against the crew')}</h2>
       <div className="card">

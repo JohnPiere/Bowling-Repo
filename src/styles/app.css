@@ -2564,3 +2564,88 @@ body {
 .tally tbody tr + tr .tally__value {
   border-top: 1px solid var(--color-divider);
 }
+
+/* A challenge that is actually running, and an event still to come: the same
+   pill, lit. Everything else on those screens is finished or has not started,
+   and the one that is live is the one being looked for. */
+.pill--on {
+  border-color: var(--color-accent-700);
+  color: var(--color-accent-300);
+}
+
+/* The icon set has one chevron and it points right. */
+.icon--back { transform: rotate(180deg); }
+
+/*
+ * The crew's month.
+ *
+ * Seven columns of equal width and square-ish cells, so the grid does not
+ * reflow between a five-week month and a six-week one — `monthGrid` always
+ * returns six rows for the same reason. A day is a 44px target to the thumb at
+ * this size on any phone the app supports.
+ */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.calendar__weekday {
+  font-size: 10px;
+  text-align: center;
+  color: var(--color-neutral-600);
+  padding-bottom: 4px;
+}
+.calendar__day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* 44px to the thumb without painting 44px: the same trick the chips use. */
+.calendar__day::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+}
+/* The days from the months either side. Present, because a week is seven days,
+   and unmistakably not this month — otherwise next month's first Tuesday
+   becomes this month's league night. */
+.calendar__day--outside { color: var(--color-neutral-700); }
+.calendar__day--today {
+  box-shadow: inset 0 0 0 1px var(--color-accent-700);
+  color: var(--color-accent-200);
+}
+.calendar__day--picked {
+  background: var(--color-accent-900);
+  color: var(--color-accent-200);
+}
+.calendar__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.calendar__day--outside .calendar__dot { background: var(--color-neutral-700); }
+
+/* The crew's own bar on a challenge: the same track as a leave row's, at the
+   width of the card. `.leave-row__bar` is `flex: 0 0 72px` because it sits in
+   a row beside a name, and stretching it across a card leaves a 72px-tall
+   pill rather than a progress bar. */
+.progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}

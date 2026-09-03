@@ -618,6 +618,46 @@ database; the shapes the screens render live in `lib/social.ts` beside the code
 that fills them. A fictional Tuesday Crew sitting next to a real one was worse
 than an empty screen.
 
+**A challenge stores no progress, and a calendar stores no attendance count.**
+Both are `lib/challenges.ts` and `lib/events.ts`, and both keep the rule the
+leaderboard set: a challenge is a target and a window, and where everybody
+stands is the games already in `shared_games`, counted by the same `tally` the
+analytics screen uses. A `challenge_progress` table would be a second
+definition of what a strike is, free to drift from the first.
+
+The consequence has to be said on the screen, repeatedly: **only shared games
+count.** A crew sees what its members posted to it and nothing else, and a
+challenge is not a reason to break that. Somebody who bowls 300 and keeps it to
+themselves has not moved the bar, and without the footnote would reasonably
+conclude the app was broken. `game_backups` is not a way round it — every
+policy on it says `owner_id = auth.uid()`, and it is a safe, not a feed.
+
+Two things in the calendar are decisions rather than defaults. `monthGrid`
+always returns **six** weeks, so the grid does not change height between a
+five-week month and a six-week one and move what you were about to tap; and the
+days from the months either side are drawn visibly outside, or next month's
+first Tuesday becomes this month's league night. It opens on "coming up"
+rather than on today, because on the very common day with nothing on it the
+first thing the screen would otherwise say is "nothing on this day" while two
+nights sit further down the month.
+
+Deleting a challenge or calling off a night belongs to whoever set it, or the
+crew's **owner** — `is_group_owner`, not `is_owner`. Moderating is taking down
+what somebody posted; a challenge with a week left and a night five people are
+counting on are not posts. Same reading as migration 0004.
+
+Migration **0005** carries both, and like 0003 it arrives after crews already
+exist: `loadChallenges` and `loadEvents` return empty on any error rather than
+throwing, so a database still on 0004 loses the two new screens and nothing
+else. Same trade as `loadAvatars` makes for a missing column.
+
+Neither can be tested from a machine with no route to the database, which is
+this one — so everything with a decision in it is pure and unit-tested, and the
+screens are driven in a browser against a **stubbed SDK chunk**: the same
+interception the sign-in check uses, answering `from()` with rows. That
+exercises the real screens, the real queries and the real logic. What it cannot
+check is the SQL and the policies.
+
 ## The backup, which is not the social layer
 
 `game_backups` (migration 0002) lives in the same database because that is the
