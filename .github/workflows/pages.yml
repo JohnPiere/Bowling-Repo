@@ -67,3 +67,46 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      # GitHub has two Pages publishers and only one of them is this workflow.
+      # With the repository's Pages source set to "Deploy from a branch",
+      # GitHub also runs its own Jekyll build over the repository *root* and
+      # deploys that — the source `index.html`, whose script tag is
+      # `/src/main.tsx`, which no browser can run. Both fire on every push and
+      # the later one wins. Measured on 2026-09-03 for d7180b9: this workflow
+      # deployed at 06:41:24, the branch publisher at 06:41:31, and the app on
+      # a real phone was replaced by its own "could not start" screen with
+      # nothing anywhere in the logs to say why. Every run was green.
+      #
+      # So read back what is actually being served, after both have settled.
+      # A deploy that gets overwritten is a failed deploy and should look like
+      # one.
+      - name: Check the deployed site is this build
+        run: |
+          url='${{ steps.deploy.outputs.page_url }}'
+          echo "reading back $url"
+          sleep 45
+
+          for attempt in 1 2 3 4; do
+            html=$(curl -fsSL --max-time 30 "$url" || true)
+
+            case "$html" in
+              *'/src/main.tsx'*)
+                echo "::error::$url is serving the repository source, not this build."
+                echo "GitHub's branch publisher ('pages build and deployment') overwrote it."
+                echo "Fix it once, in the repository settings:"
+                echo "  Settings -> Pages -> Build and deployment -> Source: GitHub Actions"
+                exit 1
+                ;;
+              *'/assets/index-'*)
+                echo "$url is serving this build."
+                exit 0
+                ;;
+            esac
+
+            echo "attempt $attempt: no verdict yet, waiting"
+            sleep 20
+          done
+
+          echo "::error::could not read $url back after deploying it."
+          exit 1

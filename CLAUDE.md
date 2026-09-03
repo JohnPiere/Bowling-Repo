@@ -161,6 +161,67 @@ on failure — one bad fetch used to poison every later call — and `signIn` is
 wrapped, because a sign-in button whose only failure mode is silence is worse
 than one that refuses.
 
+**Two Pages publishers, and the wrong one was winning.** With the repository's
+Pages source set to "Deploy from a branch", GitHub runs its *own* Jekyll build
+over the repository root on every push and deploys that — alongside, and
+independently of, `pages.yml`. Both were green on every commit and the later
+one won: measured for `d7180b9`, this workflow deployed at 06:41:24 and the
+branch publisher at 06:41:31, seven seconds behind it. What the branch
+publisher publishes is the *source* tree, so the site served `index.html` with
+`<script src="/src/main.tsx">` — TypeScript, which no browser runs.
+
+That is the real cause of the white page, and the stale precache was only ever
+half of it: a phone with the worker installed kept serving itself the working
+precached copy, which is why it looked like a caching problem and why it hit
+whoever had cleared their data or never visited before. The race also explains
+its coming and going without a commit in between.
+
+The setting is a one-time fix and is not in this repository — Settings → Pages →
+Source: **GitHub Actions**. What is here is that it can no longer be silent:
+`pages.yml` reads the deployed URL back after both publishers have settled and
+fails the run if what is being served is not the build it just made. A deploy
+that gets overwritten is a failed deploy and should look like one.
+
+The boot guard tells the two apart now, because the advice differs and one of
+them was actively wrong. A failed asset whose path is a source entry
+(`/src/…​.tsx`) means the *server* is serving an unbuilt page: clearing caches
+cannot fix it, reloads into the same wall, and on a phone that still had a
+working offline copy spends that copy for nothing. That case gets its own words
+and a plain reload; everything else still heals once.
+
+**A version that waits for permission never arrives.** The worker is registered
+`prompt` rather than `autoUpdate` and that part is right — rolls are component
+state until a game is saved, so a reload mid-frame costs somebody the game they
+are bowling. Everything around it was wrong. The prompt was a `confirm()`,
+which is dismissed by a stray tap, never returns for that worker, and on a Home
+Screen PWA may not be shown at all; so the new worker sat waiting while the old
+one kept serving the old app, indefinitely.
+
+`lib/updates.ts` takes the update immediately unless a game is in progress,
+holds it behind a banner when one is, takes it the moment the game is saved,
+and asks the browser to look on `visibilitychange` — left alone it checks on
+navigation and roughly daily, which for an app opened from the Home Screen can
+mean never.
+
+Two things there are less obvious than they look. `applyUpdate` reloads if the
+handover has not happened within `HANDOVER_MS`, because the handover is a
+message to a *waiting* worker and there is not always one: a page loaded before
+any worker controlled it is uncontrolled, so the next worker activates without
+ever passing through `waiting` — nothing to skip, no `controllerchange`, and
+the reload that hangs off it never happens. Measured in the browser, that made
+"Update now" a button that did nothing whatsoever. The reload is once per tab,
+guarded in `sessionStorage` the way `index.html` guards its own.
+
+And in `PlayScreen` the `setBowling(false)` cleanup is its own effect with no
+dependencies. As the cleanup of the effect that tracks the rolls, it ran on
+*every ball* — which took the held update between two frames and reloaded the
+page out from under the game it was there to protect.
+
+`scratchpad`-style simulations are what caught both: two builds with different
+version numbers and a static server that can be pointed at either while a real
+service worker is installed against it. Neither bug is visible in a unit test,
+and neither was visible by hand.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.
