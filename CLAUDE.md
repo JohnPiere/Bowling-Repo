@@ -26,6 +26,9 @@ npm run verify:scanner   # 6 generated sheets
 # Headers are ignored by `vite preview`, so test the CSP against this instead.
 npm run serve:headers 4200 &
 npm run verify:app -- http://localhost:4200
+
+# The migrations and their policies. Opt-in: apt-get install -y postgresql-16
+npm run verify:sql       # 17 policy checks, on a throwaway server
 ```
 
 ## Shape
@@ -514,6 +517,29 @@ nothing would look amiss.
 
 Supabase, free tier — see `docs/BACKEND.md` for the schema, the RLS reasoning
 and the three dashboard steps it needs. Two rules hold here:
+
+**The policies can be run now, and could not be before.** RLS is the security
+model — the key in the bundle is public precisely because the policies are what
+stands between a crewmate and somebody's season — and until `npm run verify:sql`
+there was no way to execute a single one of them. They were written, reviewed by
+reading, and applied by hand to the one database that matters.
+
+It stands up a throwaway Postgres, gives it the parts of Supabase the migrations
+stand on (`supabase/tests/shim.sql`: an `auth.users` with the columns 0001's
+trigger reads, an `auth.uid()` off a session setting, the three roles, and the
+default grants — without which every policy is unreachable behind a plain
+"permission denied"), applies every migration in order, and runs
+`supabase/tests/policies.sql`. Seventeen checks, each one a sentence from a
+migration's own comment. It also applies everything twice, which is the claim
+on the tin of anything pasted into a dashboard.
+
+Worth keeping two things it caught while being built. Reintroducing the hole
+0004 closes — `is_owner` where `is_group_owner` belongs — fails the run on "a
+moderator cannot delete the crew", so the checks are attributable. And the
+runner's own first version read stdout while `raise notice` writes to stderr:
+it found nothing, printed "0 policy checks passed" and exited 0. A check runner
+that asserts nothing and calls it success is worse than no check runner, which
+is why it now fails on an empty result.
 
 **The publishable key in `lib/backend.ts` is public and committed.** A static
 site has no server to keep a secret in, so the key ships in the bundle whatever

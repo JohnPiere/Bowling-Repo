@@ -19,7 +19,8 @@
     "verify:scanner": "node scripts/verify-scanner.mjs",
     "verify:app": "node scripts/verify-app.mjs",
     "vendor:font": "node scripts/vendor-font.mjs",
-    "serve:headers": "node scripts/serve-with-headers.mjs"
+    "serve:headers": "node scripts/serve-with-headers.mjs",
+    "verify:sql": "node scripts/verify-sql.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
