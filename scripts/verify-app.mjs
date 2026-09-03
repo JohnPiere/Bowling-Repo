@@ -644,10 +644,10 @@ async function main() {
       await page.waitForSelector('text=Corrected game');
 
       // The box starts from what is stored, not from whatever a scan read.
-      const seeded = await page.locator('.input.tnum').inputValue();
+      const seeded = await page.getByLabel('Marks').inputValue();
       assert(seeded.startsWith('--'), `the marks box was not seeded from the game: ${seeded}`);
 
-      await page.locator('.input.tnum').fill(seeded.replace(/^--/, 'X'));
+      await page.getByLabel('Marks').fill(seeded.replace(/^--/, 'X'));
       await page.waitForTimeout(300);
       const rescored = await page.locator('.card .tnum').first().textContent();
       assert(rescored === '300', `rescoring gave ${rescored}, expected 300`);
@@ -671,7 +671,7 @@ async function main() {
 
       // A correction that describes an impossible game must not be storable.
       await page.getByRole('button', { name: 'Fix a frame' }).click();
-      await page.locator('.input.tnum').fill('75 44 44 44 44 44 44 44 44 44');
+      await page.getByLabel('Marks').fill('75 44 44 44 44 44 44 44 44 44');
       await page.waitForTimeout(300);
       assert(
         (await page.locator('.note--bad').count()) > 0,

@@ -15,7 +15,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { backend } from './backend';
 import type { Member } from './leaderboard';
 import { scoreGame } from './scoring';
-import { formatMonthYear, formatTime } from './datetime';
+import { formatDay, formatMonthYear, formatTime } from './datetime';
 
 // ── The shapes the screens render ──────────────────────────────────────────
 //
@@ -375,10 +375,11 @@ export function toSharedGame(
     initials: author ? initialsOf(author.name) : '?',
     photo: author?.avatar ?? null,
     localId: row.local_id,
-    when: new Date(row.played_at).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    }),
+    // Through `datetime.ts`, which reads the app's language. `toLocaleDateString`
+    // with `undefined` follows the *browser*, so a phone set to English put
+    // "Aug 31" in the middle of a Japanese board — the one thing the notes say
+    // not to do, in the one place that had gone on doing it.
+    when: formatDay(Date.parse(row.played_at)),
     alley: row.house ?? '',
     score: row.total,
     strikes: card.frames.filter((frame) => frame.isStrike).length,

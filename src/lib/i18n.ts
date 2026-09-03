@@ -357,6 +357,9 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  'That is not a date. The game keeps the one it has.':
+    '日付として読み取れません。ゲームは元の日付のままになります。',
+
   // ── Making it yours ──
   'Just count the pins instead': '代わりに本数だけ入力',
   'Tap the pins instead': '代わりにピンをタップ',

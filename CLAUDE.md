@@ -271,6 +271,22 @@ The "Open on" chips are named after the tabs, which collided with
 buttons and died on a strict-mode violation. The tab clicks now go through a
 `tab()` helper scoped to `.tabbar`, which is what they always meant.
 
+**A game's date can be corrected, because it is the field people walk past.**
+The finishing step asks when it was bowled and arrives with *today* already in
+it, which is right almost always and invisible when it is wrong — a game
+written up the next morning is filed under the morning. `reviseGame` has taken
+a `playedAt` since it was written and nothing ever passed one, so that was
+permanent. The correction form has the date and the time now, beside the house
+and the note. An unreadable date leaves `playedAt` alone rather than becoming
+one: a cleared field must not silently move a game to 1970, and the history
+screen groups by night, so moving a game moves which night it belongs to.
+
+The crew board was the last place still calling
+`toLocaleDateString(undefined, …)`, which is the thing the rule below exists to
+stop — a phone set to English put "Aug 31" in the middle of a Japanese board.
+It goes through `formatDay` now, and nothing in `src/` calls the browser's
+locale any more.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.

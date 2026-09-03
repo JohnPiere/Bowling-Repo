@@ -13,7 +13,7 @@ import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '.
 import { frameMarks, scoreGame } from '../lib/scoring';
 import { tryParseMarks } from '../lib/marks';
 import { formatBytes } from '../lib/storage';
-import { formatDay } from '../lib/datetime';
+import { formatDay, fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
 
 interface Props {
   game: Game;
@@ -40,6 +40,13 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [draft, setDraft] = useState('');
   const [house, setHouse] = useState(game.house ?? '');
   const [note, setNote] = useState(game.note ?? '');
+  // When it was bowled, which until now could be set once and never again:
+  // `reviseGame` has always taken a `playedAt` and nothing ever passed one, so
+  // a game saved on the wrong day stayed on the wrong day for good. It is the
+  // easiest field on the finishing step to walk past — it is already filled in,
+  // and it is filled in with today.
+  const [day, setDay] = useState(() => toDateInput(game.playedAt));
+  const [time, setTime] = useState(() => toTimeInput(game.playedAt));
   const [cardState, setCardState] = useState<'idle' | 'working' | 'saved' | 'failed'>('idle');
 
   const card = scoreGame(game.rolls);
@@ -96,6 +103,8 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
     );
     setHouse(game.house ?? '');
     setNote(game.note ?? '');
+    setDay(toDateInput(game.playedAt));
+    setTime(toTimeInput(game.playedAt));
     setEditing(true);
   }
 
@@ -105,7 +114,14 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
 
     setBusy(true);
     try {
-      await reviseGame(game.id, { rolls: parsed.rolls, house, note });
+      // `playedAt` only when the two fields make a date. They cannot make a
+      // worse one than the game already has: `undefined` leaves it alone.
+      await reviseGame(game.id, {
+        rolls: parsed.rolls,
+        house,
+        note,
+        playedAt: fromInputs(day, time) ?? undefined,
+      });
       setEditing(false);
       onChanged();
     } finally {
@@ -202,6 +218,34 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
             placeholder="Rose Bowl Lanes"
           />
         </label>
+
+        <div className="row" style={{ gap: 11, marginBottom: 11 }}>
+          <label className="grow">
+            <span className="hero__label">{t('Date')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+            />
+          </label>
+          <label className="grow">
+            <span className="hero__label">{t('Time')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </label>
+        </div>
+        {fromInputs(day, time) === null && (
+          <p className="note note--bad" style={{ marginTop: -4 }}>
+            {t('That is not a date. The game keeps the one it has.')}
+          </p>
+        )}
 
         <label style={{ display: 'block', marginBottom: 11 }}>
           <span className="hero__label">{t('Anything worth remembering')}</span>
