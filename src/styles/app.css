@@ -2686,3 +2686,6 @@ body {
   font-size: 11px;
   color: var(--color-text);
 }
+
+/* A cross is a plus turned. The icon set has one of them and it is enough. */
+.icon--close { transform: rotate(45deg); }

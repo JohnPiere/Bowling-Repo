@@ -396,6 +396,28 @@ happening to you — with both the conversion rate and the miss rate, because
 "I get a third of these" and "this costs me two frames in three" are different
 sentences and a reader should not have to do the subtraction.
 
+**A goal is not a challenge, and the difference is the whole file.** A
+challenge belongs to a crew, counts only shared games, and is chased by
+everybody. A goal is private, counts every game on the phone whether anybody
+else ever sees it, and is nobody's business but yours — so `lib/goals.ts` is
+its own thing rather than a flag on `Challenge`.
+
+It also has to carry a shape challenges deliberately refused. `challenges.ts`
+restricted itself to sums because "62% of the way to an average of 180" is not
+a sentence; a personal goal cannot afford that, since "average 160" is the goal
+most bowlers actually have. So there are two kinds and they are told apart
+explicitly: a **reach** goal is a fraction of a target and means what it looks
+like, while a **hold** goal is where you are against where you said, with the
+number beside it being the average itself and the bar only ever a hint.
+`spread` is the one where lower is better, which runs the percentage the other
+way and needs one guard: a spread of zero with nothing bowled is not a goal
+met, it is no games, and would otherwise be the easiest goal in the app.
+
+Kept in their own `localStorage` key rather than in `Preferences`, which is
+written whole — a growing list sharing one write with the profile picture is
+the avatar quota bug waiting to happen again. `commit` reports whether the
+write stuck for the same reason `savePreferences` does.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.

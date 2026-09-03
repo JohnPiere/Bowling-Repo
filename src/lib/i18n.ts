@@ -452,6 +452,23 @@ export const JA: Record<string, string> = {
     '最も残るのは{pin}番ピンで、{n}回。カバー率は{rate}%です。',
   'From {n} frames scored on the rack.': 'ピン入力した{n}フレームの集計です。',
 
+  // ── Goals, which are yours alone ──
+  'Goals': '目標',
+  'Set a goal': '目標を設定',
+  'Nothing set. A goal is yours alone — it counts every game, shared or not.':
+    'まだ目標がありません。目標は自分だけのもので、共有していないゲームも数えます。',
+  'Games bowled': 'ゲーム数',
+  'A game of': 'ハイゲーム',
+  'Spread under': 'ばらつきを',
+  'Target': '目標値',
+  'Over': '期間',
+  'This year': '今年',
+  'at {value}': '現在 {value}',
+  'nothing bowled yet': 'まだゲームがありません',
+  'Drop {goal}': '{goal} を削除',
+  'That could not be saved on this device, so it will not survive a reload.':
+    'この端末に保存できませんでした。再読み込みすると失われます。',
+
   // ── The ball, the lane, and how it played ──
   'Ball': 'ボール',
   'Lane': 'レーン',

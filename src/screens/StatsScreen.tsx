@@ -3,6 +3,7 @@ import { t, tf } from '../lib/i18n';
 import { Achievements } from '../components/Achievements';
 import { TallyCard } from '../components/TallyCard';
 import { PinHeatMap } from '../components/PinHeatMap';
+import { Goals } from '../components/Goals';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
@@ -169,6 +170,11 @@ export function StatsScreen({
           <div className="profile__best tnum">{records.high}</div>
         </div>
       </div>
+
+      {/* Above the records, because a goal is what you are trying to do and a
+          record is what you have already done. */}
+      <h2 className="section-title">{t('Goals')}</h2>
+      <Goals games={games} />
 
       <h2 className="section-title">{t('Personal records')}</h2>
       <div className="records">
