@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { Achievements } from '../components/Achievements';
 import { TallyCard } from '../components/TallyCard';
+import { PinHeatMap } from '../components/PinHeatMap';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
@@ -23,6 +24,7 @@ import {
   metricChange,
   metricSeries,
   personalRecords,
+  pinHeat,
   positionStats,
   practiceTargets,
   RANGES,
@@ -101,6 +103,7 @@ export function StatsScreen({
   const positions = useMemo(() => positionStats(inRange), [inRange]);
   const houses = useMemo(() => houseStats(inRange), [inRange]);
   const splitsLeft = useMemo(() => splitRecords(inRange, 8), [inRange]);
+  const heat = useMemo(() => pinHeat(inRange), [inRange]);
   // Ranked by what it costs rather than by how often it happens, which is the
   // other question the same list answers.
   const balls = useMemo(() => ballStats(inRange), [inRange]);
@@ -422,6 +425,16 @@ export function StatsScreen({
               but not which.
             </p>
           </div>
+        </>
+      )}
+
+      {splits.framesWithPins > 0 && (
+        <>
+          {/* Before the leave list rather than after it: the diagram is the
+              summary and the list is the detail, and a reader who only looks
+              at one should get the summary. */}
+          <h2 className="section-title">{t('What keeps standing up')}</h2>
+          <PinHeatMap heat={heat} frames={splits.framesWithPins} />
         </>
       )}
 

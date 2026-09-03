@@ -8,7 +8,7 @@
 
 import type { Game } from './db';
 import { groupByDay } from './history';
-import { describeLeave, isSplit, leavesFromPinfalls } from './pins';
+import { describeLeave, FULL_RACK, isSplit, leavesFromPinfalls } from './pins';
 import { FRAMES_PER_GAME, frameMarks, scoreGame, type Frame } from './scoring';
 
 export type RangeKey = 'g5' | 'd30' | 'd90' | 'd180' | 'all';
@@ -397,6 +397,58 @@ export function leaveRecords(games: Game[]): LeaveRecord[] {
   }
 
   return [...byKey.values()].sort((a, b) => b.times - a.times || a.pins.length - b.pins.length);
+}
+
+export interface PinHeat {
+  pin: number;
+  /** Frames this pin was left standing after the first ball. */
+  times: number;
+  /** How often it was then knocked over. */
+  cleared: number;
+  /** 0..1 against the pin that survives most, for tinting. */
+  weight: number;
+  /** 0..100, or null when this pin has never stood. */
+  conversionRate: number | null;
+}
+
+/**
+ * How often each pin is left standing, and how often it is then picked up.
+ *
+ * The leave list already knows this, and says it in twelve rows of names —
+ * "Baby split", "2-4-5" — which is the right shape for reading carefully and
+ * the wrong one for the question "what keeps standing up". A rack tinted by
+ * frequency answers that at a glance, and the answer for most bowlers is a
+ * lopsided diagram they recognise instantly as their own.
+ *
+ * `weight` is relative to the *worst* pin rather than to the frame count, so
+ * the diagram always has one fully-lit pin. An absolute scale would make every
+ * rack look nearly blank — a given pin survives a small share of frames even
+ * for a bad bowler — and the shape is what is being read here, not the level.
+ */
+export function pinHeat(games: Game[]): PinHeat[] {
+  const times = new Map<number, number>();
+  const cleared = new Map<number, number>();
+
+  for (const record of leaveRecords(games)) {
+    for (const pin of record.pins) {
+      times.set(pin, (times.get(pin) ?? 0) + record.times);
+      cleared.set(pin, (cleared.get(pin) ?? 0) + record.converted);
+    }
+  }
+
+  const worst = Math.max(0, ...times.values());
+
+  return FULL_RACK.map((pin) => {
+    const stood = times.get(pin) ?? 0;
+    const got = cleared.get(pin) ?? 0;
+    return {
+      pin,
+      times: stood,
+      cleared: got,
+      weight: worst === 0 ? 0 : stood / worst,
+      conversionRate: stood === 0 ? null : Math.round((got / stood) * 100),
+    };
+  });
 }
 
 export interface SplitSummary {

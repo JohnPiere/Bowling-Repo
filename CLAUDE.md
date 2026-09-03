@@ -367,6 +367,27 @@ the games there are. Under `MIN_FOR_SPREAD` games it returns null rather than a
 number, because a spread over three games is noise wearing a number's clothes
 and a number on a screen is believed.
 
+**The heat map is the summary; the leave list is the detail.** "What you leave"
+knows everything `pinHeat` does and says it as twelve rows of names — "Baby
+split", "2-4-5", "Gutter". That is the right shape for reading carefully and
+the wrong one for the question people actually bring to it, which is *what
+keeps happening to me*. A tinted rack answers that before it is read, and most
+bowlers have a lopsided one they recognise instantly as their own.
+
+`weight` is relative to the *worst* pin, not to the frame count. An absolute
+scale would leave every rack looking nearly blank — a given pin survives a
+small share of frames even for a bad bowler — and the shape is what is being
+read, not the level. The colour runs on `--negative` for the same reason the
+practice list does: everywhere else in the app a long bar is good news, and
+here a bright pin is one that keeps beating you.
+
+It is not a `PinRack`. That is a grid of 44px buttons because it is aimed at
+with a thumb; this is read, not tapped. What it does share is the orientation —
+`PIN_ROWS` is back row first and `.rack__deck` draws it that way, so the play
+screen puts the 7-8-9-10 at the top. The first version of `.heatrack` used
+`column-reverse` and produced a rack that was internally correct and upside
+down against every other one in the app.
+
 **Splits get their own section, because the leave list cannot answer the
 question.** "What you leave" is ranked by how often a leave happens, which puts
 the ten pin and the head pin at the top and a split rarely on the screen at

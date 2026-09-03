@@ -2649,3 +2649,40 @@ body {
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
 }
+
+/*
+ * The rack, read rather than tapped.
+ *
+ * Nothing here is a target, so none of `.rack`'s 44px sizing applies: it is a
+ * diagram, drawn small enough that the whole triangle is one glance.
+ *
+ * `column`, not `column-reverse`, because `PIN_ROWS` is back row first and
+ * `.rack__deck` draws it that way — the play screen puts the 7-8-9-10 at the
+ * top and the headpin at the bottom. This was reversed first time round, which
+ * produced a rack that was correct on its own and upside down against every
+ * other one in the app.
+ */
+.heatrack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 0 2px;
+}
+.heatrack__row {
+  display: flex;
+  gap: 5px;
+}
+.heatrack__pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--color-neutral-800);
+}
+.heatrack__number {
+  font-size: 11px;
+  color: var(--color-text);
+}

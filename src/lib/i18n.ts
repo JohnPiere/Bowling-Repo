@@ -446,6 +446,12 @@ export const JA: Record<string, string> = {
   'Small samples, mostly — the game count beside each one is the caveat.':
     'ほとんどが少ないゲーム数です。横のゲーム数と合わせて見てください。',
 
+  'What keeps standing up': '残りやすいピン',
+  '{pin} pin: left {n}×': '{pin}番ピン：{n}回残った',
+  'The {pin} pin stands up most — {n} times, and you clear it {rate}% of the time.':
+    '最も残るのは{pin}番ピンで、{n}回。カバー率は{rate}%です。',
+  'From {n} frames scored on the rack.': 'ピン入力した{n}フレームの集計です。',
+
   // ── The ball, the lane, and how it played ──
   'Ball': 'ボール',
   'Lane': 'レーン',
