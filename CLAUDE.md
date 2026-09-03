@@ -279,6 +279,13 @@ site has no server to keep a secret in, so the key ships in the bundle whatever
 you do. RLS is the security model; the policies are the review. The
 `service_role` key and the database password must never appear in `src/`.
 
+**Signing in is not a one-way door.** `useSession` has always returned a
+`signOut` and, until now, nothing called it — so an account, once connected, was
+permanent. Settings has an Account card that disconnects it. Signing out touches
+neither the games on the phone nor the copy on the server; what goes is the
+crews, the chat and the boards. Revoking at Google's end is Google's screen, and
+the card says so rather than pretending to do it.
+
 **The SDK is dynamically imported and kept out of the precache.** It is 56 KB
 gzipped for screens that cannot work offline anyway, and the app it is bolted
 onto scores games with no account at all. `hasStoredSession()` reads the token
@@ -341,8 +348,10 @@ drawn refusing.
 **Video is out, and its screen with it.** The handoff has a Videos tab and there
 was a screen explaining why it was empty — the arithmetic of storing clips, and
 what a backend for them would cost. A screen whose whole content is an apology
-for itself earns nothing, so it is gone rather than parked. Nothing links to it
-and the `videos` route no longer exists.
+for itself earns nothing, so it is gone rather than parked. Nothing links to it,
+the `videos` route no longer exists, and the last sentence that promised video
+"comes later" is off the shared-games screen. A feature that is not coming
+should not be advertised on a screen that works.
 
 **The league table is parked**, not deleted. `lib/league.ts`, its tests and
 `LeagueScreen.tsx` are intact and the `league` route still renders; nothing

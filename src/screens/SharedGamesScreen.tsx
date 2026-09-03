@@ -153,8 +153,9 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
       )}
 
       <p className="footnote">
-        Sharing sends the score sheet only — video comes later. Unsharing retracts a game from the
-        board; it stays in your own history either way.
+        {t(
+          'Unsharing retracts a game from the board. It stays in your own history either way.',
+        )}
       </p>
     </>
   );

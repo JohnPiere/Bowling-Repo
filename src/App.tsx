@@ -43,7 +43,8 @@ const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '
 
 export function App() {
   const nav = useNavigation(initialRoute());
-  const { session, restoring, signIn, signInState, signInError, dismissSignInError } = useSession();
+  const { session, restoring, signIn, signOut, signInState, signInError, dismissSignInError } =
+    useSession();
   const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -362,6 +363,7 @@ export function App() {
           <SettingsScreen
             games={games}
             session={session}
+            onSignOut={() => void signOut()}
             onRestored={refresh}
           />
         )}

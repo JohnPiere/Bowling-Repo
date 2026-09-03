@@ -39,17 +39,26 @@ import {
 export function SettingsScreen({
   games,
   session,
+  onSignOut,
   onRestored,
 }: {
   games: Game[];
   /** Who is signed in, which is what decides whether a backup is offered. */
   session: Session;
+  /**
+   * Disconnect the account.
+   *
+   * There was no way to do this at all: signing in was a one-way door, because
+   * `useSession` has always returned a `signOut` and nothing ever called it.
+   */
+  onSignOut?: () => void;
   onRestored?: () => void;
 }) {
   const { t } = useTranslation();
   const { preferences, update } = usePreferences();
 
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
@@ -363,6 +372,63 @@ export function SettingsScreen({
           )}
         </p>
       </div>
+
+      {!session.isGuest && onSignOut && (
+        <>
+          <h2 className="section-title">{t('Account')}</h2>
+          <div className="card">
+            <div className="row" style={{ gap: 12 }}>
+              <Avatar initials={initialsOf(session.name)} size={40} />
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13 }}>{session.name}</span>
+                <span className="game-row__sub" style={{ display: 'block' }}>
+                  {session.email ?? t('Signed in with Google')}
+                </span>
+              </span>
+            </div>
+
+            {confirmSignOut ? (
+              <>
+                <div className="note note--warn" style={{ marginTop: 11 }}>
+                  {t(
+                    'Your games stay on this phone — signing out does not touch them, and it does not delete the copy on the server either. What goes is the crews, the chat and the boards, until you sign in again.',
+                  )}
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="btn-lg" onClick={() => setConfirmSignOut(false)}>
+                    {t('Stay signed in')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-lg btn-lg--danger"
+                    onClick={() => {
+                      setConfirmSignOut(false);
+                      onSignOut();
+                    }}
+                  >
+                    {t('Sign out')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn-lg"
+                style={{ marginTop: 11 }}
+                onClick={() => setConfirmSignOut(true)}
+              >
+                {t('Disconnect this account')}
+              </button>
+            )}
+
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {t(
+                'To remove Lane Log’s access at Google’s end as well, take it off your Google account’s third-party app list.',
+              )}
+            </p>
+          </div>
+        </>
+      )}
 
       <CloudBackup session={session} games={games} onRestored={onRestored} />
 

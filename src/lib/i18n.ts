@@ -44,6 +44,8 @@ export const JA: Record<string, string> = {
   'Back': '戻る',
   'Start bowling': 'はじめる',
 
+  'Unsharing retracts a game from the board. It stays in your own history either way.':
+    '共有を解除するとボードから消えますが、自分の履歴には残ります。',
   'Nothing shared here yet.': 'まだ共有されたゲームはありません。',
 
   // ── Chat and sharing ──
@@ -191,7 +193,6 @@ export const JA: Record<string, string> = {
   'This browser has not offered to install Lane Log. It still works as a normal page; notifications may not.': 'このブラウザはインストールを提案していません。通常のページとしては動きますが、通知は使えない場合があります。',
   'Without this, a browser short of space may clear your games. Installing the app usually makes the browser grant it.': 'これを許可しないと、空き容量が少ないときにブラウザがゲームを消すことがあります。アプリをインストールすると許可されやすくなります。',
   'Sharing sends the score sheet, not your whole history. You can retract it from the group\'s shared games at any time and it stays in your own history either way.': '共有されるのはスコアのみで、履歴全体ではありません。グループの共有ゲームからいつでも取り消せます。取り消しても自分の履歴には残ります。',
-  'Sharing sends the score sheet only — video comes later. Unsharing retracts a game from the board; it stays in your own history.': '共有されるのはスコアのみです。動画は今後対応します。共有を解除するとボードから消えますが、自分の履歴には残ります。',
   'Counts the ball thrown at a full rack in each frame. The tenth frame\'s bonus balls are left out — they would flatter the distribution.': '各フレームで10本すべて立った状態の1投目を数えます。第10フレームのボーナス投球は分布を良く見せてしまうため除いています。',
   'Score sheets, though. Photograph a finished sheet and the frames are read off it — a few hundred kilobytes rather than a few hundred megabytes.': 'スコアシートなら可能です。投げ終えたシートを撮影するとフレームを読み取ります。数百メガバイトではなく数百キロバイトで済みます。',
   'Single pin': '1本残り',
@@ -271,7 +272,6 @@ export const JA: Record<string, string> = {
   'Preferences': '各種設定',
   'Play day': 'プレイ日',
   'Session': 'セッション',
-  'Video gallery': '動画',
   'Slow motion': 'スローモーション',
   'Game record': 'ゲーム記録',
   'Sign in': 'サインイン',
@@ -356,6 +356,16 @@ export const JA: Record<string, string> = {
   'Looking through your games…': 'ゲームを読み込み中…',
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
+
+  // ── The account ──
+  'Signed in with Google': 'Googleでサインイン中',
+  'Disconnect this account': 'アカウントの接続を解除',
+  'Stay signed in': 'サインインしたままにする',
+  'Sign out': 'サインアウト',
+  'Your games stay on this phone — signing out does not touch them, and it does not delete the copy on the server either. What goes is the crews, the chat and the boards, until you sign in again.':
+    'ゲームはこの端末に残ります。サインアウトしてもゲームは変わらず、サーバー上の控えも削除されません。使えなくなるのはクルー・チャット・ボードで、再びサインインすれば戻ります。',
+  'To remove Lane Log’s access at Google’s end as well, take it off your Google account’s third-party app list.':
+    'Google側のアクセス許可も取り消すには、Googleアカウントの「サードパーティ製アプリ」からレーンログを削除してください。',
 
   // ── Sharing and hearts ──
   'Send your note too': 'メモも一緒に送る',
@@ -554,6 +564,7 @@ export const JA: Record<string, string> = {
   // ── Settings ──
   'Language': '言語',
   'Titles and navigation switch instantly.': '表示はすぐに切り替わります。',
+  'This is what your crew sees.': 'クルーにはこのように表示されます。',
   'Player profile': 'プロフィール',
   'Player name': '選手名',
   'Profile icon': 'アイコン',
