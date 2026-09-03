@@ -154,6 +154,9 @@ shared_games  a game copied up to one crew's board
 messages      the chat, with an optional pointer at a shared game
 reactions     hearts on a shared game
 game_backups  your own season, readable by nobody else  (0002)
+challenges    a target and a window, no progress             (0005)
+crew_events   a night out, and event_replies: who is coming  (0005)
+battles       two members, and battle_entries: what each put up  (0006)
 ```
 
 `profiles.avatar` (0003) holds a small square data URL rather than a Storage
@@ -174,6 +177,27 @@ second (migration 0004) is the strict one, and `groups_delete`,
 `memberships_update` and `groups_update` are on it: deleting a crew, handing out
 roles and renaming are not moderation, and the first two were a way for a
 moderator to destroy a crew or promote themselves to owner.
+
+**A battle is the one place a score is stored** (migration 0006), and the
+reasoning is in the migration's own comment. Everything else in the social
+layer is derived — a challenge holds no progress because progress *is* the
+shared games, and a second copy would be a second definition of what a strike
+is. A battle score is not a summary of anything: it is a declaration, "this is
+the game I am putting up", which nothing can derive. Two things follow that are
+worth knowing before touching it:
+
+- **`battle_entries` is a separate table because RLS is row-level.** One row
+  with `challenger_score` and `opponent_score` has no UPDATE policy that lets
+  each of two people write one column without also letting either overwrite the
+  other's. Split out, the policy is `profile_id = auth.uid()`. `event_replies`
+  has the same shape for the same reason.
+- **Every write to a battle stops at its deadline.** Deleting the battle,
+  editing an entry and withdrawing one are all bounded by `ends_at > now()`,
+  leaving only the crew's owner afterwards. Without that a loser can delete the
+  loss, or raise their score having seen the winner's, and the battles-won
+  figure on every profile means nothing. `battleRecord` counts settled battles
+  precisely because they cannot change, and these policies are what makes that
+  true.
 
 **`is_member()` is `security definer` and has to be.** A policy on `memberships`
 that selected from `memberships` to decide who may read `memberships` recurses,

@@ -721,6 +721,43 @@ database; the shapes the screens render live in `lib/social.ts` beside the code
 that fills them. A fictional Tuesday Crew sitting next to a real one was worse
 than an empty screen.
 
+**A battle is the one place in the social layer that stores a score, and the
+deadline is what makes it mean anything.** Everything else the crew does is a
+comparison of seasons; a battle is two people, one game each, and a winner —
+and the part that makes it work is that the two games need not be the same
+evening. `lib/battles.ts` and migration 0006.
+
+Storing the score looks like it breaks the rule the challenges set, and does
+not. A challenge holds no progress because progress *is* the shared games, and
+a second copy would be a second definition of what a strike is. A battle score
+is not a summary of anything: it is a declaration — "this is the game I am
+putting up" — the same category as `Game.note`. Nothing can derive which of
+somebody's games they meant, so nothing tries. It is read back through
+`entryScore`, which rescores from the rolls where there are any rather than
+trusting the number beside them.
+
+**`battle_entries` is a separate table because RLS is row-level.** One row
+carrying `challenger_score` and `opponent_score` has no UPDATE policy that lets
+each of two people write one column without also letting either overwrite the
+other's. Split out it is `profile_id = auth.uid()` and there is nothing to get
+wrong — the shape `event_replies` already has, for the same reason.
+
+**Every write stops at the deadline, and that is not tidiness.** Deleting the
+battle, editing an entry and withdrawing one are all bounded by
+`ends_at > now()`, leaving only the crew's owner afterwards. Without it a loser
+deletes the loss, or raises their score having seen the winner's, and the
+battles-won figure on the profile screen means nothing. `battleRecord` counts
+only settled battles for the same reason, and `verify:sql` asserts all three
+ways out are closed — a bowler cannot delete a battle they lost, improve a
+score after the deadline, or withdraw a game once it is over, while the one
+that should still work does.
+
+The four endings are separate answers rather than a winner and a null, because
+`won`, `tied`, `walkover` and `void` are different things to be told and a
+screen that draws them alike congratulates somebody on an empty lane. The star
+and the accent on a winning score wait for `final` too: a lead on Tuesday is
+not a result.
+
 **A challenge stores no progress, and a calendar stores no attendance count.**
 Both are `lib/challenges.ts` and `lib/events.ts`, and both keep the rule the
 leaderboard set: a challenge is a target and a window, and where everybody

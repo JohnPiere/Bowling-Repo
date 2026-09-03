@@ -13,6 +13,7 @@ import { useCrews, useCrew } from './lib/crews';
 import { useCrewAlerts } from './lib/useCrewAlerts';
 import { applyUpdate, onUpdateWaiting } from './lib/updates';
 import { SignedInDialog } from './components/SignedInDialog';
+import { BattlesScreen } from './screens/BattlesScreen';
 import { ChallengesScreen } from './screens/ChallengesScreen';
 import { EventsScreen } from './screens/EventsScreen';
 import { AuthScreen } from './screens/AuthScreen';
@@ -361,6 +362,7 @@ export function App() {
             onOpenShared={() => nav.push({ name: 'sharedGames', groupId: group.id })}
             onOpenChallenges={() => nav.push({ name: 'challenges', groupId: group.id })}
             onOpenEvents={() => nav.push({ name: 'events', groupId: group.id })}
+            onOpenBattles={() => nav.push({ name: 'battles', groupId: group.id })}
           />
         )}
 
@@ -411,6 +413,8 @@ export function App() {
         {route.name === 'challenges' && group && <ChallengesScreen group={group} me={session.id} />}
 
         {route.name === 'events' && group && <EventsScreen group={group} me={session.id} />}
+
+        {route.name === 'battles' && group && <BattlesScreen group={group} me={session.id} />}
 
         {route.name === 'sharedGames' && group && (
           <SharedGamesScreen group={group} me={session.id} />
@@ -509,6 +513,7 @@ function isTabActive(tab: RouteName, route: Route): boolean {
       'sharedGames',
       'challenges',
       'events',
+      'battles',
     ].includes(route.name);
   }
   if (tab === 'play') return route.name === 'scan';
@@ -559,6 +564,8 @@ function describe(route: Route, groupName: string | undefined, language: Languag
       return { title: s('Challenges'), kicker: groupName ?? s('Group'), meta: '' };
     case 'events':
       return { title: s('Calendar'), kicker: groupName ?? s('Group'), meta: '' };
+    case 'battles':
+      return { title: s('Battles'), kicker: groupName ?? s('Group'), meta: '' };
     case 'league':
       return { title: s('League table'), kicker: groupName ?? s('Group'), meta: '' };
   }

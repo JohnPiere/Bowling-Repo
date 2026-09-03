@@ -7,6 +7,7 @@ import { METRICS, rankRoster } from '../lib/leaderboard';
 import { TallyCard } from '../components/TallyCard';
 import { tally, thisMonth } from '../lib/stats';
 import { formatMonthYear } from '../lib/datetime';
+import { battleRecord, loadBattles, type Battle, type BattleEntry } from '../lib/battles';
 
 interface Props {
   group: Group;
@@ -26,6 +27,10 @@ export function MemberScreen({ group, memberId, me }: Props) {
   const standing = standings.find((s) => s.member.id === member.id);
 
   const [shared, setShared] = useState<SharedGame[]>([]);
+  const [fights, setFights] = useState<{ battles: Battle[]; entries: BattleEntry[] }>({
+    battles: [],
+    entries: [],
+  });
 
   // Only what they posted here. A member's private games stay private — being
   // in a crew is not an audit.
@@ -43,6 +48,26 @@ export function MemberScreen({ group, memberId, me }: Props) {
       live = false;
     };
   }, [group.id, member.id, me]);
+
+  // Battles are the crew's, not this member's: `battleRecord` picks out the
+  // ones they are in. Empty on failure, like every 0005-and-later loader — a
+  // database still on 0005 loses the line and nothing else on the screen.
+  useEffect(() => {
+    let live = true;
+    loadBattles(group.id).then(
+      (loaded) => {
+        if (live) setFights(loaded);
+      },
+      () => {
+        if (live) setFights({ battles: [], entries: [] });
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [group.id]);
+
+  const record = battleRecord(fights.battles, fights.entries, member.id);
 
   return (
     <>
@@ -64,6 +89,20 @@ export function MemberScreen({ group, memberId, me }: Props) {
         <Cell label="High game" value={member.high} />
         <Cell label="Games" value={member.games} />
       </div>
+
+      {record.played > 0 && (
+        <>
+          {/* Settled battles only — `battleRecord` says why: a lead in one
+              still running can go back down, and a figure on somebody's
+              profile that does that is worse than no figure. */}
+          <h2 className="section-title">{t('Battles')}</h2>
+          <div className="quickstats">
+            <Cell label="Won" value={record.won} />
+            <Cell label="Lost" value={record.lost} />
+            <Cell label="Tied" value={record.drawn} />
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">{t('Across every board')}</h2>
       <div className="card">
@@ -153,7 +192,10 @@ function Cell({ label, value }: { label: string; value: number }) {
   return (
     <div className="quickstat">
       <div className="quickstat__value tnum">{value}</div>
-      <div className="quickstat__label">{label}</div>
+      {/* The label arrives as the English source text, which is the key. This
+          did not go through `t` before and put "Rolling avg" in the middle of
+          a Japanese screen. */}
+      <div className="quickstat__label">{t(label)}</div>
     </div>
   );
 }

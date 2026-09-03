@@ -30,6 +30,7 @@ export type Route =
   | { name: 'sharedGames'; groupId: string }
   | { name: 'challenges'; groupId: string }
   | { name: 'events'; groupId: string }
+  | { name: 'battles'; groupId: string }
   | { name: 'league'; groupId: string };
 
 export type RouteName = Route['name'];

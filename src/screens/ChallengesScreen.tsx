@@ -194,7 +194,12 @@ export function ChallengesScreen({ group, me }: Props) {
             </label>
           </div>
 
-          {(problem || error) && <div className="note note--bad">{problem ?? error}</div>}
+          {(problem || error) && (
+            // The message comes back from `lib/` as its English source
+            // text, which is exactly what `t` is keyed on — the one place
+            // in the app where the key is a value rather than a literal.
+            <div className="note note--bad">{problem ? t(problem) : error}</div>
+          )}
 
           <button
             type="button"

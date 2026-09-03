@@ -379,7 +379,7 @@ export const JA: Record<string, string> = {
   // ── Challenges, and the crew calendar ──
   'Challenges': 'チャレンジ',
   'Set a challenge': 'チャレンジを作成',
-  'What is it called': 'チャレンジ名',
+  'What is it called': '名前',
   '100 strikes before April': '4月までにストライク100回',
   'Counting': '対象',
   'How many': '目標',
@@ -666,6 +666,75 @@ export const JA: Record<string, string> = {
   'Down {n} from the first game to the last.': '1ゲーム目から最終ゲームで{n}点ダウン。',
   'What you wrote': 'メモ',
   'Game {n}': '{n}ゲーム目',
+
+  // ── Battles: two people, one game each, days apart ──
+  'Battles': 'バトル',
+  'Start a battle': 'バトルを始める',
+  'There is nobody else in this crew yet. A battle needs two.':
+    'このクルーにはまだ他の人がいません。バトルは2人からです。',
+  'Best game this week': '今週のベストゲーム',
+  'Against': '対戦相手',
+  'Both bowl by': '締め切り',
+  'No battles yet. Put one up and somebody has to answer it.':
+    'まだバトルはありません。挑戦すれば、相手は応えるしかありません。',
+  'Closed {day}': '{day}に終了',
+  'Both bowl by {day}': '{day}までに両者が投げる',
+  'Put a game up': 'ゲームを出す',
+  'Or a score': 'またはスコアを入力',
+  'Enter it': '登録する',
+  'Put up a different game': '別のゲームに差し替える',
+  'Take my game back out': '出したゲームを取り下げる',
+  'Call this battle off': 'このバトルを取り消す',
+  'Turn this battle down': 'このバトルを断る',
+  'A score entered here is the game you are putting up — it does not have to be one you shared, and sharing one does not enter it.':
+    'ここで登録するスコアは、あなたが出すゲームです。クルーに共有したゲームである必要はなく、共有しただけでは登録されません。',
+  'Nobody bowled': '誰も投げず',
+  'Someone who left': '退会した人',
+  'bowled {day}': '{day}に投球',
+  'never bowled': '結局投げず',
+  'still to bowl': 'まだ投げていません',
+  'Nobody has bowled yet.': 'まだ誰も投げていません。',
+  'Waiting on you.': 'あなた待ちです。',
+  'Waiting on {name}.': '{name}待ちです。',
+  'Both games are in. Either of you can still put up a better one before it closes.':
+    '両者のゲームが揃いました。締め切りまでは、どちらもより良いゲームに差し替えられます。',
+  'It closed with nothing bowled, so nothing counts.':
+    '誰も投げないまま終了しました。記録には残りません。',
+  'A tie. Nobody takes it.': '引き分け。勝者なしです。',
+  'You take it — the other game never came in.':
+    '不戦勝です。相手のゲームは登録されませんでした。',
+  '{name} takes it — the other game never came in.':
+    '{name}の不戦勝です。もう一方のゲームは登録されませんでした。',
+  'You win it.': 'あなたの勝ちです。',
+  '{name} wins it.': '{name}の勝ちです。',
+  'Won': '勝',
+  'Lost': '負',
+  'Tied': '分',
+
+  // ── Why a form is not finished ──
+  // Returned from `lib/` as the English source text and looked up at the
+  // render site, which is the one place in the app where the key is a value
+  // rather than a literal. Challenges and the calendar were showing these in
+  // English on a Japanese phone before battles arrived and made it three
+  // screens with the same seam.
+  'Loading…': '読み込み中…',
+  'Give it a name.': '名前を付けてください。',
+  'That name is too long.': 'その名前は長すぎます。',
+  'The target has to be at least 1.': '目標は1以上にしてください。',
+  'That target is too big to be a challenge.': 'その目標は大きすぎます。',
+  'Those dates do not work.': 'その日付では設定できません。',
+  'That date does not work.': 'その日付では設定できません。',
+  'It has to end after it starts.': '開始より後に終わるようにしてください。',
+  'Keep it under a year.': '1年以内にしてください。',
+  'That is not a date and time.': '日付と時刻が読み取れません。',
+  'That place name is too long.': 'その場所の名前は長すぎます。',
+  'That note is too long.': 'そのメモは長すぎます。',
+  'Pick who you are bowling against.': '対戦相手を選んでください。',
+  'Pick somebody other than yourself.': '自分以外を選んでください。',
+  'Give it until at least an hour from now.': '締め切りは少なくとも1時間後にしてください。',
+  'That is not a score.': 'スコアとして読み取れません。',
+  'A score is a whole number, 0 or more.': 'スコアは0以上の整数です。',
+  'That game has not been bowled yet.': 'そのゲームはまだ投げられていません。',
 
   // ── The shareable card ──
   // Drawn onto a canvas rather than into the DOM, so these go through `tf`

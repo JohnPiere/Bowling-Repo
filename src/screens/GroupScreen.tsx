@@ -35,6 +35,7 @@ interface Props {
   onOpenSettings?: () => void;
   onOpenShared?: () => void;
   onOpenChallenges?: () => void;
+  onOpenBattles?: () => void;
   onOpenEvents?: () => void;
 }
 
@@ -46,6 +47,7 @@ export function GroupScreen({
   onOpenSettings,
   onOpenShared,
   onOpenChallenges,
+  onOpenBattles,
   onOpenEvents,
 }: Props) {
   const [metricKey, setMetricKey] = useState<MetricKey>('avg');
@@ -269,6 +271,14 @@ export function GroupScreen({
           {t('Challenges')}
         </button>
       </div>
+
+      {/* On its own line rather than beside those two: a challenge and a night
+          are things the whole crew is in, and a battle is between two people.
+          Sitting it in the same row would say it is the same kind of thing. */}
+      <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onOpenBattles}>
+        <Icon name="trophy" size={18} />
+        {t('Battles')}
+      </button>
 
       <h2 className="section-title">{t('Your form against the crew')}</h2>
       <div className="card">
