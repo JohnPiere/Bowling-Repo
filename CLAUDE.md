@@ -41,7 +41,7 @@ src/lib/
   framestrip.ts   the play screen's ten cells: boxes, totals, pins per frame
   dashboard.ts    what the home screen shows, and where you stand in your crew
   leaderboard.ts  ranking, bar scaling, podium order, movement
-  stats.ts        season summary, trend, outcomes, buckets, leaves, houses
+  stats.ts        season and single-game summaries, trend, leaves, houses
   league.ts       the crew as nights: series, handicap, week by week
   pins.ts         the rack, adjacency, split detection, leave names
   history.ts      sorting, searching and grouping games into sessions
@@ -90,6 +90,13 @@ instead is explanation — the legend, the leave caption, the axis labels, the
 tenth's note, in that order. Anything added here has to earn its height
 against something already there; `scrollHeight - clientHeight` on `.screen` is
 the test.
+
+Those short-screen rules are scoped to `.play` on purpose. The game record
+draws the same `FrameStrip` — `frameStrip(rolls, pinfalls, [], null)`, no ball
+in flight — and it scrolls, so it must not inherit a squeeze that exists only
+because a rack and two buttons have to fit under the strip. It falls back to the
+plain `Scorecard` for a game with no pin data, since ten empty racks read as a
+bug rather than as an absence.
 
 **A profile picture is bounded, and that bound is load-bearing.** It lives in
 `localStorage` beside the rest of the profile so every avatar on every screen

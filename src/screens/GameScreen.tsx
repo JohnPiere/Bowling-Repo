@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { downloadHtml, gameSheetHtml } from '../lib/exporting';
 import { shareScorecard } from '../lib/scorecard';
 import { loadPreferences } from '../lib/preferences';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
+import { FrameStrip } from '../components/FrameStrip';
+import { frameStrip } from '../lib/framestrip';
+import { gameSummary } from '../lib/stats';
 import type { Group } from '../lib/social';
 import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '../lib/db';
 import { frameMarks, scoreGame } from '../lib/scoring';
@@ -40,9 +43,14 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [cardState, setCardState] = useState<'idle' | 'working' | 'saved' | 'failed'>('idle');
 
   const card = scoreGame(game.rolls);
-  const strikes = card.frames.filter((f) => f.isStrike).length;
-  const spares = card.frames.filter((f) => f.isSpare).length;
-  const opens = card.frames.filter((f) => f.isComplete && !f.isStrike && !f.isSpare).length;
+  const summary = gameSummary(game);
+  // The play screen's strip, with no ball in flight: nothing is current and
+  // nothing is pending, so every cell draws as a finished frame.
+  const strip = frameStrip(game.rolls, game.pinfalls ?? [], [], null);
+  // Only worth drawing when there are pins to draw. A game entered on the
+  // number pad, or read off a sheet, would give ten empty racks — which looks
+  // like a bug rather than like an absence.
+  const hasPins = Boolean(game.pinfalls?.length);
   const sharedWith = (game.sharedTo ?? [])
     .map((id) => crews.find((group) => group.id === id))
     .filter(Boolean);
@@ -249,15 +257,44 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
             {game.house}
           </div>
         )}
-        <Scorecard scorecard={card} />
+        {hasPins ? <FrameStrip frames={strip} /> : <Scorecard scorecard={card} />}
         {game.note && <p className="gamenote">{game.note}</p>}
       </div>
 
       <div className="quickstats">
-        <Stat label="Strikes" value={strikes} />
-        <Stat label="Spares" value={spares} />
-        <Stat label="Open" value={opens} />
+        <Stat label={t('Strikes')} value={summary.strikes} />
+        <Stat label={t('Spares')} value={summary.spares} />
+        <Stat label={t('Open')} value={summary.opens} />
       </div>
+
+      <h2 className="section-title">{t('How it went')}</h2>
+      <div className="daystats">
+        <DayStat value={`${summary.strikePercent}%`} label={t('Strike %')} />
+        <DayStat value={`${summary.sparePercent}%`} label={t('Spare %')} />
+        <DayStat
+          value={tf('{n} of {total}', { n: summary.clean, total: summary.framesBowled })}
+          label={t('Clean frames')}
+        />
+        <DayStat value={summary.firstBallAverage} label={t('First ball')} />
+        <DayStat value={summary.bestFrame} label={t('Best frame')} />
+        <DayStat value={summary.longestStrikeRun} label={t('Longest run')} suffix="×" />
+      </div>
+
+      <p className="footnote" style={{ marginTop: 8 }}>
+        {summary.splits
+          ? tf(
+              'Spare rate is over {n} attempts — a struck frame is not one. Splits: {converted} of {faced} picked up.',
+              {
+                n: summary.spareAttempts,
+                converted: summary.splits.converted,
+                faced: summary.splits.faced,
+              },
+            )
+          : tf(
+              'Spare rate is over {n} attempts — a struck frame is not one. This game was not scored on the rack, so it knows how many pins fell and not which.',
+              { n: summary.spareAttempts },
+            )}
+      </p>
 
       {game.hasSheet && (
         <>
@@ -376,6 +413,26 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
         </button>
       )}
     </>
+  );
+}
+
+function DayStat({
+  value,
+  label,
+  suffix,
+}: {
+  value: number | string;
+  label: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="card daystats__card">
+      <div className="daystats__value tnum">
+        {value}
+        {suffix}
+      </div>
+      <div className="daystats__label">{label}</div>
+    </div>
   );
 }
 

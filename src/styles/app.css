@@ -2255,13 +2255,16 @@ body {
 @media (max-height: 780px) {
   .play,
   .play--tenth { gap: 6px; }
-  .strip { gap: 4px; }
-  .strip__cell { padding: 2px; gap: 2px; }
-  .strip__pin { width: 3.5px; height: 3.5px; }
-  .strip__pinrow { gap: 1.5px; }
-  .strip__box { min-height: 11px; font-size: 8px; }
-  .strip__num { font-size: 8px; }
-  .strip__total { font-size: 10px; }
+  /* Scoped to the scoring step. The game record draws the same strip and is
+     allowed to scroll, so it must not inherit a squeeze that exists only
+     because the rack and two buttons have to fit under it. */
+  .play .strip { gap: 4px; }
+  .play .strip__cell { padding: 2px; gap: 2px; }
+  .play .strip__pin { width: 3.5px; height: 3.5px; }
+  .play .strip__pinrow { gap: 1.5px; }
+  .play .strip__box { min-height: 11px; font-size: 8px; }
+  .play .strip__num { font-size: 8px; }
+  .play .strip__total { font-size: 10px; }
 
   /* The labels go, not the values. Which frame it is the strip already shows
      by highlighting it, and a 24px accented number beside a rack is not going

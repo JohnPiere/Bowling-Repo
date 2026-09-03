@@ -9,7 +9,7 @@
 import type { Game } from './db';
 import { groupByDay } from './history';
 import { describeLeave, isSplit, leavesFromPinfalls } from './pins';
-import { FRAMES_PER_GAME, scoreGame } from './scoring';
+import { FRAMES_PER_GAME, scoreGame, type Frame } from './scoring';
 
 export type RangeKey = 'g5' | 'd30' | 'd90' | 'd180' | 'all';
 
@@ -297,6 +297,34 @@ export interface MetricPoint {
  * not a missed spare, and counting it as a converted one would let a good
  * striking night flatter a bad spare night.
  */
+/**
+ * How often the first ball at a full rack struck, 0..100.
+ *
+ * Over frames *bowled* rather than over ten, which for a finished game is the
+ * same number and for an unfinished one is the honest one — a game abandoned
+ * after four frames with two strikes bowled 50%, not 20%.
+ */
+export function strikePercent(frames: Frame[]): number {
+  const bowled = frames.slice(0, FRAMES_PER_GAME).filter((frame) => frame.rolls.length > 0);
+  if (bowled.length === 0) return 0;
+  return round1((bowled.filter((frame) => frame.isStrike).length / bowled.length) * 100);
+}
+
+/**
+ * How often a spare attempt was converted, 0..100.
+ *
+ * A struck frame is not an attempt, and neither is a frame still waiting on its
+ * second ball. A game with no attempt in it is 100 rather than 0: nothing was
+ * missed.
+ */
+export function sparePercent(frames: Frame[]): number {
+  const attempts = frames
+    .slice(0, FRAMES_PER_GAME)
+    .filter((frame) => frame.rolls.length > 0 && frame.isComplete && !frame.isStrike);
+  if (attempts.length === 0) return 100;
+  return round1((attempts.filter((frame) => frame.isSpare).length / attempts.length) * 100);
+}
+
 export function metricSeries(games: Game[], metric: MetricKey): MetricPoint[] {
   const played = [...games]
     .filter((game) => game.isComplete)
@@ -307,18 +335,10 @@ export function metricSeries(games: Game[], metric: MetricKey): MetricPoint[] {
     const frames = card.frames.slice(0, FRAMES_PER_GAME);
 
     switch (metric) {
-      case 'strike': {
-        const strikes = frames.filter((f) => f.isStrike).length;
-        return { playedAt: game.playedAt, value: round1((strikes / FRAMES_PER_GAME) * 100) };
-      }
-      case 'spare': {
-        const attempts = frames.filter((f) => !f.isStrike).length;
-        const spares = frames.filter((f) => f.isSpare).length;
-        return {
-          playedAt: game.playedAt,
-          value: attempts === 0 ? 100 : round1((spares / attempts) * 100),
-        };
-      }
+      case 'strike':
+        return { playedAt: game.playedAt, value: strikePercent(frames) };
+      case 'spare':
+        return { playedAt: game.playedAt, value: sparePercent(frames) };
       case 'pins':
         return { playedAt: game.playedAt, value: game.rolls.reduce((a, b) => a + b, 0) };
       default:
@@ -699,4 +719,87 @@ export function positionStats(games: Game[], minSessions = 2): PositionStat[] {
 export function sessionSwing(scores: number[]): number | null {
   if (scores.length < 2) return null;
   return scores[scores.length - 1] - scores[0];
+}
+
+export interface GameSummary {
+  /** Frames with a ball in them. Ten for a finished game. */
+  framesBowled: number;
+  strikes: number;
+  spares: number;
+  opens: number;
+  /** Frames that ended on a mark — the count a "clean game" is measured by. */
+  clean: number;
+  /** Both over frames bowled and spare attempts; see the two above. */
+  strikePercent: number;
+  sparePercent: number;
+  spareAttempts: number;
+  /** Average pins on a ball thrown at a full rack, to one decimal. */
+  firstBallAverage: number;
+  /** The most a single frame added to the running total. */
+  bestFrame: number;
+  longestStrikeRun: number;
+  /** Every pin knocked down, bonus balls included. */
+  pinsDown: number;
+  /**
+   * Splits faced and picked up, or null when the game was not scored on the
+   * rack — a game entered by count knows how many pins fell and not which.
+   */
+  splits: { faced: number; converted: number } | null;
+}
+
+/**
+ * One game, read the way the analytics screen reads a season.
+ *
+ * The game record used to show three counts — strikes, spares, opens — which
+ * say what happened and not how it went. These are the same figures the season
+ * is judged on, applied to the one game, so a bowler can put a night against
+ * their own average without doing the arithmetic.
+ *
+ * Composed out of the functions the season screen already uses rather than
+ * recomputed: `strikePercent` here and `strikePercent` on the trend chart have
+ * to be the same number, or the record will quietly disagree with the line it
+ * is a point on.
+ */
+export function gameSummary(game: Game): GameSummary {
+  const frames = scoreGame(game.rolls).frames.slice(0, FRAMES_PER_GAME);
+  const bowled = frames.filter((frame) => frame.rolls.length > 0);
+  const outcomes = ballOutcomes([game]);
+
+  const firstBalls = firstBallDistribution([game]);
+  const thrown = firstBalls.reduce((sum, count) => sum + count, 0);
+  const pins = firstBalls.reduce((sum, count, value) => sum + count * value, 0);
+
+  // What each frame added, which needs the frame before it — and only where
+  // both scores are known, so a tenth still waiting on a bonus adds nothing
+  // rather than adding its whole total.
+  let bestFrame = 0;
+  for (let i = 0; i < frames.length; i++) {
+    const score = frames[i].score;
+    const before = i === 0 ? 0 : frames[i - 1].score;
+    if (score === null || before === null) continue;
+    bestFrame = Math.max(bestFrame, score - before);
+  }
+
+  const splits = splitSummary([game]);
+
+  return {
+    framesBowled: bowled.length,
+    strikes: outcomes.strikes,
+    spares: outcomes.spares,
+    opens: outcomes.opens,
+    clean: outcomes.strikes + outcomes.spares,
+    strikePercent: strikePercent(frames),
+    sparePercent: sparePercent(frames),
+    spareAttempts: bowled.filter((frame) => frame.isComplete && !frame.isStrike).length,
+    firstBallAverage: thrown === 0 ? 0 : round1(pins / thrown),
+    bestFrame,
+    longestStrikeRun: bestStrikeRun([game]),
+    pinsDown: game.rolls.reduce((sum, roll) => sum + roll, 0),
+    // `framesWithPins` is zero for a game entered by count, and a zero split
+    // count would read as "no splits" rather than "not recorded".
+    splits:
+      splits.framesWithPins === 0
+        ? null
+        : { faced: splits.faced, converted: splits.converted },
+  };
 }

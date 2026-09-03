@@ -357,6 +357,17 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── The game record ──
+  'How it went': 'この試合の内容',
+  'Clean frames': 'クリーンフレーム',
+  '{n} of {total}': '{total}中{n}',
+  'Best frame': '最高フレーム',
+  'Longest run': '連続ストライク',
+  'Spare rate is over {n} attempts — a struck frame is not one. Splits: {converted} of {faced} picked up.':
+    'スペア成功率は{n}回の挑戦に対する割合です（ストライクのフレームは含みません）。スプリット：{faced}回中{converted}回成功。',
+  'Spare rate is over {n} attempts — a struck frame is not one. This game was not scored on the rack, so it knows how many pins fell and not which.':
+    'スペア成功率は{n}回の挑戦に対する割合です（ストライクのフレームは含みません）。このゲームはラック入力ではないため、倒れた本数はわかりますが、どのピンかはわかりません。',
+
   // ── A photo on the profile tile ──
   'Use a photo': '写真を使う',
   'Change the photo': '写真を変更',

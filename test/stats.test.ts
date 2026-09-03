@@ -7,6 +7,7 @@ import {
   dailySeries,
   dailyStats,
   firstBallDistribution,
+  gameSummary,
   houseStats,
   leaveRecords,
   metricChange,
@@ -543,5 +544,85 @@ describe('sessionSwing', () => {
 
   it('has no shape to report for a single game', () => {
     expect(sessionSwing([150])).toBeNull();
+  });
+});
+
+describe('gameSummary', () => {
+  const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  it('counts how each frame finished', () => {
+    const summary = gameSummary(game([9, 1, 10, 8, 0, 10, 7, 2, 10, 10, 10, 9, 1, 8, 1, 10, 5, 5, 10]));
+    expect(summary.framesBowled).toBe(10);
+    expect(summary.strikes + summary.spares + summary.opens).toBe(10);
+    expect(summary.clean).toBe(summary.strikes + summary.spares);
+  });
+
+  it('reads the same strike rate the trend chart plots', () => {
+    // The record is a point on that line. If the two disagreed, one of them
+    // would be wrong and neither would say which.
+    const g = game(strikes);
+    expect(gameSummary(g).strikePercent).toBe(metricSeries([g], 'strike')[0].value);
+  });
+
+  it('reads the same spare rate the trend chart plots', () => {
+    const g = game(spares);
+    expect(gameSummary(g).sparePercent).toBe(metricSeries([g], 'spare')[0].value);
+  });
+
+  it('averages the ball thrown at a full rack', () => {
+    // Twenty fours: every first ball is a 4, every second is not counted.
+    expect(gameSummary(game(open4s)).firstBallAverage).toBe(4);
+  });
+
+  it('finds the frame that paid best', () => {
+    // A perfect game's first frame is worth thirty.
+    expect(gameSummary(game(strikes)).bestFrame).toBe(30);
+    expect(gameSummary(game(open4s)).bestFrame).toBe(8);
+  });
+
+  it('counts the longest run of strikes', () => {
+    expect(gameSummary(game(strikes)).longestStrikeRun).toBe(12);
+    expect(gameSummary(game(open4s)).longestStrikeRun).toBe(0);
+  });
+
+  it('adds up every pin that fell, bonus balls included', () => {
+    expect(gameSummary(game(strikes)).pinsDown).toBe(120);
+  });
+
+  it('says nothing about splits for a game entered by count', () => {
+    // Zero splits and "not recorded" are different answers, and a zero would
+    // read as the first one.
+    expect(gameSummary(game(open4s)).splits).toBeNull();
+  });
+
+  it('counts splits for a game scored on the rack', () => {
+    const leave = [7, 10];
+    const first = FULL.filter((p) => !leave.includes(p));
+    const rolls: number[] = [];
+    const pinfalls: number[][] = [];
+    for (let f = 0; f < 10; f++) {
+      rolls.push(first.length);
+      pinfalls.push(first);
+      rolls.push(0);
+      pinfalls.push([]);
+    }
+    const summary = gameSummary(game(rolls, 0, { pinfalls }));
+    // Nine frames: the tenth's leave was never a spare attempt.
+    expect(summary.splits).toEqual({ faced: 9, converted: 0 });
+  });
+
+  it('reads a half-bowled game as half a game', () => {
+    // Two strikes out of four frames is 50%, not 20% — the season chart only
+    // ever sees finished games, so this is the record screen's case alone.
+    const summary = gameSummary(game([10, 10, 4, 3, 4, 3]));
+    expect(summary.framesBowled).toBe(4);
+    expect(summary.strikePercent).toBe(50);
+  });
+
+  it('has nothing to report about a game with no balls in it', () => {
+    const summary = gameSummary(game([]));
+    expect(summary.framesBowled).toBe(0);
+    expect(summary.strikePercent).toBe(0);
+    expect(summary.firstBallAverage).toBe(0);
   });
 });
