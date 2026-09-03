@@ -12,9 +12,25 @@ interface Props {
    * greys.
    */
   tint?: string;
+  /**
+   * A square picture for the tile, as a data URL.
+   *
+   * Drawn over the initials rather than instead of them: the tile keeps its
+   * ring, its tint and its letters, and a picture that fails to decode leaves
+   * exactly the avatar this component always drew rather than an empty box.
+   */
+  photo?: string | null;
 }
 
-/** Initials on a deterministic tint — no uploads, no broken image states. */
+/**
+ * Initials on a deterministic tint, with a photograph over them when there is
+ * one.
+ *
+ * The picture is `object-fit: cover` inside the same shape, so a portrait and a
+ * landscape both fill the tile and neither is squashed. It is decorative — the
+ * name it belongs to is beside it on every screen that draws one — so the whole
+ * tile stays out of the accessibility tree.
+ */
 export function Avatar({
   initials,
   size = 30,
@@ -22,6 +38,7 @@ export function Avatar({
   isLeader = false,
   square = false,
   tint,
+  photo,
 }: Props) {
   // `28` and `66` are the alpha of the two accent steps this replaces, kept so
   // a tinted tile has the same weight on the page as an untinted one.
@@ -57,7 +74,19 @@ export function Avatar({
       }}
       aria-hidden="true"
     >
-      {initials}
+      {photo ? (
+        <img
+          className="avatar__photo"
+          src={photo}
+          alt=""
+          style={{ borderRadius: 'inherit' }}
+          // A stored picture is already the size it is drawn at, so there is
+          // nothing to wait for and lazy loading would only cost a reflow.
+          decoding="sync"
+        />
+      ) : (
+        initials
+      )}
     </span>
   );
 }

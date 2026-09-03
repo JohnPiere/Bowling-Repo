@@ -18,6 +18,18 @@ export interface Preferences {
   playerName: string;
   /** One of AVATARS, drawn on the profile tile. */
   playerIcon: string;
+  /**
+   * A photograph for the tile, as a small square data URL, or null.
+   *
+   * It lives here rather than in IndexedDB so every avatar on every screen has
+   * it while rendering — a tile that flashed initials for a frame on the way to
+   * a picture is worse than one that never had a picture. `lib/avatar.ts` keeps
+   * it to about ten kilobytes, which is what makes that affordable.
+   *
+   * Wins over `playerIcon` where both are set, because a picture is the more
+   * specific answer to the same question.
+   */
+  playerPhoto: string | null;
   /** A key from PLAYER_COLOURS. Tints the avatar wherever it is drawn. */
   playerColour: string;
   /**
@@ -72,6 +84,7 @@ export const DEFAULTS: Preferences = {
   language: 'en',
   playerName: 'You',
   playerIcon: '',
+  playerPhoto: null,
   playerColour: 'accent',
   onboardedAt: null,
   autoShare: false,
@@ -93,12 +106,23 @@ export function loadPreferences(): Preferences {
   }
 }
 
-export function savePreferences(preferences: Preferences): void {
+/**
+ * Write the lot, and say whether it stuck.
+ *
+ * The return value matters now that a photograph can be in here: everything
+ * else on this object is a few dozen bytes and cannot plausibly fail on quota,
+ * so failing quietly was the right trade. A picture can, and a picture that
+ * silently did not save — taking the name and the language with it, since this
+ * is one write — is worth telling somebody about.
+ */
+export function savePreferences(preferences: Preferences): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(preferences));
+    return true;
   } catch {
     // Out of quota, or storage blocked. The session keeps the choice either
     // way; it just will not survive a reload.
+    return false;
   }
 }
 
@@ -122,9 +146,13 @@ export function usePreferences() {
 
   const update = useCallback((changes: Partial<Preferences>) => {
     const next = { ...loadPreferences(), ...changes };
-    savePreferences(next);
+    const stored = savePreferences(next);
+    // Applied to the screen either way: a change that cannot be written is
+    // still the change the bowler asked for, and reverting it under them would
+    // look like the tap missed.
     setPreferences(next);
     window.dispatchEvent(new Event(CHANGED));
+    return stored;
   }, []);
 
   return { preferences, update };

@@ -73,7 +73,7 @@ export function LeagueScreen({ group, me }: { group: Group; me: string }) {
             >
               <span className="league__rank tnum">{line.best ? index + 1 : '—'}</span>
               <span className="league__who">
-                <Avatar initials={line.initials} size={26} isMe={line.isMe} />
+                <Avatar initials={line.initials} size={26} isMe={line.isMe} photo={line.photo} />
                 <span className="league__name">{line.isMe ? t('You') : line.name}</span>
               </span>
               {/* The allowance, not the handicapped average: it is what gets
@@ -106,7 +106,7 @@ export function LeagueScreen({ group, me }: { group: Group; me: string }) {
               {night.results.map(({ line, series }) => (
                 <div key={line.id} className="league__row league__row--night">
                   <span className="league__who">
-                    <Avatar initials={line.initials} size={24} isMe={line.isMe} />
+                    <Avatar initials={line.initials} size={24} isMe={line.isMe} photo={line.photo} />
                     <span className="league__name">{line.isMe ? t('You') : line.name}</span>
                   </span>
                   <span className="muted tnum">

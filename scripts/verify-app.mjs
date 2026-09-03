@@ -23,6 +23,15 @@ const BASE = (process.argv[2] ?? 'http://localhost:4173').replace(/\/+$/, '');
 /** Where downloaded and generated files go. */
 const OUT = 'app-check';
 
+/**
+ * The backup file input, told apart from the profile photo's.
+ *
+ * Settings has two hidden file inputs now, each opened by its own button. A
+ * bare `input[type=file]` takes whichever is first in the document, which is
+ * how a restore check came to be handing a JSON file to the avatar cropper.
+ */
+const BACKUP_INPUT = 'input[type=file][accept="application/json,.json"]';
+
 const results = [];
 
 function record(name, ok, detail = '') {
@@ -1066,7 +1075,7 @@ async function main() {
     await check('a file that is not a backup is refused with a reason', async () => {
       const junk = `${OUT}/not-a-backup.json`;
       writeFileSync(junk, '<html>nope</html>');
-      await other.setInputFiles('input[type=file]', junk);
+      await other.setInputFiles(BACKUP_INPUT, junk);
       await other.waitForSelector('.note--bad');
       // .first(): a push-permission note can also be on screen, and matching
       // two would be a strict-mode violation rather than a real failure.
@@ -1076,7 +1085,7 @@ async function main() {
     });
 
     await check('restoring shows a plan before it writes anything', async () => {
-      await other.setInputFiles('input[type=file]', backupPath);
+      await other.setInputFiles(BACKUP_INPUT, backupPath);
       await other.waitForSelector('text=7 games to add');
       // A restore that silently doubled a season would be worse than one that
       // failed, so nothing may be written before it is confirmed.
@@ -1104,7 +1113,7 @@ async function main() {
 
     await check('restoring the same file twice adds nothing', async () => {
       await other.getByRole('button', { name: 'Settings', exact: true }).click();
-      await other.setInputFiles('input[type=file]', backupPath);
+      await other.setInputFiles(BACKUP_INPUT, backupPath);
       await other.waitForSelector('text=0 games to add');
       const text = (await other.locator('.note--info').last().textContent()) ?? '';
       assert(text.includes('7 already on this device'), text.trim());

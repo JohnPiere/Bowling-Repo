@@ -162,7 +162,7 @@ export function GroupSettingsScreen({ group, onLeave }: Props) {
               aria-expanded={canAct ? isOpen : undefined}
               style={{ cursor: canAct ? 'pointer' : 'default' }}
             >
-              <Avatar initials={member.initials} size={34} isMe={member.isMe} />
+              <Avatar initials={member.initials} size={34} isMe={member.isMe} photo={member.photo} />
               <span className="grow">
                 <span className="row" style={{ gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>

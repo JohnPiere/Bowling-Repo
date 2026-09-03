@@ -146,7 +146,7 @@ export function SharedGamesScreen({ group, me }: { group: Group; me: string }) {
               youHearted={post.youHearted}
               onChanged={(on) => hearted(post.id, on)}
             />
-            <Avatar initials={post.initials} size={30} />
+            <Avatar initials={post.initials} size={30} photo={post.photo} />
             {post.note && <p className="gamenote" style={{ width: '100%' }}>{post.note}</p>}
           </div>
         ))

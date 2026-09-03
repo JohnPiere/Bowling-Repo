@@ -46,7 +46,7 @@ export function MemberScreen({ group, memberId, me }: Props) {
       <section className="hero">
         <div className="orb" />
         <div className="row">
-          <Avatar initials={member.initials} size={44} isMe={member.isMe} square />
+          <Avatar initials={member.initials} size={44} isMe={member.isMe} square photo={member.photo} />
           <div className="grow">
             <div className="hero__name">{member.isMe ? 'You' : member.name}</div>
             <div className="hero__meta">

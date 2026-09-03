@@ -26,7 +26,14 @@
 
 import { backend } from './backend';
 import { dayKey } from './history';
-import { handicap, initialsOf, type MembershipRow, type ProfileRow, type SharedGameRow } from './social';
+import {
+  handicap,
+  initialsOf,
+  loadAvatars,
+  type MembershipRow,
+  type ProfileRow,
+  type SharedGameRow,
+} from './social';
 
 /** One bowler's night. */
 export interface Series {
@@ -46,6 +53,8 @@ export interface LeagueLine {
   id: string;
   name: string;
   initials: string;
+  /** Their profile picture, when they have set one. */
+  photo?: string | null;
   isMe?: boolean;
   /** Their average over the games they have shared here. */
   average: number;
@@ -142,6 +151,7 @@ export function leagueTable(
         id: profile.id,
         name: profile.name,
         initials: profile.initials || initialsOf(profile.name),
+        photo: profile.avatar ?? null,
         isMe: profile.id === me || undefined,
         average,
         allowance,
@@ -222,8 +232,15 @@ export async function loadLeague(groupId: string, me: string): Promise<LeagueLin
   if (roster.error) throw roster.error;
   if (games.error) throw games.error;
 
+  const roles = (roster.data ?? []) as unknown as MembershipRow[];
+  const avatars = await loadAvatars(roles.map((row) => row.profile_id));
+  for (const row of roles) {
+    const avatar = row.profiles && avatars.get(row.profiles.id);
+    if (avatar) row.profiles = { ...row.profiles!, avatar };
+  }
+
   return leagueTable(
-    (roster.data ?? []) as unknown as MembershipRow[],
+    roles,
     (games.data ?? []) as unknown as SharedGameRow[],
     me,
   );

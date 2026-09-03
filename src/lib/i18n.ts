@@ -357,6 +357,22 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── A photo on the profile tile ──
+  'Use a photo': '写真を使う',
+  'Change the photo': '写真を変更',
+  'Shrinking it…': '縮小しています…',
+  'Cropped to a square and shrunk on this device before it is stored anywhere.':
+    '保存する前に、この端末で正方形に切り抜いて縮小します。',
+  'Cropped square and shrunk to {n} on this device. The mark below is hidden while a photo is set.':
+    'この端末で正方形に切り抜き、{n}に縮小しました。写真を設定している間、下のマークは表示されません。',
+  'This browser would not store the picture — it is out of room, or set to block site data.':
+    'このブラウザは写真を保存できませんでした。容量不足か、サイトデータがブロックされています。',
+  'That picture could not be read.': 'その画像は読み取れませんでした。',
+  'Sending it to your crew…': 'クルーに送信中…',
+  'Your crew sees this too.': 'クルーにも表示されます。',
+  'Your crew has not got this yet — it will go with the next change.':
+    'クルーにはまだ反映されていません。次の変更時に送信されます。',
+
   // ── The account ──
   'Signed in with Google': 'Googleでサインイン中',
   'Disconnect this account': 'アカウントの接続を解除',

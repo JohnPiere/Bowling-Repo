@@ -188,6 +188,7 @@ export function GroupScreen({
                 size={slot.avatarSize}
                 isMe={member.isMe}
                 isLeader={isLeader}
+                photo={member.photo}
                 tint={member.isMe ? myColour : undefined}
               />
               <div
@@ -327,7 +328,7 @@ function BoardRow({
           {rank}
         </span>
 
-        <Avatar initials={member.initials} size={30} isMe={isMe} />
+        <Avatar initials={member.initials} size={30} isMe={isMe} photo={member.photo} />
 
         <span className="grow">
           <span

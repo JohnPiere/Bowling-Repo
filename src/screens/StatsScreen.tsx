@@ -107,9 +107,15 @@ export function StatsScreen({
     <div className="stats">
       {/* Who this season belongs to, and the one number that sums it up. */}
       <div className="profile">
-        {/* Initials, the way the handoff draws it, unless a symbol was picked. */}
+        {/* Initials, the way the handoff draws it — unless a symbol was picked,
+            or a photograph, which is the more specific answer to the same
+            question and so wins over both. */}
         <div className="profile__mark">
-          {preferences.playerIcon || initials(preferences.playerName)}
+          {preferences.playerPhoto ? (
+            <img className="avatar__photo" src={preferences.playerPhoto} alt="" />
+          ) : (
+            preferences.playerIcon || initials(preferences.playerName)
+          )}
         </div>
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="row" style={{ gap: 6 }}>

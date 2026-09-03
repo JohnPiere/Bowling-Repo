@@ -15,6 +15,8 @@ export interface Member {
   id: string;
   name: string;
   initials: string;
+  /** Their profile picture, when they have set one. */
+  photo?: string | null;
   avg: number;
   high: number;
   pins: number;

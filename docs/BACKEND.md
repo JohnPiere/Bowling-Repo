@@ -156,6 +156,16 @@ reactions     hearts on a shared game
 game_backups  your own season, readable by nobody else  (0002)
 ```
 
+`profiles.avatar` (0003) holds a small square data URL rather than a Storage
+object: 192px of WebP is about ten kilobytes, smaller than several of the chat
+messages beside it, and a bucket would be a second set of access rules to get
+right for no benefit at that size. It needs no new policy — `profiles_read` is
+already "you, plus anybody you share a crew with" and `profiles_write` is
+already "your own row", so the picture is visible to exactly the people who can
+see the name it belongs to. The column's own check keeps it under 40 000
+characters and shaped like `data:image/…`, because a text column the client
+renders into an `<img src>` should not be able to hold a sentence.
+
 Two pieces of it are worth reading before changing anything:
 
 **`is_member()` is `security definer` and has to be.** A policy on `memberships`

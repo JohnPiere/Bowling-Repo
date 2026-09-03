@@ -47,6 +47,8 @@ export interface ChatMessage {
   authorId: string;
   author: string;
   initials: string;
+  /** Their profile picture, when they have set one. */
+  photo?: string | null;
   time: string;
   body: string;
   /** A game shared to the board; the chat carries a link to it. */
@@ -58,6 +60,8 @@ export interface SharedGame {
   authorId: string;
   author: string;
   initials: string;
+  /** Their profile picture, when they have set one. */
+  photo?: string | null;
   /** The id the game has in its bowler's own store, for matching a local one. */
   localId: string;
   when: string;
@@ -80,6 +84,15 @@ export interface ProfileRow {
   id: string;
   name: string;
   initials: string;
+  /**
+   * A small square data URL, from migration 0003, or absent.
+   *
+   * Never selected in the joins that fetch a roster. It is read by
+   * `loadAvatars` in a query of its own so that a database which has not had
+   * 0003 applied loses the pictures rather than the crew screens — the same
+   * call `loadSharedGames` makes about hearts.
+   */
+  avatar?: string | null;
 }
 
 export interface GroupRow {
@@ -184,6 +197,7 @@ export function standingFor(
     id: profile.id,
     name: profile.name,
     initials: profile.initials || initialsOf(profile.name),
+    photo: profile.avatar ?? null,
     avg: recent,
     high: scores.length === 0 ? 0 : Math.max(...scores),
     // The month's total, which rewards showing up rather than peaking.
@@ -295,6 +309,7 @@ export function toMessage(
     authorId: row.author_id,
     author: name,
     initials: author ? initialsOf(author.name) : '?',
+    photo: author?.avatar ?? null,
     time: formatTime(Date.parse(row.created_at)),
     body: row.body,
     sharedScore:
@@ -357,6 +372,7 @@ export function toSharedGame(
     authorId: row.profile_id,
     author: row.profile_id === me ? 'You' : (author?.name ?? 'Someone'),
     initials: author ? initialsOf(author.name) : '?',
+    photo: author?.avatar ?? null,
     localId: row.local_id,
     when: new Date(row.played_at).toLocaleDateString(undefined, {
       month: 'short',
@@ -509,10 +525,18 @@ export async function loadGroup(groupId: string, me: string): Promise<Group | nu
   if (!group.data) return null;
 
   const said = (messages.data ?? []) as unknown as MessageRow[];
+  const roles = (roster.data ?? []) as unknown as MembershipRow[];
+
+  // The pictures, patched onto the nested profiles the join came back with.
+  const avatars = await loadAvatars(roles.map((row) => row.profile_id));
+  for (const row of roles) {
+    const avatar = row.profiles && avatars.get(row.profiles.id);
+    if (avatar) row.profiles = { ...row.profiles!, avatar };
+  }
 
   return toGroup(
     group.data as GroupRow,
-    (roster.data ?? []) as unknown as MembershipRow[],
+    roles,
     (games.data ?? []) as unknown as SharedGameRow[],
     me,
     countUnread(said, groupId, me),
@@ -601,6 +625,8 @@ export async function loadMessages(groupId: string, me: string): Promise<Thread>
   if (board.error) throw board.error;
 
   const authors = authorMap(roster.data);
+  withAvatars(authors, await loadAvatars([...authors.keys()]));
+
   const posts = new Map(
     ((board.data ?? []) as unknown as SharedGameRow[]).map((row) => [row.id, row]),
   );
@@ -677,6 +703,8 @@ export async function loadSharedGames(groupId: string, me: string): Promise<Shar
   if (roster.error) throw roster.error;
 
   const authors = authorMap(roster.data);
+  withAvatars(authors, await loadAvatars([...authors.keys()]));
+
   const rows = (games.data ?? []) as unknown as SharedGameRow[];
 
   // Reactions come second because the query needs the post ids, and they are
@@ -801,6 +829,76 @@ function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
     else out.set(k, [row]);
   }
   return out;
+}
+
+/**
+ * The crew's profile pictures, by profile id.
+ *
+ * A query of its own rather than another column on the roster join, and that is
+ * deliberate. `avatar` arrives with migration 0003; a database that has not had
+ * it applied would fail *every* roster query if the column were named in the
+ * join, taking the boards, the chat and the member screens with it. Asked for
+ * separately, a missing column costs the pictures and nothing else — the same
+ * trade `loadSharedGames` makes for its hearts.
+ */
+export async function loadAvatars(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+
+  try {
+    const db = await backend();
+    const { data, error } = await db.from('profiles').select('id, avatar').in('id', ids);
+    if (error) return new Map();
+
+    const out = new Map<string, string>();
+    for (const row of (data ?? []) as { id: string; avatar: string | null }[]) {
+      // Rendered straight into an `<img src>`, so anything that is not a data
+      // URL for an image is dropped here as well as by the column's own check.
+      if (row.avatar && row.avatar.startsWith('data:image/')) out.set(row.id, row.avatar);
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+
+/** Put the pictures onto the profiles a roster query came back with. */
+export function withAvatars(
+  authors: Map<string, ProfileRow>,
+  avatars: Map<string, string>,
+): Map<string, ProfileRow> {
+  for (const [id, profile] of authors) {
+    const avatar = avatars.get(id);
+    if (avatar) authors.set(id, { ...profile, avatar });
+  }
+  return authors;
+}
+
+/**
+ * Push this device's profile to the crew.
+ *
+ * Until now nothing wrote `profiles` at all: the name a crew saw was whatever
+ * Google handed over at sign-up, and the name field in Settings was local only.
+ * A picture makes that gap obvious — there would be no way to send one — so the
+ * name and the initials go up with it.
+ *
+ * The retry is for a database still on migration 0002. Losing the picture on
+ * one of those is expected; losing the name with it would not be.
+ */
+export async function saveMyProfile(
+  me: string,
+  profile: { name: string; initials: string; avatar: string | null },
+): Promise<void> {
+  const db = await backend();
+  const named = { name: profile.name.trim().slice(0, 60) || 'Bowler', initials: profile.initials };
+
+  const { error } = await db
+    .from('profiles')
+    .update({ ...named, avatar: profile.avatar })
+    .eq('id', me);
+  if (!error) return;
+
+  const retry = await db.from('profiles').update(named).eq('id', me);
+  if (retry.error) throw retry.error;
 }
 
 /** PostgREST returns the joined profile nested; flatten it into a lookup. */

@@ -91,6 +91,21 @@ tenth's note, in that order. Anything added here has to earn its height
 against something already there; `scrollHeight - clientHeight` on `.screen` is
 the test.
 
+**A profile picture is bounded, and that bound is load-bearing.** It lives in
+`localStorage` beside the rest of the profile so every avatar on every screen
+has it while rendering — a tile that flashed initials on the way to a picture is
+worse than one that never had a picture. But `savePreferences` writes the whole
+object at once, so a picture over the quota would take the name and the language
+down with it, silently, from inside a `catch` that can do nothing useful. So
+`lib/avatar.ts` re-encodes to a 192px square and refuses to return anything over
+`MAX_DATA_URL`, `savePreferences` returns whether the write stuck, and the
+picker puts the picture back to null and says so when it did not. A 12-megapixel
+photograph of pure noise — the worst thing a compressor can be handed — comes
+out at 18 KB of the 28 KB budget.
+
+The tile keeps its ring, its tint and its initials underneath. A picture that
+fails to decode leaves exactly the avatar the app drew before there were any.
+
 **A note belongs to the bowler, not to the crew.** `Game.note` is the one field
 that is somebody's own sentence rather than a number, and sharing a game does
 not send it unless the switch on the share screen is turned on — it is off every
@@ -278,6 +293,17 @@ and the three dashboard steps it needs. Two rules hold here:
 site has no server to keep a secret in, so the key ships in the bundle whatever
 you do. RLS is the security model; the policies are the review. The
 `service_role` key and the database password must never appear in `src/`.
+
+**`profiles.avatar` is never named in a roster join.** It arrives with migration
+0003, and a database still on 0002 would fail *every* roster query if the column
+were in the join — taking the boards, the chat and the member screens with it.
+`loadAvatars` asks for it separately and returns an empty map on any error, so a
+missing column costs the pictures and nothing else. Same trade as the hearts.
+
+`saveMyProfile` is the first thing in the app that writes `profiles` at all:
+until it existed the name a crew saw was whatever the provider handed over at
+sign-up, and the name field in Settings was local only. It retries without the
+avatar if the first write fails, so an un-migrated database still gets the name.
 
 **Signing in is not a one-way door.** `useSession` has always returned a
 `signOut` and, until now, nothing called it — so an account, once connected, was

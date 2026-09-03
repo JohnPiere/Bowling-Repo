@@ -185,7 +185,7 @@ export function ChatScreen({ group, session }: Props) {
           const isMine = message.author === 'You';
           return (
             <article key={message.id} className={`msg${isMine ? ' msg--mine' : ''}`}>
-              <Avatar initials={message.initials} size={28} isMe={isMine} />
+              <Avatar initials={message.initials} size={28} isMe={isMine} photo={message.photo} />
               <div className="grow">
                 <div className="row" style={{ gap: 8 }}>
                   <span className="msg__author">{message.author}</span>

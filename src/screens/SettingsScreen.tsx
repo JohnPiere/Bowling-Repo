@@ -3,9 +3,10 @@ import { Icon } from '../components/Icon';
 import { tf, useTranslation } from '../lib/i18n';
 import { AVATARS, colourOf, DEFAULTS, PLAYER_COLOURS, usePreferences } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
+import { AvatarError, dataUrlBytes, toAvatarDataUrl } from '../lib/avatar';
 import { Avatar } from '../components/Avatar';
 import { CloudBackup } from '../components/CloudBackup';
-import { initialsOf } from '../lib/social';
+import { initialsOf, saveMyProfile } from '../lib/social';
 import { clearAllGames, putGames, type Game } from '../lib/db';
 import type { Session } from '../lib/session';
 import {
@@ -59,6 +60,10 @@ export function SettingsScreen({
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoRef = useRef<HTMLInputElement | null>(null);
+  const [profileSync, setProfileSync] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
@@ -70,6 +75,65 @@ export function SettingsScreen({
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restored, setRestored] = useState<number | null>(null);
   const backupRef = useRef<HTMLInputElement | null>(null);
+
+  /**
+   * Take a picked photograph and put it on the tile.
+   *
+   * Re-encoded to a small square here rather than stored as picked — a phone
+   * photograph is megabytes and the tile is 192 pixels. The write is checked
+   * because preferences are saved as one object: a picture that overflowed the
+   * quota would take the name and the language with it, and silently.
+   */
+  /**
+   * Keep the crew's copy of the profile in step with this one.
+   *
+   * Nothing wrote `profiles` before this: the name a crew saw was whatever the
+   * provider handed over at sign-up, and everything on this card was local.
+   * A picture makes that indefensible — there would be no way to send one — so
+   * the name and the initials go up with it.
+   *
+   * Debounced, because the name field fires on every keystroke and the crew
+   * does not need to watch somebody type. Guests have nowhere to send it.
+   */
+  useEffect(() => {
+    if (session.isGuest) return;
+
+    const timer = setTimeout(() => {
+      setProfileSync('saving');
+      saveMyProfile(session.id, {
+        name: preferences.playerName,
+        initials: initialsOf(preferences.playerName),
+        avatar: preferences.playerPhoto,
+      }).then(
+        () => setProfileSync('saved'),
+        // Not a banner: the profile on this device is unchanged and correct,
+        // and the crew will get it on the next edit or the next open.
+        () => setProfileSync('failed'),
+      );
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [session.id, session.isGuest, preferences.playerName, preferences.playerPhoto]);
+
+  async function readPhoto(file: File) {
+    setPhotoError(null);
+    setPhotoBusy(true);
+    try {
+      const photo = await toAvatarDataUrl(file);
+      if (!update({ playerPhoto: photo })) {
+        update({ playerPhoto: null });
+        setPhotoError(
+          'This browser would not store the picture — it is out of room, or set to block site data.',
+        );
+      }
+    } catch (err) {
+      setPhotoError(
+        err instanceof AvatarError ? err.message : 'That picture could not be read.',
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function readBackup(file: File) {
     setRestoreError(null);
@@ -174,14 +238,70 @@ export function SettingsScreen({
             size={52}
             square
             tint={colourOf(preferences.playerColour)}
+            photo={preferences.playerPhoto}
           />
-          <span className="grow">
+          <span className="grow" style={{ minWidth: 0 }}>
             <span className="profile__name">{preferences.playerName}</span>
             <span className="game-row__sub" style={{ display: 'block', marginTop: 2 }}>
               {t('This is what your crew sees.')}
             </span>
           </span>
         </div>
+
+        <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            className="btn-lg grow"
+            disabled={photoBusy}
+            onClick={() => photoRef.current?.click()}
+          >
+            <Icon name="camera" size={17} />
+            {photoBusy
+              ? t('Shrinking it…')
+              : preferences.playerPhoto
+                ? t('Change the photo')
+                : t('Use a photo')}
+          </button>
+          {preferences.playerPhoto && (
+            <button
+              type="button"
+              className="btn-lg btn-lg--narrow"
+              onClick={() => {
+                setPhotoError(null);
+                update({ playerPhoto: null });
+              }}
+            >
+              {t('Remove')}
+            </button>
+          )}
+        </div>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            // Cleared before the await, so picking the same file twice in a row
+            // still fires a change.
+            event.target.value = '';
+            if (file) void readPhoto(file);
+          }}
+        />
+
+        {photoError && (
+          <div className="note note--bad" style={{ marginTop: -4 }}>
+            {photoError}
+          </div>
+        )}
+
+        <p className="footnote" style={{ margin: '-6px 0 12px' }}>
+          {preferences.playerPhoto
+            ? tf('Cropped square and shrunk to {n} on this device. The mark below is hidden while a photo is set.', {
+                n: formatBytes(dataUrlBytes(preferences.playerPhoto)),
+              })
+            : t('Cropped to a square and shrunk on this device before it is stored anywhere.')}
+        </p>
 
         <label style={{ display: 'block' }}>
           <span className="hero__label">{t('Player name')}</span>
@@ -194,10 +314,30 @@ export function SettingsScreen({
           />
         </label>
 
-        <div className="hero__label" style={{ marginTop: 12 }}>
+        {!session.isGuest && profileSync !== 'idle' && (
+          <p className="footnote" style={{ margin: '0 0 8px' }}>
+            {profileSync === 'saving'
+              ? t('Sending it to your crew…')
+              : profileSync === 'saved'
+                ? t('Your crew sees this too.')
+                : t('Your crew has not got this yet — it will go with the next change.')}
+          </p>
+        )}
+
+        <div
+          className="hero__label"
+          style={{ marginTop: 12, opacity: preferences.playerPhoto ? 0.45 : 1 }}
+        >
           {t('Profile icon')}
         </div>
-        <div className="chips chips--wrap" role="group" aria-label={t('Profile icon')}>
+        <div
+          className="chips chips--wrap"
+          role="group"
+          aria-label={t('Profile icon')}
+          // Still choosable, because it is what comes back when the photo is
+          // removed — but dimmed, since nothing on screen is showing it.
+          style={{ opacity: preferences.playerPhoto ? 0.45 : 1 }}
+        >
           {AVATARS.map((glyph) => (
             <button
               key={glyph}
