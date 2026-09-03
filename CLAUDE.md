@@ -240,6 +240,37 @@ version numbers and a static server that can be pointed at either while a real
 service worker is installed against it. Neither bug is visible in a unit test,
 and neither was visible by hand.
 
+**Three settings that skip something, and nothing that only toggles.** The app
+already had a colour and an avatar; what it did not have was a way to stop
+paying for the same decision twice. `startScreen` is the tab the app opens on —
+somebody who opens this at the lane wants the rack and somebody who opens it on
+the train wants the board, and either way that tap is paid every launch.
+`scoringEntry` skips "how are you scoring this game?" for anyone who has settled
+on one of the two. `homeHouse` fills in the alley on the finishing step, which
+is the one piece of typing in the app and is asked for at the moment somebody
+least wants to type; Settings offers it as a datalist of the houses actually
+played, most-played first, which is `housesPlayed` rather than `houseStats`
+because a suggestion list wants the alley you *go to*, not the one you happen
+to bowl best at.
+
+Every default is the behaviour that existed before, so the app somebody already
+knows does not change because a setting now exists — there is a test that says
+so, including for a preferences object stored before these fields existed.
+
+Two things fell out of building it that are worth keeping. `scoringEntry` is
+read *once* into state rather than watched, so changing it on another screen
+mid-game cannot reach in and change how the game on screen is being entered.
+And the link under the two buttons is now one function, `footLink`, used by
+both entry modes: before the first ball it switches mode, after it discards.
+That has to be a swap and not a second line — the scoring step fits one screen
+with nothing to scroll, and this costs exactly 0px, measured. The first version
+of it changed only the rack's copy of that line, because the keypad had its own.
+
+The "Open on" chips are named after the tabs, which collided with
+`verify:app`: a bare `getByRole('button', { name: 'Home' })` matched two
+buttons and died on a strict-mode violation. The tab clicks now go through a
+`tab()` helper scoped to `.tabbar`, which is what they always meant.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.

@@ -51,7 +51,45 @@ export interface Preferences {
   autoShare: boolean;
   /** Which group auto-sharing posts to, when there is more than one. */
   autoShareGroupId: string | null;
+  /**
+   * The screen the app opens on.
+   *
+   * The dashboard is the right default and the wrong answer for a lot of
+   * people: somebody who opens this at the lane wants the rack, and somebody
+   * who opens it on the train wants the board. Both of those are a tap away,
+   * which is exactly the tap worth removing — it is paid every single time.
+   */
+  startScreen: StartScreen;
+  /**
+   * How a game starts.
+   *
+   * "Ask" is the default and stays the default, because the two modes record
+   * different things and the choice is worth making. But it is the same choice
+   * every game for anyone who has settled on one, and a question with a known
+   * answer is a question not worth asking.
+   */
+  scoringEntry: 'ask' | 'rack' | 'pad';
+  /**
+   * The alley usually bowled at, pre-filled on the finishing step.
+   *
+   * The house is what turns a pile of scores into per-house averages, and it
+   * is typed by hand on a phone at the end of a game — which is the moment
+   * somebody is least inclined to type. Most people bowl most of their games
+   * in one place; this fills that in and leaves it editable.
+   */
+  homeHouse: string;
 }
+
+/** Where the app can open. The tab bar, in the order it draws them. */
+export type StartScreen = 'home' | 'play' | 'history' | 'stats' | 'groups';
+
+export const START_SCREENS: { key: StartScreen; label: string }[] = [
+  { key: 'home', label: 'Home' },
+  { key: 'play', label: 'Play' },
+  { key: 'history', label: 'History' },
+  { key: 'stats', label: 'Stats' },
+  { key: 'groups', label: 'Crew' },
+];
 
 /**
  * The avatar tile's mark. The empty string means "use my initials", which is
@@ -89,6 +127,9 @@ export const DEFAULTS: Preferences = {
   onboardedAt: null,
   autoShare: false,
   autoShareGroupId: null,
+  startScreen: 'home',
+  scoringEntry: 'ask',
+  homeHouse: '',
 };
 
 const KEY = 'lane-log.preferences';

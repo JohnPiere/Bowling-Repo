@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { tf, useTranslation } from '../lib/i18n';
 import {
@@ -11,6 +11,8 @@ import {
 } from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { AvatarError, dataUrlBytes, toAvatarDataUrl } from '../lib/avatar';
+import { START_SCREENS } from '../lib/preferences';
+import { housesPlayed as housesPlayedIn } from '../lib/stats';
 import { forgetLastSync, forgetGames } from '../lib/cloud';
 import { anyFailed, failedSteps, runReset, type ResetStep } from '../lib/reset';
 import { reloadClean } from '../lib/recover';
@@ -79,6 +81,9 @@ export function SettingsScreen({
 }) {
   const { t } = useTranslation();
   const { preferences, update } = usePreferences();
+  // Offered under the alley field, so it is a pick rather than typing for
+  // anybody who already has a game in their season.
+  const housesPlayed = useMemo(() => housesPlayedIn(games), [games]);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -446,6 +451,82 @@ export function SettingsScreen({
             />
           ))}
         </div>
+      </div>
+
+      {/* Three settings, and each one removes something paid every time rather
+          than adding a switch for its own sake: a tap on the tab bar at every
+          launch, the same answer to the same question at every game, and the
+          name of the alley typed on a phone at the end of one. */}
+      <h2 className="section-title">{t('Make it yours')}</h2>
+      <div className="card">
+        <span className="hero__label">{t('Open on')}</span>
+        <div className="chips" role="group" aria-label={t('Open on')} style={{ marginTop: 5 }}>
+          {START_SCREENS.map((screen) => (
+            <button
+              key={screen.key}
+              type="button"
+              className="chip"
+              aria-pressed={preferences.startScreen === screen.key}
+              onClick={() => update({ startScreen: screen.key })}
+            >
+              {t(screen.label)}
+            </button>
+          ))}
+        </div>
+        <p className="footnote">
+          {t('Which screen Lane Log opens on. A link with a screen in it still wins.')}
+        </p>
+
+        <span className="hero__label">{t('Scoring a game')}</span>
+        <div className="chips" role="group" aria-label={t('Scoring a game')} style={{ marginTop: 5 }}>
+          {(
+            [
+              ['ask', 'Ask each time'],
+              ['rack', 'Tap the pins'],
+              ['pad', 'Count the pins'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className="chip"
+              aria-pressed={preferences.scoringEntry === key}
+              onClick={() => update({ scoringEntry: key })}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </div>
+        <p className="footnote">
+          {t(
+            'Skips the question at the start of every game. You can still switch before the first ball.',
+          )}
+        </p>
+
+        <label style={{ display: 'block' }}>
+          <span className="hero__label">{t('Usual alley')}</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={preferences.homeHouse}
+            onChange={(event) => update({ homeHouse: event.target.value })}
+            maxLength={60}
+            placeholder="Rose Bowl Lanes"
+            // Whatever this season was actually bowled at, so it is a pick
+            // rather than a piece of typing for anybody with a game already.
+            list="settings-houses"
+          />
+        </label>
+        <datalist id="settings-houses">
+          {housesPlayed.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t(
+            'Filled in when you finish a game, and editable there. It is what per-house averages are made of.',
+          )}
+        </p>
       </div>
 
       <h2 className="section-title">{t('Sharing')}</h2>

@@ -14,6 +14,7 @@ import {
   nextRollCursor,
   scoreGame,
 } from '../lib/scoring';
+import { usePreferences } from '../lib/preferences';
 import { describeSaveFailure } from '../lib/storage';
 import { fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
 
@@ -44,14 +45,27 @@ interface Props {
  * be undone without touching the database.
  */
 export function PlayScreen({ onSaved }: Props) {
-  const [started, setStarted] = useState(false);
-  const [entry, setEntry] = useState<Entry>('rack');
+  const { preferences } = usePreferences();
+  /**
+   * Somebody who has settled on one of the two modes is not asked.
+   *
+   * Read once rather than watched: changing the setting from another screen
+   * mid-game must not reach in and change how the game on screen is being
+   * entered. It applies to the next game, which is when it is asked again.
+   */
+  const [chosen] = useState(() => preferences.scoringEntry);
+  const skipChooser = chosen !== 'ask';
+
+  const [started, setStarted] = useState(skipChooser);
+  const [entry, setEntry] = useState<Entry>(chosen === 'pad' ? 'pad' : 'rack');
   const [rolls, setRolls] = useState<number[]>([]);
   /** Which pins each ball took. Only kept while scoring on the rack. */
   const [pinfalls, setPinfalls] = useState<number[][]>([]);
   /** Pins marked as down by the ball being entered, before it is committed. */
   const [pending, setPending] = useState<number[]>([]);
-  const [house, setHouse] = useState('');
+  // Seeded from the usual alley, and editable: most games are bowled in one
+  // place, and the house is what per-house averages are made of.
+  const [house, setHouse] = useState(() => preferences.homeHouse);
   const [note, setNote] = useState('');
   // When it was bowled. Seeded from the clock and editable, because a game is
   // often written up afterwards — in the car, or the next morning — and filing
@@ -125,11 +139,44 @@ export function PlayScreen({ onSaved }: Props) {
     setPinfalls((current) => current.slice(0, -1));
   }
 
+  /**
+   * The one link under the buttons, doing whichever job is worth doing.
+   *
+   * Before the first ball there is nothing to discard, and that is exactly when
+   * somebody wants the other entry mode — so it switches modes until a ball is
+   * down, and discards after. A swap rather than a second link, because the
+   * scoring step fits one screen with nothing to scroll and a new line here
+   * costs height the rack does not have to give. Switching before anything is
+   * entered is free: there is nothing recorded to convert.
+   *
+   * Both entry modes draw it, from here rather than each having a copy: they
+   * had one each, and the first version of this changed only the rack's.
+   */
+  function footLink() {
+    if (rolls.length > 0 || pending.length > 0) {
+      return (
+        <button type="button" className="linkbtn linkbtn--centred" onClick={discard}>
+          {t('Discard this game')}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="linkbtn linkbtn--centred"
+        onClick={() => setEntry(entry === 'rack' ? 'pad' : 'rack')}
+      >
+        {entry === 'rack' ? t('Just count the pins instead') : t('Tap the pins instead')}
+      </button>
+    );
+  }
+
   function discard() {
     setRolls([]);
     setPinfalls([]);
     setPending([]);
-    setStarted(false);
+    setStarted(skipChooser);
   }
 
   async function save() {
@@ -152,11 +199,11 @@ export function PlayScreen({ onSaved }: Props) {
       setRolls([]);
       setPinfalls([]);
       setPending([]);
-      setHouse('');
+      setHouse(preferences.homeHouse);
       setNote('');
       setDay(toDateInput(Date.now()));
       setTime(toTimeInput(Date.now()));
-      setStarted(false);
+      setStarted(skipChooser);
       onSaved(saved.id);
     } catch (err) {
       // Keep the rolls on screen: a failed save must not cost the game.
@@ -319,9 +366,7 @@ export function PlayScreen({ onSaved }: Props) {
           onUndo={() => setRolls((current) => current.slice(0, -1))}
         />
 
-        <button type="button" className="linkbtn linkbtn--centred" onClick={discard}>
-          {t('Discard this game')}
-        </button>
+        {footLink()}
       </>
     );
   }
@@ -388,9 +433,7 @@ export function PlayScreen({ onSaved }: Props) {
         </button>
       </div>
 
-      <button type="button" className="linkbtn linkbtn--centred" onClick={discard}>
-        {t('Discard this game')}
-      </button>
+      {footLink()}
     </div>
   );
 }

@@ -658,6 +658,21 @@ export function houseStats(games: Game[]): HouseStat[] {
   return stats.sort((a, b) => b.average - a.average || b.games - a.games);
 }
 
+/**
+ * The alleys this season was bowled at, the most-played first.
+ *
+ * For offering rather than for reading: `houseStats` ranks by average, which
+ * is the right order for a table and the wrong one for a list of suggestions —
+ * there, the alley somebody is most likely to mean is the one they go to most,
+ * not the one they happen to bowl best at.
+ */
+export function housesPlayed(games: Game[]): string[] {
+  return houseStats(games)
+    .slice()
+    .sort((a, b) => b.games - a.games || b.lastAt - a.lastAt)
+    .map((house) => house.house);
+}
+
 export interface PositionStat {
   /** Which game of the night: 1 for the first, 2 for the second. */
   position: number;

@@ -7,7 +7,7 @@ import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/nav
 import { translate, useTranslation } from './lib/i18n';
 import type { Language } from './lib/preferences';
 import { OnboardingScreen } from './screens/OnboardingScreen';
-import { colourOf, usePreferences } from './lib/preferences';
+import { colourOf, loadPreferences, usePreferences } from './lib/preferences';
 import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
 import { applyUpdate, onUpdateWaiting } from './lib/updates';
@@ -537,5 +537,8 @@ function initialRoute(): Route {
     return { name: requested as RouteName } as Route;
   }
   if (requested === 'scan') return { name: 'scan' };
-  return { name: 'home' };
+
+  // A link wins over a preference — `?screen=` is somebody being specific
+  // right now, and the browser checks drive the app with it.
+  return { name: loadPreferences().startScreen };
 }

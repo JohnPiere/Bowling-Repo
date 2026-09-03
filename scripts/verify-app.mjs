@@ -32,6 +32,18 @@ const OUT = 'app-check';
  */
 const BACKUP_INPUT = 'input[type=file][accept="application/json,.json"]';
 
+/**
+ * A tab, by name, in the tab bar and nowhere else.
+ *
+ * `getByRole('button', { name: 'Home' })` used to be unambiguous and is not
+ * any more: Settings has an "Open on" chip per tab, named after the tab it
+ * opens, so a bare name matches two buttons and the run dies on a strict-mode
+ * violation. Scoping to `.tabbar` says which one was always meant.
+ */
+function tab(page, name) {
+  return page.locator('.tabbar').getByRole('button', { name, exact: true });
+}
+
 const results = [];
 
 function record(name, ok, detail = '') {
@@ -172,7 +184,7 @@ async function newContext(browser, options = {}) {
 
 /** Bowl a full game of strikes through the counting pad. */
 async function bowlPerfectGame(page) {
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await tab(page, 'Play').click();
   const start = page.getByRole('button', { name: 'Just count the pins' });
   if (await start.count()) await start.click();
   for (let i = 0; i < 12; i++) {
@@ -243,7 +255,7 @@ async function signIn(page) {
   }, ref);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Crew', exact: true }).click();
+  await tab(page, 'Crew').click();
   await page.waitForSelector('text=Your groups');
 }
 
@@ -347,7 +359,7 @@ async function main() {
     });
 
     await check('the rack records which pins fell, and names the leave', async () => {
-      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await tab(page, 'Play').click();
       await page.getByRole('button', { name: /Tap the pins/ }).click();
       await page.waitForSelector('.rack__deck');
 
@@ -554,7 +566,7 @@ async function main() {
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 
     await check('groups are gated for a guest, with a way forward', async () => {
-      await page.getByRole('button', { name: 'Crew', exact: true }).click();
+      await tab(page, 'Crew').click();
       await page.waitForSelector('text=Groups need an account');
       assert(
         (await page.getByRole('button', { name: 'Link an account' }).count()) > 0,
@@ -610,7 +622,7 @@ async function main() {
     await check('a saved game can be corrected, and a bad correction refused', async () => {
       // Bowl a game whose first frame is wrong, the way a misread scan or a
       // mis-tap leaves one.
-      await page.getByRole('button', { name: 'Play', exact: true }).click();
+      await tab(page, 'Play').click();
       const start = page.getByRole('button', { name: 'Just count the pins' });
       if (await start.count()) await start.click();
       for (let i = 0; i < 2; i++) {
@@ -624,7 +636,7 @@ async function main() {
       await page.getByRole('button', { name: 'Save this game' }).click();
       await page.waitForTimeout(700);
 
-      await page.getByRole('button', { name: 'Home', exact: true }).click();
+      await tab(page, 'Home').click();
       await page.locator('.gamecard').first().click();
       await page.waitForSelector('text=Correct it');
 
@@ -765,7 +777,7 @@ async function main() {
       // check ran before it, which stopped being true the moment that one
       // could be skipped.
       await signIn(page);
-      await page.getByRole('button', { name: 'Crew', exact: true }).click();
+      await tab(page, 'Crew').click();
       await page.getByRole('button', { name: 'Join with a code' }).click();
       await page.getByRole('button', { name: 'QR code' }).click();
       await page.waitForSelector('svg[aria-label*="QR"]', { timeout: 10000 });
@@ -810,7 +822,7 @@ async function main() {
     await check('a scanned join link opens with the code already in', async () => {
       await page.goto(`${BASE}/?join=TCRW31`, { waitUntil: 'domcontentloaded' });
       await signIn(page);
-      await page.getByRole('button', { name: 'Crew', exact: true }).click();
+      await tab(page, 'Crew').click();
       await page.getByRole('button', { name: 'Join with a code' }).click();
 
       await page.waitForSelector('.code-input');
@@ -824,7 +836,7 @@ async function main() {
     });
 
     await checkOnline(page, 'joining by code validates against the group', async () => {
-      await page.getByRole('button', { name: 'Crew', exact: true }).click();
+      await tab(page, 'Crew').click();
       await page.getByRole('button', { name: 'Join with a code' }).click();
       await page.locator('.code-input').fill('nope99');
       await page.waitForTimeout(300);
@@ -1098,7 +1110,7 @@ async function main() {
       await other.waitForSelector('text=Restored 7 games');
       assert((await countGames()) === 7, 'the games were not stored');
 
-      await other.getByRole('button', { name: 'Home', exact: true }).click();
+      await tab(other, 'Home').click();
       await other.waitForSelector('.gamecard');
       // The hero counts up to its value, so wait for it to settle rather than
       // reading whatever frame the count happens to be on.
@@ -1197,7 +1209,7 @@ async function main() {
       });
 
       await page.reload({ waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: 'Stats', exact: true }).click();
+      await tab(page, 'Stats').click();
       await page.waitForTimeout(1000);
 
       const root = (
@@ -1342,7 +1354,7 @@ async function main() {
       const onLoad = await page.evaluate(() => document.activeElement?.tagName);
       assert(onLoad !== 'MAIN', 'focus was taken on first load, which is its own rudeness');
 
-      await page.getByRole('button', { name: 'Stats', exact: true }).click();
+      await tab(page, 'Stats').click();
       await page.waitForTimeout(400);
       const after = await page.evaluate(() => ({
         tag: document.activeElement?.tagName,

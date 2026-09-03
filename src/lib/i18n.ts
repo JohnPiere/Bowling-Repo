@@ -357,6 +357,23 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── Making it yours ──
+  'Just count the pins instead': '代わりに本数だけ入力',
+  'Tap the pins instead': '代わりにピンをタップ',
+  'Make it yours': '自分に合わせる',
+  'Open on': '起動時の画面',
+  'Which screen Lane Log opens on. A link with a screen in it still wins.':
+    'アプリを開いたときの画面です。画面を指定したリンクはこちらが優先されます。',
+  'Scoring a game': 'ゲームの入力方法',
+  'Ask each time': '毎回たずねる',
+  'Tap the pins': 'ピンをタップ',
+  'Count the pins': '本数だけ',
+  'Skips the question at the start of every game. You can still switch before the first ball.':
+    'ゲーム開始時の質問を省きます。1投目の前なら切り替えられます。',
+  'Usual alley': 'よく行くレーン',
+  'Filled in when you finish a game, and editable there. It is what per-house averages are made of.':
+    'ゲーム終了時に自動で入力され、その場で変更できます。レーン別平均の集計に使われます。',
+
   // ── Coming back signed in ──
   'Signed in': 'サインインしました',
   'You are signed in as {name}.': '{name} としてサインインしています。',
