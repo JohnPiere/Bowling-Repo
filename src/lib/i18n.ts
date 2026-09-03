@@ -357,6 +357,16 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── A new version ──
+  'A new version is ready.': '新しいバージョンがあります。',
+  'It will be applied when you finish this game, or now if you would rather.':
+    'このゲームを終えると適用されます。すぐに適用することもできます。',
+  'Update now': '今すぐ更新',
+  'Check for updates': 'アップデートを確認',
+  'Looking…': '確認中…',
+  'Clears this device’s copy of the app and loads it again. Your games, settings and crews are not touched.':
+    'この端末に保存されたアプリのコピーを消して読み込み直します。ゲーム・設定・クルーはそのまま残ります。',
+
   // ── When the app's own files have moved ──
   'Reload the app': 'アプリを再読み込み',
   'The app was updated while it was open. Reload the page and try again.':

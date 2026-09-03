@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { FrameStrip } from '../components/FrameStrip';
 import { PinKeypad } from '../components/PinKeypad';
@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon';
 import { saveGame } from '../lib/db';
 import { frameStrip } from '../lib/framestrip';
 import { deckFor } from '../lib/pins';
+import { setBowling } from '../lib/updates';
 import {
   FRAMES_PER_GAME,
   isGameComplete,
@@ -72,6 +73,24 @@ export function PlayScreen({ onSaved }: Props) {
   // so a re-rack after a mark happens on its own.
   const standing = deckFor(rolls, pinfalls);
   const strip = frameStrip(rolls, pinfalls, pending, cursor?.frame ?? null);
+
+  /**
+   * Hold a waiting update back while there is a game on screen.
+   *
+   * These rolls are component state until the game is saved, so a reload here
+   * is the one place in the app that loses something. Everywhere else it costs
+   * a scroll position, which is why the update is taken immediately there.
+   */
+  useEffect(() => {
+    setBowling(rolls.length > 0 || pending.length > 0);
+  }, [rolls.length, pending.length]);
+
+  // Clearing on the way out matters as much as setting it: leaving the play
+  // screen mid-game would otherwise hold every future update for the life of
+  // the tab. It has to be its own effect with no dependencies — as the cleanup
+  // of the one above it ran on *every ball*, and a held update taken between
+  // two frames is exactly the reload this is here to prevent.
+  useEffect(() => () => setBowling(false), []);
 
   function knockDown(pin: number) {
     setPending((current) =>

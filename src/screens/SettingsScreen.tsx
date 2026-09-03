@@ -13,6 +13,7 @@ import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { AvatarError, dataUrlBytes, toAvatarDataUrl } from '../lib/avatar';
 import { forgetLastSync, forgetGames } from '../lib/cloud';
 import { anyFailed, failedSteps, runReset, type ResetStep } from '../lib/reset';
+import { reloadClean } from '../lib/recover';
 import { forgetGuest } from '../lib/session';
 import { Avatar } from '../components/Avatar';
 import { CloudBackup } from '../components/CloudBackup';
@@ -88,6 +89,7 @@ export function SettingsScreen({
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetFailures, setResetFailures] = useState<ResetStep[] | null>(null);
+  const [checking, setChecking] = useState(false);
   const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
@@ -580,6 +582,28 @@ export function SettingsScreen({
           <span className="muted">{t('Version')}</span>
           <span className="tnum">{__APP_VERSION__}</span>
         </div>
+
+        {/* The lever for when the automatic path has not worked. Clearing the
+            cached build and reloading is the same thing the boot guard does
+            when the app cannot start at all — it is the copy of the *program*
+            that goes, never the games. */}
+        <button
+          type="button"
+          className="btn-lg"
+          style={{ marginTop: 11 }}
+          disabled={checking}
+          onClick={() => {
+            setChecking(true);
+            void reloadClean();
+          }}
+        >
+          {checking ? t('Looking…') : t('Check for updates')}
+        </button>
+        <p className="footnote">
+          {t(
+            'Clears this device’s copy of the app and loads it again. Your games, settings and crews are not touched.',
+          )}
+        </p>
         <p className="footnote" style={{ marginBottom: 0, marginTop: 10 }}>
           {t(
             'Lane Log scores, scans and keeps your season on this device, with no account and no signal. A copy on the server is something you switch on, and a file export works without one.',

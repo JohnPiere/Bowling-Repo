@@ -10,6 +10,7 @@ import { OnboardingScreen } from './screens/OnboardingScreen';
 import { usePreferences } from './lib/preferences';
 import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
+import { applyUpdate, onUpdateWaiting } from './lib/updates';
 import { AuthScreen } from './screens/AuthScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { CreateGroupScreen } from './screens/CreateGroupScreen';
@@ -48,6 +49,14 @@ export function App() {
   const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
+  /**
+   * A new version is installed and waiting because a game is being bowled.
+   *
+   * Every other case takes it on the spot; this banner is only ever seen
+   * mid-game, which is why it offers rather than interrupts.
+   */
+  const [updateWaiting, setUpdateWaiting] = useState(false);
+  useEffect(() => onUpdateWaiting(setUpdateWaiting), []);
 
   const refresh = useCallback(() => {
     listGames().then(
@@ -163,6 +172,20 @@ export function App() {
           </button>
         )}
       </header>
+
+      {updateWaiting && (
+        <div style={{ padding: '10px var(--gutter) 0' }}>
+          <div className="note note--info" style={{ marginBottom: 0 }}>
+            <strong>{t('A new version is ready.')}</strong>
+            <p style={{ margin: '4px 0 8px' }}>
+              {t('It will be applied when you finish this game, or now if you would rather.')}
+            </p>
+            <button type="button" className="btn-lg" onClick={applyUpdate}>
+              {t('Update now')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {storageError && (
         <div style={{ padding: '10px var(--gutter) 0' }}>
