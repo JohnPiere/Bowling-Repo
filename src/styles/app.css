@@ -2519,3 +2519,48 @@ body {
   .dialog { align-items: flex-start; overflow: auto; }
   .dialog__body { margin-top: 12px; margin-bottom: 12px; }
 }
+
+/*
+ * The counting table.
+ *
+ * A real <table>, because it is one: two columns of numbers against a row of
+ * labels, and a screen reader should be able to say "Strikes, all time, four
+ * hundred and twelve" rather than reading three unrelated cells. `tabular-nums`
+ * comes from `.tnum` on the cells — the handoff requires it wherever numbers
+ * change, and a column of counts that jitters as it grows is exactly that.
+ */
+.tally {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tally__head {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-neutral-500);
+  text-align: right;
+  padding: 0 0 6px;
+  white-space: nowrap;
+}
+.tally__label {
+  font-weight: 400;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-neutral-300);
+  padding: 5px 8px 5px 0;
+}
+.tally__value {
+  font-size: 15px;
+  text-align: right;
+  padding: 5px 0 5px 14px;
+  /* The widest number decides the column, so it stops shifting as it grows. */
+  min-width: 4.5ch;
+}
+/* The month is the smaller claim of the two and reads as the aside it is. */
+.tally__value--now { color: var(--color-neutral-300); }
+.tally tbody tr + tr .tally__label,
+.tally tbody tr + tr .tally__value {
+  border-top: 1px solid var(--color-divider);
+}

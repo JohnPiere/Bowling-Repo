@@ -360,6 +360,23 @@ export const JA: Record<string, string> = {
   'That is not a date. The game keeps the one it has.':
     '日付として読み取れません。ゲームは元の日付のままになります。',
 
+  // ── Counting up ──
+  'Counted up': '累計',
+  'All time': '通算',
+  'This month': '今月',
+  'Balls thrown': '投球数',
+  'Pins knocked down': '倒したピン',
+  'Gutters and misses': 'ガター・ミス',
+  'Pins are pins knocked down, not score — a perfect game is 300 points and 120 pins. The tenth counts as three strikes when you throw three.':
+    'ピン数は倒したピンの本数で、スコアではありません。パーフェクトは300点で120ピンです。10フレームは3投すれば3ストライクと数えます。',
+  'From the games you shared here, not your whole season.':
+    'ここで共有したゲームのみの集計です。シーズン全体ではありません。',
+  'From the games {name} shared here, not their whole season.':
+    '{name} がここで共有したゲームのみの集計です。',
+  'left {n}×, picked up {c}×': '{n}回中 {c}回カバー',
+  'Your worst is the {label}: {miss}% of the time it costs you the frame.':
+    '最も苦手なのは{label}です。{miss}%の確率でフレームを落としています。',
+
   // ── Making it yours ──
   'Just count the pins instead': '代わりに本数だけ入力',
   'Tap the pins instead': '代わりにピンをタップ',

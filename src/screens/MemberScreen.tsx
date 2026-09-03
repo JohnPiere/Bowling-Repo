@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import type { Group, SharedGame } from '../lib/social';
 import { loadSharedGames } from '../lib/social';
 import { METRICS, rankRoster } from '../lib/leaderboard';
+import { TallyCard } from '../components/TallyCard';
+import { tally, thisMonth } from '../lib/stats';
+import { formatMonthYear } from '../lib/datetime';
 
 interface Props {
   group: Group;
@@ -93,6 +96,29 @@ export function MemberScreen({ group, memberId, me }: Props) {
           );
         })}
       </div>
+
+      {shared.length > 0 && (
+        <>
+          {/* Counted from what they posted here and nothing else — the same
+              rule the list below follows. A member's own phone has the rest of
+              their season on it and this screen has no business with it, so
+              these numbers are honestly smaller than theirs and the footnote
+              says which. */}
+          <h2 className="section-title">{t('Counted up')}</h2>
+          <TallyCard
+            lifetime={tally(shared)}
+            month={thisMonth(shared)}
+            monthLabel={formatMonthYear(Date.now())}
+          />
+          <p className="footnote" style={{ margin: '-6px 0 4px' }}>
+            {member.isMe
+              ? t('From the games you shared here, not your whole season.')
+              : tf('From the games {name} shared here, not their whole season.', {
+                  name: member.name.split(' ')[0],
+                })}
+          </p>
+        </>
+      )}
 
       <h2 className="section-title">{t('Shared with this group')}</h2>
       {shared.length === 0 ? (

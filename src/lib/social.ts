@@ -76,6 +76,16 @@ export interface SharedGame {
   youHearted: boolean;
   /** Yours can be retracted; it stays in your own history either way. */
   isYours?: boolean;
+  /**
+   * The balls, and when they were thrown.
+   *
+   * Carried so a member's own page can count their season the same way the
+   * analytics screen counts yours. Not `pinfalls` — leaves are not shared, and
+   * a crew is not an audit — so a member's page can show frames and strikes
+   * and never what they left.
+   */
+  rolls: number[];
+  playedAt: number;
 }
 
 // ── Rows, as the database has them ─────────────────────────────────────────
@@ -381,6 +391,8 @@ export function toSharedGame(
     // not to do, in the one place that had gone on doing it.
     when: formatDay(Date.parse(row.played_at)),
     alley: row.house ?? '',
+    rolls: row.rolls,
+    playedAt: Date.parse(row.played_at),
     score: row.total,
     strikes: card.frames.filter((frame) => frame.isStrike).length,
     spares: card.frames.filter((frame) => frame.isSpare).length,

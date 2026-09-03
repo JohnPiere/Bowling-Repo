@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { Achievements } from '../components/Achievements';
+import { TallyCard } from '../components/TallyCard';
 import { Icon } from '../components/Icon';
 import { FirstBallChart } from '../components/charts/FirstBallChart';
 import { OutcomeSplitChart } from '../components/charts/OutcomeSplitChart';
@@ -26,9 +27,12 @@ import {
   practiceTargets,
   RANGES,
   spareBreakdown,
+  splitRecords,
   splitSummary,
   strikeRuns,
   summarise,
+  tally,
+  thisMonth,
   type MetricKey,
   type RangeKey,
 } from '../lib/stats';
@@ -91,6 +95,18 @@ export function StatsScreen({
   const targets = useMemo(() => practiceTargets(inRange), [inRange]);
   const positions = useMemo(() => positionStats(inRange), [inRange]);
   const houses = useMemo(() => houseStats(inRange), [inRange]);
+  const splitsLeft = useMemo(() => splitRecords(inRange, 8), [inRange]);
+  // Ranked by what it costs rather than by how often it happens, which is the
+  // other question the same list answers.
+  const worstSplit = useMemo(
+    () => [...splitsLeft].sort((a, b) => b.missRate - a.missRate || b.times - a.times)[0],
+    [splitsLeft],
+  );
+  // Counted over *everything*, deliberately ignoring the range picker above:
+  // "how many balls have I thrown" is a lifetime question, and a range chip
+  // silently cutting it to the last month would make it a different one.
+  const counted = useMemo(() => tally(games), [games]);
+  const countedThisMonth = useMemo(() => thisMonth(games), [games]);
 
   if (summary.games === 0) {
     return (
@@ -371,6 +387,48 @@ export function StatsScreen({
         </>
       )}
 
+      {splitsLeft.length > 0 && (
+        <>
+          {/* Splits get their own section rather than a colour in the list
+              above: that list is ranked by how often a leave happens, so it is
+              headed by the ten pin and the head pin and a split rarely reaches
+              it. Which split keeps happening to you is a question the list
+              cannot answer. */}
+          <h2 className="section-title">{t('Splits')}</h2>
+          <div className="card">
+            {splitsLeft.map((split) => (
+              <div key={split.pins.join('-')} className="leave-row">
+                <span className="grow">
+                  <span style={{ display: 'block', fontSize: 13 }}>{split.label}</span>
+                  <span className="muted tnum">
+                    {tf('left {n}×, picked up {c}×', { n: split.times, c: split.converted })}
+                  </span>
+                </span>
+                <span className="leave-row__bar">
+                  <span
+                    className="leave-row__fill"
+                    style={{ width: `${Math.max(2, split.conversionRate)}%` }}
+                  />
+                </span>
+                <span className="tnum" style={{ fontSize: 13, minWidth: 34, textAlign: 'right' }}>
+                  {split.conversionRate}%
+                </span>
+              </div>
+            ))}
+
+            {/* The bar is the chance of clearing it. This is the other half of
+                the same number, and it is the half that decides what to
+                practise — nobody works on the split they already convert. */}
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {tf('Your worst is the {label}: {miss}% of the time it costs you the frame.', {
+                label: worstSplit.label,
+                miss: worstSplit.missRate,
+              })}
+            </p>
+          </div>
+        </>
+      )}
+
       {targets.length > 0 && (
         <>
           <h2 className="section-title">{t('What to work on')}</h2>
@@ -468,6 +526,13 @@ export function StatsScreen({
       )}
 
       <Achievements badges={badges} />
+
+      <h2 className="section-title">{t('Counted up')}</h2>
+      <TallyCard
+        lifetime={counted}
+        month={countedThisMonth}
+        monthLabel={formatMonthYear(Date.now())}
+      />
 
       <h2 className="section-title">{t('First ball')}</h2>
       <div className="card">

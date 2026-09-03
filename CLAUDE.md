@@ -310,6 +310,34 @@ stop — a phone set to English put "Aug 31" in the middle of a Japanese board.
 It goes through `formatDay` now, and nothing in `src/` calls the browser's
 locale any more.
 
+**Counting is a different question from averaging, and the labels have to say
+so.** Everything else on the analytics screen is a rate: it moves both ways and
+says how somebody is bowling now. `tally` says how much has been bowled, which
+only ever goes up, and two of its definitions will be misread unless they are
+spelled out on the card itself:
+
+- **Pins means pinfall, not score.** A perfect game is 300 points and 120 pins.
+  `Summary.totalPins` next door is a sum of *scores* despite its name, so
+  anything drawing both has to say which it means.
+- **Strikes are counted off the sheet's marks**, via `frameMarks`, so a perfect
+  game is twelve. `ballOutcomes` counts the same game as ten frames, on
+  purpose, because its shares have to add to one. Both are right for their own
+  question and they must never be drawn beside each other unlabelled.
+
+`TallyCard` is a real `<table>` because it is one, and it is shared with a
+crew member's page — where it counts *only what that member shared*, which is
+all anybody else can see of them. `SharedGame` carries `rolls` and `playedAt`
+for that and deliberately not `pinfalls`: leaves are not shared, so a member's
+page can show frames and strikes and never what they left.
+
+**Splits get their own section, because the leave list cannot answer the
+question.** "What you leave" is ranked by how often a leave happens, which puts
+the ten pin and the head pin at the top and a split rarely on the screen at
+all. `splitRecords` is splits only, still ranked by frequency — what keeps
+happening to you — with both the conversion rate and the miss rate, because
+"I get a third of these" and "this costs me two frames in three" are different
+sentences and a reader should not have to do the subtraction.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.
