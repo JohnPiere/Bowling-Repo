@@ -9,7 +9,7 @@
 import type { Game } from './db';
 import { groupByDay } from './history';
 import { describeLeave, isSplit, leavesFromPinfalls } from './pins';
-import { FRAMES_PER_GAME, scoreGame, type Frame } from './scoring';
+import { FRAMES_PER_GAME, frameMarks, scoreGame, type Frame } from './scoring';
 
 export type RangeKey = 'g5' | 'd30' | 'd90' | 'd180' | 'all';
 
@@ -169,6 +169,174 @@ export function bestStrikeRun(games: Game[]): number {
 }
 
 
+/**
+ * Anything that has been bowled, whoever bowled it.
+ *
+ * A structural type rather than `Game`, because the same counting has to work
+ * on a crew member's *shared* games — which is all anybody else can see of
+ * them — and those are rows from the server, not records from this phone.
+ */
+export interface Bowled {
+  rolls: number[];
+  playedAt: number;
+  isComplete?: boolean;
+}
+
+/**
+ * The running totals of a bowling life.
+ *
+ * Every field here is a count of something that happened, which is what makes
+ * them worth keeping: an average moves up and down and says how you are
+ * bowling, while "eleven thousand balls" only ever goes up and says how much
+ * you have bowled. They answer different questions and the second one has no
+ * other home in the app.
+ */
+export interface Tally {
+  /** Games started, finished or not. */
+  games: number;
+  /** Games with a tenth frame in them. Averages are over these. */
+  finished: number;
+  /** Frames with at least one ball in them. */
+  frames: number;
+  /** Every ball thrown, the tenth's bonus balls included. */
+  balls: number;
+  /**
+   * Pins knocked down — pinfall, not score.
+   *
+   * A perfect game is 300 points and *120 pins*, and the difference is the
+   * bonuses. `Summary.totalPins` next door is a sum of scores despite its
+   * name, so anything drawing both has to say which it means or the two look
+   * like a bug.
+   */
+  pins: number;
+  /**
+   * Strikes *thrown*, not frames opened with one.
+   *
+   * A perfect game is twelve strikes, and anybody counting their own will say
+   * twelve — the tenth is three of them. `ballOutcomes` next door counts the
+   * same game as ten, on purpose, because it is working out percentages and
+   * its shares have to add to one. Both are right for their own question and
+   * they must never be drawn beside each other unlabelled.
+   */
+  strikes: number;
+  /** Spares thrown, the tenth's included, on the same basis. */
+  spares: number;
+  /** Frames that finished with pins still up. */
+  opens: number;
+  /**
+   * Balls that took nothing down.
+   *
+   * Not "gutters" exactly, and deliberately not called that: a ball in the
+   * channel and a spare attempt that missed everything are the same 0 in a
+   * score line, and nothing recorded here can separate them.
+   */
+  zeroBalls: number;
+  high: number | null;
+  average: number | null;
+}
+
+const EMPTY_TALLY: Tally = {
+  games: 0,
+  finished: 0,
+  frames: 0,
+  balls: 0,
+  pins: 0,
+  strikes: 0,
+  spares: 0,
+  opens: 0,
+  zeroBalls: 0,
+  high: null,
+  average: null,
+};
+
+/** Add up everything that was bowled. */
+export function tally(bowled: Bowled[]): Tally {
+  const out: Tally = { ...EMPTY_TALLY };
+  const finishedScores: number[] = [];
+
+  for (const one of bowled) {
+    out.games += 1;
+    out.balls += one.rolls.length;
+
+    for (const pins of one.rolls) {
+      out.pins += pins;
+      if (pins === 0) out.zeroBalls += 1;
+    }
+
+    const card = scoreGame(one.rolls);
+    for (const frame of card.frames) {
+      if (frame.rolls.length === 0) continue;
+      out.frames += 1;
+
+      // Counted off the marks the sheet would show, which is what makes the
+      // tenth come out as three strikes rather than one. `frameMarks` already
+      // knows when a ten is a strike and when it is a spare.
+      for (const mark of frameMarks(frame)) {
+        if (mark === 'X') out.strikes += 1;
+        else if (mark === '/') out.spares += 1;
+      }
+
+      if (frame.isComplete && !frame.isStrike && !frame.isSpare) out.opens += 1;
+    }
+
+    // The scorer decides what finished means, not the stored flag: a game
+    // restored or synced from elsewhere has been rescored from its rolls
+    // anyway, and a flag that disagreed with them would put a half-game into
+    // an average.
+    if (card.isComplete) {
+      out.finished += 1;
+      finishedScores.push(card.total);
+    }
+  }
+
+  if (finishedScores.length > 0) {
+    out.high = Math.max(...finishedScores);
+    out.average = Math.round(finishedScores.reduce((a, b) => a + b, 0) / finishedScores.length);
+  }
+
+  return out;
+}
+
+export interface MonthTally extends Tally {
+  /** `YYYY-MM`, for keying and sorting. */
+  month: string;
+  /** Midnight on the first, for formatting the month's name. */
+  at: number;
+}
+
+/**
+ * The same totals, a month at a time, most recent first.
+ *
+ * Months with nothing bowled are absent rather than zero: a run of empty rows
+ * for a winter nobody bowled says less than the gap between two dates does.
+ */
+export function monthlyTallies(bowled: Bowled[]): MonthTally[] {
+  const byMonth = new Map<string, Bowled[]>();
+
+  for (const one of bowled) {
+    const date = new Date(one.playedAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const list = byMonth.get(key);
+    if (list) list.push(one);
+    else byMonth.set(key, [one]);
+  }
+
+  return [...byMonth.entries()]
+    .map(([month, games]) => {
+      const [year, m] = month.split('-').map(Number);
+      return { ...tally(games), month, at: new Date(year, m - 1, 1).getTime() };
+    })
+    .sort((a, b) => b.at - a.at);
+}
+
+/** This calendar month's totals, which is the counter people watch. */
+export function thisMonth(bowled: Bowled[], now = Date.now()): Tally {
+  const date = new Date(now);
+  const start = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime();
+  return tally(bowled.filter((one) => one.playedAt >= start && one.playedAt < end));
+}
+
 export interface LeaveRecord {
   /** The pins that stood, sorted. */
   pins: number[];
@@ -194,7 +362,7 @@ export function leaveRecords(games: Game[]): LeaveRecord[] {
   for (const game of games) {
     if (!game.pinfalls?.length) continue;
 
-    const leaves = leavesFromPinfalls(game.pinfalls);
+    const leaves = leavesFromPinfalls(game.pinfalls, game.rolls);
     const frames = scoreGame(game.rolls).frames;
 
     // Which ball index starts each frame, so a leave can be tied to the frame
@@ -256,6 +424,43 @@ export function splitSummary(games: Game[]): SplitSummary {
   };
 }
 
+
+export interface SplitRecord extends LeaveRecord {
+  /** 0..100 — how often this split was picked up. */
+  conversionRate: number;
+  /**
+   * 0..100 — the same number the other way round.
+   *
+   * Both, because they are not the same question. "I convert the 3-10 a third
+   * of the time" is a thing to be pleased about; "the 3-10 costs me the frame
+   * two times in three" is the one that decides what to practise, and a reader
+   * should not have to do the subtraction to get it.
+   */
+  missRate: number;
+}
+
+/**
+ * Which splits come up, most often first, and how each one goes.
+ *
+ * Ordered by how often it happens rather than by how badly it goes, because
+ * the question this answers is "what keeps happening to me". A 7-10 converted
+ * none of one time is a worse *rate* than anything else here and is not worth
+ * a line above a 3-10 left twenty times.
+ *
+ * Only games scored on the rack carry the pin data this needs; the rest are
+ * silently absent, which `splitSummary().framesWithPins` is there to say.
+ */
+export function splitRecords(games: Game[], limit?: number): SplitRecord[] {
+  const splits = leaveRecords(games)
+    .filter((record) => record.isSplit)
+    .map((record) => ({
+      ...record,
+      conversionRate: Math.round((record.converted / record.times) * 100),
+      missRate: Math.round(((record.times - record.converted) / record.times) * 100),
+    }));
+
+  return limit === undefined ? splits : splits.slice(0, limit);
+}
 
 /* ── The metric the trend chart plots ─────────────────────────────────────
  *
@@ -466,7 +671,7 @@ export function spareBreakdown(games: Game[]): SpareBreakdown {
   for (const game of games) {
     if (!game.pinfalls) continue;
     const card = scoreGame(game.rolls);
-    const leaves = leavesFromPinfalls(game.pinfalls);
+    const leaves = leavesFromPinfalls(game.pinfalls, game.rolls);
 
     card.frames.slice(0, FRAMES_PER_GAME).forEach((frame, i) => {
       if (!frame.isSpare) return;
@@ -536,7 +741,7 @@ export function conversionByType(games: Game[]): ConversionByType {
   for (const game of games) {
     if (!game.pinfalls) continue;
     const card = scoreGame(game.rolls);
-    const leaves = leavesFromPinfalls(game.pinfalls);
+    const leaves = leavesFromPinfalls(game.pinfalls, game.rolls);
 
     card.frames.slice(0, FRAMES_PER_GAME).forEach((frame, i) => {
       // A strike leaves nothing, so it was never a spare attempt.

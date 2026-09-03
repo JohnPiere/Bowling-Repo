@@ -122,19 +122,45 @@ export function describeLeave(standing: number[]): string {
 }
 
 /**
- * Rebuild what stood before each ball, from a game's pinfalls.
+ * Rebuild what stood after each ball, from a game's pinfalls.
  *
- * `pinfalls` holds the pins taken by each ball in order. The rack resets after
- * a strike or a spare, and in the tenth after any mark.
+ * `pinfalls` holds the pins taken by each ball in order, and `rolls` says where
+ * the frames divide — **which is why it is a parameter**. This had the same bug
+ * `deckFor` below had, and it survived the fix to that one: it re-racked only
+ * when the deck happened to *empty*, so an open frame carried its survivors
+ * into the next.
+ *
+ * It is worse here than it was there, because nothing forces the answer back to
+ * a plausible size. Leave the 7 pin open in one frame, then throw at a full
+ * rack in the next and leave the 7-10: the model still believes the 7 is lying
+ * down, removes nothing for it, and records a **10 pin** where a **7-10 split**
+ * happened. Every leave after every open frame is suspect, and open frames are
+ * most frames for most bowlers — so `leaveRecords`, `splitSummary`,
+ * `practiceTargets`, `spareBreakdown` and `conversionByType` were all reading a
+ * rack that had not been swept.
+ *
+ * Within the tenth the empty-deck reset is still right, and still here: three
+ * balls, and a mark on any of them stands them all up again.
  */
-export function leavesFromPinfalls(pinfalls: number[][]): number[][] {
+export function leavesFromPinfalls(pinfalls: number[][], rolls: number[]): number[][] {
+  // Which ball index opens each frame. A frame boundary is the only thing that
+  // re-racks; the scorer owns where they fall, including the tenth.
+  const opens = new Set<number>();
+  let at = 0;
+  for (const frame of scoreGame(rolls).frames) {
+    opens.add(at);
+    at += frame.rolls.length;
+  }
+
   const leaves: number[][] = [];
   let standing = [...FULL_RACK];
 
-  for (const ball of pinfalls) {
-    standing = standingAfter(standing, ball);
+  for (let ball = 0; ball < pinfalls.length; ball++) {
+    if (opens.has(ball)) standing = [...FULL_RACK];
+    standing = standingAfter(standing, pinfalls[ball]);
     leaves.push([...standing]);
-    // A cleared deck is re-racked for the next ball.
+    // A cleared deck is re-racked for the next ball, which is what the tenth
+    // needs and what a spare needs before the frame boundary is reached.
     if (standing.length === 0) standing = [...FULL_RACK];
   }
 

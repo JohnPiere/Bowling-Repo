@@ -89,6 +89,29 @@ by hand. It is in `lib/` now with a property test that bowls four hundred random
 games and asserts every deck is either a full rack or exactly what survived the
 ball before it. That test found this.
 
+**And `leavesFromPinfalls` had the same bug, and outlived the fix to `deckFor`
+by a fortnight.** They are the two halves of one fact — one decides what to
+*show* the bowler, the other what the statistics *read back* out of a saved
+game — and both walked the game from a single rack, re-racking only when the
+deck happened to empty. Fixing one left the other wrong, and nothing failed,
+because nothing compared them.
+
+It is worse in the reading half, because nothing forces the answer back to a
+plausible size. Leave the 7 pin open in one frame, throw at a full rack in the
+next and leave the 7-10: the model still believes the 7 is lying down, removes
+nothing for it, and records a **10 pin** where a **7-10 split** happened. Every
+leave after every open frame was suspect, and open frames are most frames for
+most bowlers — so `leaveRecords`, `splitSummary`, `practiceTargets`,
+`spareBreakdown` and `conversionByType` were all reading a rack nobody had
+swept. It takes `rolls` now, because frame boundaries are the only thing that
+re-racks and pinfalls alone cannot say where they are.
+
+The property test that would have caught it is the one that now does: over
+three hundred random rack games, for every ball that does not open a frame,
+what `deckFor` offered must equal what `leavesFromPinfalls` says stood after
+the ball before it. Two implementations of one rule, checked against each
+other, because that is the shape the bug had.
+
 **A scan is never imported silently.** OCR on pencil is good enough to save
 typing and not good enough to trust. Every scan lands on a review screen.
 

@@ -111,20 +111,52 @@ describe('describeLeave', () => {
 describe('leavesFromPinfalls', () => {
   it('tracks the deck across a frame', () => {
     // First ball takes the head and left side, second clears the rest.
-    const leaves = leavesFromPinfalls([[1, 2, 4, 5, 7, 8], [3, 6, 9, 10]]);
+    const leaves = leavesFromPinfalls([[1, 2, 4, 5, 7, 8], [3, 6, 9, 10]], [6, 4]);
     expect(leaves[0]).toEqual([3, 6, 9, 10]);
     expect(leaves[1]).toEqual([]);
   });
 
   it('re-racks after a strike', () => {
-    const leaves = leavesFromPinfalls([FULL_RACK, [1, 3, 6, 10]]);
+    const leaves = leavesFromPinfalls([FULL_RACK, [1, 3, 6, 10]], [10, 4]);
     expect(leaves[0]).toEqual([]);
     expect(leaves[1]).toEqual([2, 4, 5, 7, 8, 9]);
   });
 
   it('re-racks after a spare', () => {
-    const leaves = leavesFromPinfalls([[1, 2, 3], [4, 5, 6, 7, 8, 9, 10], [1]]);
+    const leaves = leavesFromPinfalls([[1, 2, 3], [4, 5, 6, 7, 8, 9, 10], [1]], [3, 7, 1]);
     expect(leaves[1]).toEqual([]);
     expect(leaves[2]).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it('re-racks after an open frame, not only after a cleared deck', () => {
+    // The bug this signature exists for. Frame 1 leaves the 7 pin standing and
+    // is not picked up; frame 2 throws at a full rack and leaves the 7-10.
+    // Carrying frame 1's deck forward makes the model believe the 7 is already
+    // down, so it removes nothing for it and records a 10 pin — a split
+    // silently downgraded to a single, in the statistic that exists to count
+    // splits.
+    const leaves = leavesFromPinfalls(
+      [
+        [1, 2, 3, 4, 5, 6, 8, 9, 10], // frame 1, ball 1: leaves the 7
+        [], //                            frame 1, ball 2: misses it, open
+        [1, 2, 3, 4, 5, 6, 8, 9], //      frame 2, ball 1: leaves the 7-10
+        [], //                            frame 2, ball 2
+      ],
+      [9, 0, 8, 0],
+    );
+
+    expect(leaves[0]).toEqual([7]);
+    expect(leaves[2]).toEqual([7, 10]);
+  });
+
+  it('keeps re-racking inside the tenth, where a mark stands them up again', () => {
+    // X X X: three balls, one frame, and every one of them at a full rack.
+    const leaves = leavesFromPinfalls([FULL_RACK, FULL_RACK, FULL_RACK], [
+      ...Array.from({ length: 18 }, (_, i) => (i % 2 === 0 ? 9 : 0)),
+      10,
+      10,
+      10,
+    ].slice(18));
+    expect(leaves).toEqual([[], [], []]);
   });
 });

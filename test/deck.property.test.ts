@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deckFor, FULL_RACK } from '../src/lib/pins';
-import { isGameComplete, pinsAvailable } from '../src/lib/scoring';
+import { deckFor, FULL_RACK, leavesFromPinfalls } from '../src/lib/pins';
+import { isGameComplete, pinsAvailable, scoreGame } from '../src/lib/scoring';
 
 /**
  * The rack, fuzzed.
@@ -91,6 +91,47 @@ describe('deckFor, over whole games bowled on the rack', () => {
           survived.sort((a, b) => a - b),
         );
       });
+    }
+  });
+
+  it('agrees with what leavesFromPinfalls reconstructs afterwards', () => {
+    /**
+     * The two halves of the same fact, which had the same bug.
+     *
+     * `deckFor` decides what to *show* the bowler; `leavesFromPinfalls` decides
+     * what the statistics *read back* out of the game afterwards. They are
+     * separate walks over the same data and both of them once re-racked only
+     * when the deck emptied, so both carried an open frame's survivors forward.
+     * Fixing one left the other wrong and nothing failed, because nothing
+     * compared them.
+     *
+     * For any ball that is not the first of its frame, what the rack offered
+     * must be exactly what the leave reconstruction says stood after the ball
+     * before it. Anywhere they disagree, one of the two is lying about a leave.
+     */
+    for (let seed = 1; seed <= 300; seed++) {
+      const { rolls, pinfalls } = bowl(seeded(seed));
+      const leaves = leavesFromPinfalls(pinfalls, rolls);
+
+      // Ball indexes that open a frame: those re-rack, so they are excluded.
+      const opens = new Set<number>();
+      let at = 0;
+      for (const frame of scoreGame(rolls).frames) {
+        opens.add(at);
+        at += frame.rolls.length;
+      }
+
+      for (let ball = 1; ball < pinfalls.length; ball++) {
+        if (opens.has(ball)) continue;
+        // A cleared deck re-racks mid-frame in the tenth, which is not a
+        // disagreement — it is the rule both of them implement.
+        if (leaves[ball - 1].length === 0) continue;
+
+        const offered = deckFor(rolls.slice(0, ball), pinfalls.slice(0, ball));
+        expect([...offered].sort((a, b) => a - b), `seed ${seed}, ball ${ball}`).toEqual(
+          [...leaves[ball - 1]].sort((a, b) => a - b),
+        );
+      }
     }
   });
 
