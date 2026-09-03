@@ -488,6 +488,122 @@ async function main() {
     await context.close();
   }
 
+  // ── The scoring step fits one screen ──────────────────────────────────
+  //
+  // The one rule the play screen is built around, and until now nothing ran
+  // it. `scrollHeight - clientHeight` on `.screen` is the test the notes have
+  // always named; it was measured by hand, on an empty strip, which is exactly
+  // where the bug it should have caught was invisible — the strip *grew* as
+  // the game filled in, because a frame not yet bowled has no running total
+  // and so a shorter line box. Eleven pixels over ten frames, arriving one
+  // frame at a time.
+  //
+  // So this bowls, and measures at every ball rather than at the start. 568px
+  // is an SE, which is the shortest phone the app claims to fit.
+  {
+    const context = await newContext(browser, { viewport: { width: 320, height: 568 } });
+    const page = await context.newPage();
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+
+    await check('the scoring step never scrolls, from the first ball to the tenth', async () => {
+      await tab(page, 'Play').click();
+      await page.getByRole('button', { name: /Tap the pins/ }).click();
+      await page.waitForSelector('.rack__deck');
+
+      // Only while the rack is on screen. The finishing step that follows the
+      // tenth is a form, and forms are allowed to scroll.
+      const overflow = () =>
+        page.evaluate(() => {
+          const screen = document.querySelector('.screen');
+          // The pins, not `.rack` — the finishing step that follows the tenth
+          // keeps the container and is a form, and forms may scroll.
+          if (!screen || !document.querySelector('.rack__pin')) return null;
+          return screen.scrollHeight - screen.clientHeight;
+        });
+
+      // A transform extends an ancestor's scrollable area while it runs, and
+      // the screen's entrance animation translates its content down 14px and
+      // eases it back. A measurement taken on the frame the rack appears
+      // therefore reads an overflow that is not in the layout and is gone in a
+      // tenth of a second — 6px, measured, settling to 0 within 120ms. So wait
+      // for the animations to finish first, because the rule is about where
+      // things come to rest.
+      const settle = () =>
+        page.evaluate(
+          () =>
+            Promise.race([
+              Promise.allSettled(
+                document
+                  .getAnimations()
+                  // A looping animation never finishes, and waiting on one
+                  // would hang the check rather than fail it.
+                  .filter((one) => one.effect?.getTiming().iterations !== Infinity)
+                  .map((one) => one.finished),
+              ),
+              new Promise((resolve) => setTimeout(resolve, 500)),
+            ]).then(() => undefined),
+        );
+
+      let worst = 0;
+      let worstAt = 'the first ball';
+      const measure = async (where) => {
+        await settle();
+        const over = await overflow();
+        if (over !== null && over > worst) {
+          worst = over;
+          worstAt = where;
+        }
+      };
+
+      await measure('the first ball');
+
+      const knock = async (...pins) => {
+        for (const pin of pins) {
+          await page.locator(`[aria-label^="Pin ${pin},"]`).click();
+          await page.waitForTimeout(20);
+        }
+      };
+      const commit = async () => {
+        await page.locator('.btn-lg--primary').click();
+        await page.waitForTimeout(90);
+      };
+
+      // Strikes reach the tenth; an open frame every third puts a leave on the
+      // screen and draws the two-ball layout, which is the taller of the two.
+      for (let frame = 1; frame <= 12; frame += 1) {
+        // The tenth takes three balls, so the game ends somewhere around here
+        // rather than on a frame number worth predicting.
+        if (!(await page.locator('.rack__pin').count())) break;
+
+        if (frame % 3 === 0) {
+          await knock(1, 2, 3);
+          await commit();
+          await measure(`frame ${frame}, first ball`);
+          // The tenth's third ball can be the one that ends the game, so the
+          // deck has to be checked between the two balls as well as before
+          // them.
+          if (!(await page.locator('.rack__pin').count())) break;
+          await knock(4, 5);
+          await commit();
+        } else {
+          await knock(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+          await commit();
+        }
+        await measure(`frame ${frame}`);
+      }
+
+      const reachedTenth = await page.evaluate(
+        () => Boolean(document.querySelector('.play--tenth')) || /Game finished/.test(document.body.innerText),
+      );
+      assert(reachedTenth, 'the game never reached the tenth, so the check proved nothing');
+      assert(worst === 0, `the screen scrolled by ${worst}px at ${worstAt}`);
+
+      return 'nothing scrolled at 320x568, through a whole game';
+    });
+
+    await context.close();
+  }
+
   // ── Push ──────────────────────────────────────────────────────────────
   {
     const context = await newContext(browser);

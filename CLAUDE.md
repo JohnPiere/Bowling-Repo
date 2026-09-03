@@ -20,7 +20,7 @@ npm run push:server      # :8787, proxied at /api in dev
 
 # Browser checks. Opt-in: npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 30 checks
+npm run verify:app       # 33 checks
 npm run verify:scanner   # 6 generated sheets
 
 # Headers are ignored by `vite preview`, so test the CSP against this instead.
@@ -28,7 +28,7 @@ npm run serve:headers 4200 &
 npm run verify:app -- http://localhost:4200
 
 # The migrations and their policies. Opt-in: apt-get install -y postgresql-16
-npm run verify:sql       # 17 policy checks, on a throwaway server
+npm run verify:sql       # 34 policy checks, on a throwaway server
 ```
 
 ## Shape
@@ -121,7 +121,7 @@ typing and not good enough to trust. Every scan lands on a review screen.
 **The scoring step fits one screen, and that is a constraint, not a wish.**
 Strip, status line, rack, two buttons — nothing scrolls, because the screen is
 used a ball at a time with one hand while somebody else is bowling. It wants
-about 720px and an SE-sized phone gives 545, so `app.css` carries two
+about 720px and an SE-sized phone gives 545, so `app.css` carries four
 height media queries that give back what an ordinary phone does not need to.
 Two things are held fixed through all of them: targets stay at 44px, and the
 strip stays **five frames across**. Ten across fits the height and was tried;
@@ -131,6 +131,32 @@ instead is explanation — the legend, the leave caption, the axis labels, the
 tenth's note, in that order. Anything added here has to earn its height
 against something already there; `scrollHeight - clientHeight` on `.screen` is
 the test.
+
+That test is a check now, and was not before — which is how it came to be 60px
+over on an SE. `verify:app` bowls a whole game at 320×568 and measures at every
+ball, and the two things that had to be got right about it are worth keeping:
+
+- **It measures at every ball, not at the start.** The strip *grew* as the game
+  filled in — 11px over ten frames, arriving one frame at a time — because a
+  frame not yet bowled has no running total and so a shorter line box than one
+  that has. Every by-hand measurement had been taken on an empty strip, which
+  is precisely where that is invisible. `.strip__num`, `.strip__total` and
+  `.strip__box` now carry an explicit line box so a cell is the same height
+  full or empty; the alternative is the rack sliding down under the thumb about
+  to tap it.
+- **It waits for the animations to settle.** A transform extends an ancestor's
+  scrollable area while it runs, and the screen's entrance translates its
+  content down 14px and eases it back — 6px of "overflow" that is not in the
+  layout and is gone in 120ms. `document.getAnimations()` is what it waits on,
+  skipping any that loop.
+
+The 60px came back from the **chrome** rather than from anything in the step:
+on a screen this short the app bar shrinks — everywhere, not only here, because
+a header that changed size between tabs would be worse — and the screen's own
+padding nearly vanishes, which is scoped to `.screen--tight` because every other
+screen scrolls and needs its bottom padding to clear the tab bar. What is left
+is 16px of headroom at 320×568, measured. That is the budget anything added
+here now has.
 
 Those short-screen rules are scoped to `.play` on purpose. The game record
 draws the same `FrameStrip` — `frameStrip(rolls, pinfalls, [], null)`, no ball
@@ -606,7 +632,7 @@ stand on (`supabase/tests/shim.sql`: an `auth.users` with the columns 0001's
 trigger reads, an `auth.uid()` off a session setting, the three roles, and the
 default grants — without which every policy is unreachable behind a plain
 "permission denied"), applies every migration in order, and runs
-`supabase/tests/policies.sql`. Seventeen checks, each one a sentence from a
+`supabase/tests/policies.sql`. Thirty-four checks, each one a sentence from a
 migration's own comment. It also applies everything twice, which is the claim
 on the tin of anything pasted into a dashboard.
 

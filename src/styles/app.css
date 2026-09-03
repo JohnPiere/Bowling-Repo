@@ -2048,8 +2048,14 @@ body {
   justify-content: space-between;
   padding: 0 1px;
 }
-.strip__num { font-size: 9px; font-weight: 500; color: var(--color-neutral-600); }
-.strip__total { font-size: 11px; font-weight: 600; color: var(--color-neutral-200); }
+/* Both sides of the head share one line box, and that is load-bearing rather
+   than tidiness. A frame not yet bowled has no running total, so without it a
+   cell is shorter empty than full and the strip *grows* as the game fills —
+   measured at 11px over ten frames, which on an SE is the difference between
+   fitting and not, and everywhere else is the rack sliding down under the
+   thumb about to tap it. */
+.strip__num { font-size: 9px; font-weight: 500; color: var(--color-neutral-600); line-height: 13px; }
+.strip__total { font-size: 11px; font-weight: 600; color: var(--color-neutral-200); line-height: 13px; }
 .strip__cell--now .strip__total { color: var(--color-accent-200); }
 
 /* The pin diagram. Five-pixel dots, filled in the accent for a pin this frame
@@ -2077,6 +2083,9 @@ body {
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px rgba(63, 66, 77, 0.85);
   font-size: 9px;
+  /* Pinned to the box, for the same reason the head's line box is: a mark
+     drawn into an empty box must not make the cell taller than it was. */
+  line-height: 15px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-neutral-300);
@@ -2262,9 +2271,9 @@ body {
   .play .strip__cell { padding: 2px; gap: 2px; }
   .play .strip__pin { width: 3.5px; height: 3.5px; }
   .play .strip__pinrow { gap: 1.5px; }
-  .play .strip__box { min-height: 11px; font-size: 8px; }
-  .play .strip__num { font-size: 8px; }
-  .play .strip__total { font-size: 10px; }
+  .play .strip__box { min-height: 11px; font-size: 8px; line-height: 11px; }
+  .play .strip__num { font-size: 8px; line-height: 12px; }
+  .play .strip__total { font-size: 10px; line-height: 12px; }
 
   /* The labels go, not the values. Which frame it is the strip already shows
      by highlighting it, and a 24px accented number beside a rack is not going
@@ -2299,6 +2308,61 @@ body {
   .play__note { display: none; }
   .rack__deck { gap: 4px; }
   .play__commit .btn-lg { min-height: 44px; }
+}
+
+/*
+ * An SE, which is where this stops being a squeeze and starts being a problem:
+ * 320x568 leaves 410px under the chrome for something that wants 469.
+ *
+ * What gives here is *not* the scoring step. Everything in it that could be
+ * spent already has been — the legend, the leave caption, the tenth's note —
+ * and what is left is a strip that has to stay five frames across, a rack of
+ * 44px targets, and two buttons. So the **chrome** gives instead, and that is
+ * where this block departs from the two above it: the app bar shrinks on every
+ * screen, not only the play one. Scoping it would make the header change size
+ * as you moved between tabs, which is worse than a smaller header — and a
+ * phone this short wants the room everywhere. The icon button inside keeps its
+ * 44px hit area, which is what `verify:app` probes.
+ *
+ * Only the screen's own padding is scoped, through `.screen--tight`, because
+ * every other screen scrolls and its bottom padding is what keeps the last
+ * card clear of the tab bar. `App.tsx` sets the class on the play route rather
+ * than `:has(.play)`: a browser without `:has` would quietly leave the screen
+ * scrolling, and this is the one rule the screen is built around.
+ *
+ * Together that is 40 of the 60px. The rest comes off the strip's own
+ * furniture rather than its width, which is the order the notes have always
+ * given: the frame numbers and running totals lose a point each, the pin
+ * diagram does not.
+ */
+@media (max-height: 620px) {
+  .screen--tight { padding: 6px var(--gutter) 6px; }
+
+  .appbar { padding: calc(var(--safe-top) + 4px) var(--gutter) 4px; gap: 8px; }
+  .appbar__title { font-size: 19px; }
+  .appbar__kicker { font-size: 9px; }
+
+  .play,
+  .play--tenth { gap: 4px; }
+  .play .strip__num { font-size: 7px; line-height: 11px; }
+  .play .strip__total { font-size: 9px; line-height: 11px; }
+  .play .strip__box { min-height: 10px; font-size: 7.5px; line-height: 10px; }
+  .play .strip__cell { padding: 1.5px; }
+  .rack { padding: 6px 12px 5px; gap: 4px; }
+  .rack__deck { gap: 3px; }
+}
+
+/*
+ * The last seven pixels, and only for the phone that actually needs them.
+ * Bottom padding on a screen that cannot scroll is padding under the last
+ * thing on it, which is what the tab bar already is; the deck's gap goes to
+ * 2px, which still leaves 46px of pitch between 44px targets.
+ */
+@media (max-height: 580px) {
+  .screen--tight { padding: 4px var(--gutter) 0; }
+  .play,
+  .play--tenth { gap: 3px; }
+  .rack__deck { gap: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

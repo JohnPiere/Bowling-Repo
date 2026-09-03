@@ -257,7 +257,11 @@ export function App() {
 
       <main
         ref={mainRef}
-        className="screen"
+        // The scoring step is the one screen that must not scroll, so on a
+        // short phone it gives back the chrome every other screen can afford.
+        // A class rather than `:has(.play)`: a browser without it would fail
+        // silently, and this is the rule the whole screen is built around.
+        className={`screen${route.name === 'play' ? ' screen--tight' : ''}`}
         key={`${route.name}-${'groupId' in route ? route.groupId : ''}`}
         // Focusable by script but not in the tab order, so the focus move on
         // navigation does not add a stop for everyone else.
