@@ -312,6 +312,30 @@ until it existed the name a crew saw was whatever the provider handed over at
 sign-up, and the name field in Settings was local only. It retries without the
 avatar if the first write fails, so an un-migrated database still gets the name.
 
+**The crew settings screen was a mock, and is not any more.** Every control on
+it was local state: the name and alley were typed into a `useState` and never
+sent, rotating the invite code called a `nextCode()` that added 51 to the last
+two digits, removing a member pushed an id into an array, "Leave" navigated back
+to the crew list without leaving, and the roles map was seeded
+`{ kenji: 'moderator' }` — the last of the fictional Tuesday Crew. The RPCs it
+should have been calling (`rotateInviteCode`, `leaveGroup`) had existed since
+`social.ts` was written and had never been called by anything.
+
+It now writes to Postgres and re-reads the crew after each change rather than
+keeping its own copy: what an owner does here is what everybody else's board is
+about to show. The doors switch is gone — there is no column for it, `toGroup`
+has always had a comment saying so, and a switch that flips nothing is a promise
+the database never made.
+
+**`is_owner()` means "owner or moderator", and two policies wanted stricter.**
+It is the right test for moderation and it was also wired to `groups_delete` and
+`memberships_update`, which meant a moderator could delete an entire crew and
+could set anybody's role — their own included — to owner. Nothing had exercised
+either, because the screen was a mock; wiring it up is what made it matter.
+Migration 0004 adds `is_group_owner()` and moves those two onto it, plus
+`groups_update`, since the screen has always disabled the name field for
+anybody but the owner.
+
 **Signing in is not a one-way door.** `useSession` has always returned a
 `signOut` and, until now, nothing called it — so an account, once connected, was
 permanent. Settings has an Account card that disconnects it. Signing out touches

@@ -357,6 +357,42 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── Crew settings ──
+  'You are the {role}.': 'あなたは{role}です。',
+  'Only you can delete this crew or change who runs it.':
+    'クルーを削除したり運営者を変えたりできるのはあなただけです。',
+  'You can rotate the code and remove members, but not delete the crew.':
+    'コードの更新やメンバーの削除はできますが、クルーの削除はできません。',
+  'Save these': '保存する',
+  'Saved. Everyone in the crew sees the new name.': '保存しました。クルー全員に新しい名前が表示されます。',
+  'Copy': 'コピー',
+  'Copied': 'コピーしました',
+  'Rotated. The old code stopped working immediately — send the new one to anyone still waiting.':
+    '更新しました。古いコードはすぐに無効になりました。待っている人には新しいコードを送ってください。',
+  'Rotating replaces the code at once. Anyone holding the old one loses their way in.':
+    '更新するとコードがすぐに置き換わります。古いコードを持っている人は参加できなくなります。',
+  'Members · {n}': 'メンバー · {n}人',
+  'Owner': 'オーナー',
+  'Moderator': 'モデレーター',
+  '{games} games · avg {avg} · since {since}': '{games}ゲーム · アベレージ{avg} · {since}から',
+  'Member': 'メンバー',
+  'What they can do': '権限',
+  'A moderator can rotate the code and remove members. An owner can also rename the crew, hand it over and delete it.':
+    'モデレーターはコードの更新とメンバーの削除ができます。オーナーはさらに、クルー名の変更・引き継ぎ・削除ができます。',
+  '{name} loses the chat, the board and every shared post. What they already posted stays. They can be invited back with a new code.':
+    '{name}はチャット・ボード・共有された投稿を見られなくなります。すでに投稿した内容は残ります。新しいコードで再度招待できます。',
+  'Stay': 'とどまる',
+  'Leave this crew': 'このクルーを退出',
+  'You are the only owner. Leaving would leave the crew with nobody who can run it — make somebody else an owner first, or delete the crew below.':
+    'オーナーはあなただけです。退出するとクルーを運営できる人がいなくなります。先に他の人をオーナーにするか、下からクルーを削除してください。',
+  'Your shared games come off the board. They stay in your own history.':
+    '共有したゲームはボードから外れます。自分の履歴には残ります。',
+  'Delete this crew': 'このクルーを削除',
+  '{name} goes for everybody — the roster, the chat, the board and every shared game on it. Nobody loses a game they bowled: those live on their own phone and the board only ever held a reference. There is no undo.':
+    '{name}は全員から削除されます。メンバー・チャット・ボード・共有されたゲームがすべて消えます。投げたゲーム自体は各自の端末に残ります。ボードは参照を持っていただけです。取り消しはできません。',
+  'Delete for good': '完全に削除',
+  'Deleting…': '削除中…',
+
   // ── The game record ──
   'How it went': 'この試合の内容',
   'Clean frames': 'クリーンフレーム',

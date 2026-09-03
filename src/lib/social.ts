@@ -198,6 +198,7 @@ export function standingFor(
     name: profile.name,
     initials: profile.initials || initialsOf(profile.name),
     photo: profile.avatar ?? null,
+    role: membership.role,
     avg: recent,
     high: scores.length === 0 ? 0 : Math.max(...scores),
     // The month's total, which rewards showing up rather than peaking.
@@ -577,6 +578,85 @@ export async function rotateInviteCode(groupId: string): Promise<string> {
   const { data, error } = await db.rpc('rotate_invite_code', { gid: groupId });
   if (error) throw error;
   return data as string;
+}
+
+/**
+ * Rename a crew, or move its home alley.
+ *
+ * `groups_update` is the policy behind it, and it is the owner's — the settings
+ * screen disables the fields for anybody else rather than letting Postgres
+ * refuse a change that has already been typed.
+ */
+export async function updateGroup(
+  groupId: string,
+  changes: { name?: string; homeAlley?: string },
+): Promise<void> {
+  const patch: Record<string, string | null> = {};
+  if (changes.name !== undefined) patch.name = changes.name.trim().slice(0, 60);
+  if (changes.homeAlley !== undefined) patch.home_alley = changes.homeAlley.trim() || null;
+  if (Object.keys(patch).length === 0) return;
+
+  const db = await backend();
+  const { error } = await db.from('groups').update(patch).eq('id', groupId);
+  if (error) throw error;
+}
+
+/**
+ * Delete a crew outright.
+ *
+ * Everything below it goes with it: the roster, the chat, the board and its
+ * reactions are all `on delete cascade` from `groups`. Nobody's *games* go —
+ * those live in each bowler's own IndexedDB and were only ever referenced from
+ * here, which is the whole reason sharing was built to hand over a reference.
+ *
+ * Owner only, and that is enforced in the database rather than here; see
+ * migration 0004, which had to be written because the check the original
+ * policy used also let a moderator do this.
+ */
+export async function deleteGroup(groupId: string): Promise<void> {
+  const db = await backend();
+  const { error } = await db.from('groups').delete().eq('id', groupId);
+  if (error) throw error;
+}
+
+/**
+ * Change what somebody may do in the crew.
+ *
+ * Owner is offered too, and has to be: an owner who is the only owner cannot
+ * leave without stranding the crew, so handing over is the way out that is not
+ * deleting everything. Making a second owner does not unmake the first — they
+ * can still demote whoever they promoted, right up until they leave.
+ */
+export async function setMemberRole(
+  groupId: string,
+  profileId: string,
+  role: 'owner' | 'moderator' | 'member',
+): Promise<void> {
+  const db = await backend();
+  const { error } = await db
+    .from('memberships')
+    .update({ role })
+    .eq('group_id', groupId)
+    .eq('profile_id', profileId);
+  if (error) throw error;
+}
+
+/**
+ * Take somebody off the roster.
+ *
+ * Their posts and their messages stay. `shared_games` and `messages` cascade
+ * from `profiles`, not from `memberships`, so removing a member is removing
+ * their access and not editing the record of a season — which is the right way
+ * round, and is what the screen says it does.
+ */
+export async function removeMember(groupId: string, profileId: string): Promise<void> {
+  const db = await backend();
+  const { error } = await db
+    .from('memberships')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('profile_id', profileId);
+  if (error) throw error;
 }
 
 export async function leaveGroup(groupId: string, me: string): Promise<void> {

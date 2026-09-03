@@ -292,7 +292,20 @@ export function App() {
         )}
 
         {route.name === 'groupSettings' && group && (
-          <GroupSettingsScreen group={group} onLeave={() => nav.returnTo('groups')} />
+          <GroupSettingsScreen
+            group={group}
+            me={session.id}
+            // Re-read rather than patch: what an owner changes here is what
+            // everybody else's board is about to show.
+            onChanged={() => {
+              openCrew.reload();
+              crews.reload();
+            }}
+            onGone={() => {
+              crews.reload();
+              nav.returnTo('groups');
+            }}
+          />
         )}
 
         {route.name === 'createGroup' && (

@@ -31,6 +31,7 @@ function randomRoster(rand: () => number, size: number): Member[] {
     id: `m${i}`,
     name: `Member ${i}`,
     initials: `M${i}`,
+    role: 'member' as const,
     // Deliberately coarse, so ties happen often — that is where ranking breaks.
     avg: 150 + Math.floor(rand() * 8) * 5,
     high: 180 + Math.floor(rand() * 8) * 5,

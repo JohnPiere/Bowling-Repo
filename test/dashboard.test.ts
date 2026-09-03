@@ -20,6 +20,7 @@ const member = (id: string, avg: number, isMe = false): Member => ({
   id,
   name: id,
   initials: id.slice(0, 2).toUpperCase(),
+  role: 'member',
   avg,
   high: avg + 40,
   pins: 1000,

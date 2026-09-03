@@ -17,6 +17,8 @@ export interface Member {
   initials: string;
   /** Their profile picture, when they have set one. */
   photo?: string | null;
+  /** What they may do in the crew. The settings screen is the only reader. */
+  role: 'owner' | 'moderator' | 'member';
   avg: number;
   high: number;
   pins: number;

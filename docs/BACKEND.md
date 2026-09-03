@@ -168,6 +168,13 @@ renders into an `<img src>` should not be able to hold a sentence.
 
 Two pieces of it are worth reading before changing anything:
 
+**`is_owner()` is "owner or moderator"; `is_group_owner()` is not.** The first
+is the moderation test — remove a member, take a post down, rotate a code. The
+second (migration 0004) is the strict one, and `groups_delete`,
+`memberships_update` and `groups_update` are on it: deleting a crew, handing out
+roles and renaming are not moderation, and the first two were a way for a
+moderator to destroy a crew or promote themselves to owner.
+
 **`is_member()` is `security definer` and has to be.** A policy on `memberships`
 that selected from `memberships` to decide who may read `memberships` recurses,
 and Postgres refuses the query rather than the row. Reading the table inside a
