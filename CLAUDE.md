@@ -183,14 +183,22 @@ fine. Reading the deployed site back cannot tell those apart — sample it on a
 push that happened to win and it passes while the repository is still
 configured to break the next one.
 
-So `pages.yml` asks what the configuration *is*, which is not a race, and puts
-it right: `build_type` must be `workflow`, and the workflow sets it when it is
-not. That is the whole fix, and it stops the Jekyll publisher being run at all
-rather than out-racing it. It happens in the `build` job, before the deploy,
-so the deploy that follows lands in the mode it just ensured. If the token is
-not allowed to change it the step fails and says which setting to change by
-hand (Settings → Pages → Source: GitHub Actions). The read-back is kept behind
-it as a second check on anything else that could make the site unusable.
+So `pages.yml` asks what the configuration *is*, which is not a race. GitHub's
+own answer, from the run for `6e5f914`: `Pages build_type is 'legacy'`. The
+workflow then tries to set it to `workflow`, which would stop the Jekyll
+publisher being run at all — and is refused: `403 Resource not accessible by
+integration`. `pages: write` does not extend to `PUT /repos/{owner}/{repo}/pages`,
+so **this one setting has to be changed by hand**, once, at Settings → Pages →
+Build and deployment → Source: GitHub Actions.
+
+That step therefore *warns and carries on*, and the reason is worth keeping:
+`deploy` needs `build`, so failing there stops the only publisher that produces
+a working site and hands the domain to the broken one. A check that breaks the
+thing it is checking is not a check. Until the setting is fixed, the `deploy`
+job waits for the branch publisher to finish before deploying — the winner is
+whoever lands last, so be last on purpose. It is a mitigation, it is skipped
+the moment `build_type` reads `workflow`, and the read-back behind it still
+fails the run if the site ends up wrong anyway.
 
 The boot guard tells the two apart now, because the advice differs and one of
 them was actively wrong. A failed asset whose path is a source entry

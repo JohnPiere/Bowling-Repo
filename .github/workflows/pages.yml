@@ -18,6 +18,8 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  # Only to see whether GitHub's own branch publisher is still running.
+  actions: read
 
 # Let a run finish rather than cancelling it: a half-published site is worse
 # than a slightly stale one.
@@ -28,6 +30,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      # 'workflow' when this workflow is the only publisher; anything else
+      # means GitHub is publishing the repository root as well.
+      pages_source: ${{ steps.publisher.outputs.source }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,12 +62,14 @@ jobs:
       # 5054860 this workflow landed last (10:44:56 against 10:44:52) and the
       # same commit was fine. Every run was green both times.
       #
-      # Reading the site back cannot tell those apart — sample it on a good
-      # push and it passes while the repository is still configured to break
-      # the next one. So ask what the configuration *is*, which is not a race,
-      # and put it right. `build_type: workflow` means this workflow is the
-      # only publisher and the Jekyll one stops being run at all.
-      - name: Make sure this workflow is the only Pages publisher
+      # The fix is the repository's own setting, so ask what it is — that is
+      # not a race — and try to put it right. The workflow token is usually not
+      # allowed to (403 "Resource not accessible by integration", measured), in
+      # which case this *warns and carries on*. It must never fail: `deploy`
+      # needs this job, so failing here would stop the only publisher that
+      # produces a working site and hand the domain to the broken one.
+      - id: publisher
+        name: Check which publishers Pages is running
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,29 +79,26 @@ jobs:
           current=$(curl -fsS "${auth[@]}" "$api" | jq -r '.build_type // "unknown"') || current=unknown
           echo "Pages build_type is '$current'"
 
-          if [ "$current" = "workflow" ]; then
-            echo "This workflow is the only publisher."
-            exit 0
+          if [ "$current" != "workflow" ]; then
+            echo "Trying to make this workflow the only publisher."
+            code=$(curl -sS -o /tmp/pages-put.txt -w '%{http_code}' -X PUT "${auth[@]}" \
+              -H 'Content-Type: application/json' \
+              "$api" -d '{"build_type":"workflow"}')
+
+            if [ "$code" = "204" ] || [ "$code" = "200" ]; then
+              echo "Switched it — from now on only this workflow publishes the site."
+              current=workflow
+            else
+              cat /tmp/pages-put.txt || true
+              echo "::warning title=Pages is publishing the repository source too::\
+          GitHub is also deploying the repository root with Jekyll, which has no built app in it. \
+          Whichever publisher lands last wins, so the site breaks at random. \
+          This workflow could not change it (HTTP $code) — fix it once by hand: \
+          Settings -> Pages -> Build and deployment -> Source: GitHub Actions."
+            fi
           fi
 
-          echo "Pages is also publishing the repository root from a branch."
-          echo "That publishes the source tree, which has no built app in it."
-          echo "Switching the source to GitHub Actions."
-
-          code=$(curl -sS -o /tmp/pages-put.txt -w '%{http_code}' -X PUT "${auth[@]}" \
-            -H 'Content-Type: application/json' \
-            "$api" -d '{"build_type":"workflow"}')
-
-          if [ "$code" = "204" ] || [ "$code" = "200" ]; then
-            echo "Done — from now on only this workflow publishes the site."
-            exit 0
-          fi
-
-          echo "::error::Could not switch it (HTTP $code)."
-          cat /tmp/pages-put.txt || true
-          echo "Change it once by hand and this step goes quiet:"
-          echo "  Settings -> Pages -> Build and deployment -> Source: GitHub Actions"
-          exit 1
+          echo "source=$current" >> "$GITHUB_OUTPUT"
 
       # Asks GitHub to turn Pages on if it is not on already. The workflow
       # token is often not allowed to create a Pages site — the step then fails
@@ -115,6 +120,45 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # While the repository is still publishing its root as well, the winner
+      # is whoever deploys last — so wait for the other one and be last on
+      # purpose. This is a mitigation and not the fix: the fix is the setting,
+      # which the step above warns about. Skipped entirely once it is right.
+      - name: Let the branch publisher go first
+        if: needs.build.outputs.pages_source != 'workflow'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          auth=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+          runs="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=50"
+
+          for attempt in $(seq 1 30); do
+            state=$(curl -fsS "${auth[@]}" "$runs" | jq -r '
+              [.workflow_runs[] | select(.name == "pages build and deployment")]
+              | if length == 0 then "absent" else .[0].status end') || state=unknown
+
+            case "$state" in
+              completed)
+                echo "the branch publisher has finished; deploying after it"
+                sleep 5
+                exit 0
+                ;;
+              absent)
+                # It is created within a second of the push, so by the time the
+                # build has run it exists. Give it a couple of tries anyway.
+                if [ "$attempt" -ge 3 ]; then
+                  echo "no branch publisher for this commit"
+                  exit 0
+                fi
+                ;;
+            esac
+
+            echo "attempt $attempt: branch publisher is '$state'"
+            sleep 10
+          done
+
+          echo "::warning::the branch publisher did not finish in time; deploying anyway"
+
       - id: deploy
         uses: actions/deploy-pages@v4
 
