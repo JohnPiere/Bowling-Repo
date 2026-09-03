@@ -280,7 +280,7 @@ export function App() {
         )}
 
         {route.name === 'play' && (
-          <PlayScreen onSaved={finishGame} />
+          <PlayScreen onSaved={finishGame} games={games} />
         )}
 
         {route.name === 'scan' && <ScanScreen onImported={finishGame} />}

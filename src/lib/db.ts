@@ -19,9 +19,27 @@ export interface Game {
   /** Where it was bowled, if the bowler said. */
   house?: string;
   /**
-   * Whatever the numbers cannot say: the lane, the oil, a ball changed at the
-   * fifth. Months later this is the only part of a game that explains it, and
-   * it is why `searchGames` looks here as well as at the house.
+   * The ball thrown, the lane bowled on, and how the lane was playing.
+   *
+   * All three used to live in `note`, whose own comment named them — "the
+   * lane, the oil, a ball changed at the fifth". A sentence is the right place
+   * to *explain* a game and the wrong place to *count* one: nothing can average
+   * a season by ball while the ball is a phrase inside prose. They are their
+   * own fields now, and `note` goes back to being the part that only a person
+   * can write.
+   *
+   * Free text, all three, and deliberately: the app has never had a table of
+   * alleys and does not want one of ball models either. What it offers instead
+   * is what you have already typed, most-used first.
+   */
+  ball?: string;
+  lane?: string;
+  /** How the lane was playing — fresh, burnt, dry, whatever you call it. */
+  condition?: string;
+  /**
+   * Whatever the numbers cannot say. Months later this is the only part of a
+   * game that explains it, and it is why `searchGames` looks here as well as
+   * at the house.
    */
   note?: string;
   /** Pin counts in the order they were thrown. */
@@ -218,7 +236,15 @@ export async function saveGame(
  */
 export async function reviseGame(
   id: string,
-  changes: { rolls?: number[]; house?: string; note?: string; playedAt?: number },
+  changes: {
+    rolls?: number[];
+    house?: string;
+    ball?: string;
+    lane?: string;
+    condition?: string;
+    note?: string;
+    playedAt?: number;
+  },
 ): Promise<Game | undefined> {
   const game = await getGame(id);
   if (!game) return undefined;
@@ -232,6 +258,10 @@ export async function reviseGame(
     total: card.total,
     isComplete: card.isComplete,
     house: changes.house === undefined ? game.house : changes.house || undefined,
+    ball: changes.ball === undefined ? game.ball : changes.ball.trim() || undefined,
+    lane: changes.lane === undefined ? game.lane : changes.lane.trim() || undefined,
+    condition:
+      changes.condition === undefined ? game.condition : changes.condition.trim() || undefined,
     note: changes.note === undefined ? game.note : changes.note.trim() || undefined,
     playedAt: changes.playedAt ?? game.playedAt,
     updatedAt: Date.now(),

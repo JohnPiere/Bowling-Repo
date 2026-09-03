@@ -27,12 +27,17 @@ import {
   practiceTargets,
   RANGES,
   spareBreakdown,
+  ballStats,
+  conditionStats,
+  consistency,
+  laneStats,
   splitRecords,
   splitSummary,
   strikeRuns,
   summarise,
   tally,
   thisMonth,
+  type GroupedStat,
   type MetricKey,
   type RangeKey,
 } from '../lib/stats';
@@ -98,6 +103,11 @@ export function StatsScreen({
   const splitsLeft = useMemo(() => splitRecords(inRange, 8), [inRange]);
   // Ranked by what it costs rather than by how often it happens, which is the
   // other question the same list answers.
+  const balls = useMemo(() => ballStats(inRange), [inRange]);
+  const lanes = useMemo(() => laneStats(inRange), [inRange]);
+  const conditions = useMemo(() => conditionStats(inRange), [inRange]);
+  const spread = useMemo(() => consistency(inRange), [inRange]);
+
   const worstSplit = useMemo(
     () => [...splitsLeft].sort((a, b) => b.missRate - a.missRate || b.times - a.times)[0],
     [splitsLeft],
@@ -164,6 +174,34 @@ export function StatsScreen({
         <Pr value={records.longestStrikeRun} label={t('Longest strike streak')} />
         <Pr value={`${records.sparePercent}%`} label={t('Spare conversion')} />
       </div>
+
+      {spread && (
+        <>
+          {/* Beside the records rather than in the charts, because it is a
+              record of a kind: not how you are bowling but how reliably. */}
+          <h2 className="section-title">{t('Consistency')}</h2>
+          <div className="card">
+            <div className="row row--between" style={{ marginBottom: 8 }}>
+              <span className="grow">
+                <span className="hero__label">{t('Typical game')}</span>
+                <span className="metric__now tnum">
+                  {spread.average} ± {spread.spread}
+                </span>
+              </span>
+              <span style={{ textAlign: 'right' }}>
+                <span className="hero__label">{t('Steadiness')}</span>
+                <span className="metric__now tnum">{spread.score}</span>
+              </span>
+            </div>
+            <p className="footnote" style={{ marginBottom: 0 }}>
+              {tf(
+                'Half your games land between {low} and {high}. Two bowlers can average the same and be nothing alike — the spread is the part practice moves.',
+                { low: spread.low, high: spread.high },
+              )}
+            </p>
+          </div>
+        </>
+      )}
 
       {/* The tabs choose what is plotted; the chips choose over what. */}
       <div className="tabs" role="tablist" aria-label={t('Metric')}>
@@ -527,6 +565,39 @@ export function StatsScreen({
 
       <Achievements badges={badges} />
 
+      {balls.length > 0 && (
+        <>
+          <h2 className="section-title">{t('By ball')}</h2>
+          <CutTable
+            rows={balls}
+            what={t('Ball')}
+            footnote={t('Only games that said which ball. The one you own an opinion about.')}
+          />
+        </>
+      )}
+
+      {conditions.length > 0 && (
+        <>
+          <h2 className="section-title">{t('By condition')}</h2>
+          <CutTable
+            rows={conditions}
+            what={t('How it played')}
+            footnote={t('Only games that said how the lane was playing.')}
+          />
+        </>
+      )}
+
+      {lanes.length > 1 && (
+        <>
+          <h2 className="section-title">{t('By lane')}</h2>
+          <CutTable
+            rows={lanes}
+            what={t('Lane')}
+            footnote={t('Small samples, mostly — the game count beside each one is the caveat.')}
+          />
+        </>
+      )}
+
       <h2 className="section-title">{t('Counted up')}</h2>
       <TallyCard
         lifetime={counted}
@@ -584,6 +655,51 @@ function since(games: { playedAt: number }[]): string {
   if (games.length === 0) return t('No games yet');
   const first = Math.min(...games.map((g) => g.playedAt));
   return tf('Since {date}', { date: formatMonthYear(first) });
+}
+
+/**
+ * A season cut by one thing written on a game.
+ *
+ * The houses table, generalised: ball, lane and condition ask the same
+ * question of the same shape, and three copies of it would be three chances
+ * for them to drift apart.
+ */
+function CutTable({
+  rows,
+  what,
+  footnote,
+}: {
+  rows: GroupedStat[];
+  what: string;
+  footnote: string;
+}) {
+  return (
+    <div className="card">
+      <div className="days">
+        <div className="days__row days__row--head">
+          <span>{what}</span>
+          <span />
+          <span>{t('Average')}</span>
+          <span>{t('Best')}</span>
+        </div>
+        {rows.map((row) => (
+          <div className="days__row" key={row.name}>
+            <span className="days__when" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              {row.name}
+            </span>
+            <span className="days__count">
+              {tf(row.games === 1 ? '{n} game' : '{n} games', { n: row.games })}
+            </span>
+            <span className="tnum">{row.average}</span>
+            <span className="days__high tnum">{row.high}</span>
+          </div>
+        ))}
+      </div>
+      <p className="footnote" style={{ marginBottom: 0 }}>
+        {footnote}
+      </p>
+    </div>
+  );
 }
 
 function Pr({ value, label }: { value: number | string; label: string }) {

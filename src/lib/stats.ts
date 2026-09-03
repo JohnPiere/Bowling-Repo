@@ -834,33 +834,166 @@ export interface HouseStat {
  * average that describes nowhere.
  */
 export function houseStats(games: Game[]): HouseStat[] {
-  const byHouse = new Map<string, Game[]>();
+  return statsBy(games, (game) => game.house).map(({ name, ...rest }) => ({
+    house: name,
+    ...rest,
+  }));
+}
+
+export interface Consistency {
+  /** Games behind it. Below `MIN_FOR_SPREAD` there is nothing to say. */
+  games: number;
+  average: number;
+  /** Standard deviation, rounded. The plus-or-minus. */
+  spread: number;
+  /** Where the middle half of your games sit — the 25th and 75th scores. */
+  low: number;
+  high: number;
+  /**
+   * 0..100. A hundred is every game identical, which nobody is.
+   *
+   * Offered because a raw standard deviation is a number most people have no
+   * feel for: "±38" means little, and "you are more consistent than you were
+   * last month" means everything. It is the spread expressed against a scale
+   * that stops mattering — 60 pins of deviation is as inconsistent as bowling
+   * gets, and anything beyond it reads the same.
+   */
+  score: number;
+}
+
+/**
+ * How far a bowler is from their own average, typically.
+ *
+ * The stat this app was missing. Averages and highs describe the middle and the
+ * ceiling and say nothing about the range, and the range is what most people
+ * are actually trying to fix: 150 ± 40 and 150 ± 12 are the same average and
+ * two completely different bowlers, and only one of them can be relied on for a
+ * team. It is also the more honest goal — the ceiling moves rarely, the spread
+ * moves with practice.
+ *
+ * Population deviation rather than sample: these are all the games there are,
+ * not a sample drawn from more of them.
+ */
+export const MIN_FOR_SPREAD = 5;
+
+export function consistency(games: Game[]): Consistency | null {
+  const scores = games.filter((game) => game.isComplete).map((game) => game.total);
+
+  // Under a handful of games a spread is noise wearing a number's clothes, and
+  // a number on a screen is believed. Null, and the card says why.
+  if (scores.length < MIN_FOR_SPREAD) return null;
+
+  const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const variance =
+    scores.reduce((sum, score) => sum + (score - average) ** 2, 0) / scores.length;
+  const spread = Math.sqrt(variance);
+
+  const sorted = [...scores].sort((a, b) => a - b);
+  const at = (fraction: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
+
+  return {
+    games: scores.length,
+    average: Math.round(average),
+    spread: Math.round(spread),
+    low: at(0.25),
+    high: at(0.75),
+    // 60 pins of deviation is about as scattered as bowling gets; past it the
+    // number would keep falling and say nothing more.
+    score: Math.max(0, Math.round(100 - (spread / 60) * 100)),
+  };
+}
+
+export interface GroupedStat {
+  /** The value, as it was first written. */
+  name: string;
+  games: number;
+  average: number;
+  high: number;
+  lastAt: number;
+}
+
+/**
+ * A season cut by one of the things written on a game.
+ *
+ * House, ball, lane, condition — four questions with one shape, so one
+ * function. Each was a plausible copy-paste of the last, and four copies of an
+ * average is four chances for them to stop meaning the same thing.
+ *
+ * **Only finished games count**, which `houseStats` did not do before this and
+ * should have. `summarise` has always filtered them, so a season average and a
+ * per-house average disagreed about what a game is: a two-frame abandonment
+ * carried a total of about 24 into one of them and not the other. An average
+ * that mixes those describes nobody.
+ *
+ * Keyed case-insensitively so "Rose Bowl" and "rose bowl" are one thing, and
+ * shown as it was first written. Games with nothing written are left out
+ * rather than pooled into an "unknown" row — a bucket holding six different
+ * alleys has an average that describes nowhere.
+ *
+ * Ordered by average, because comparing is the whole point of the list. The
+ * game count rides beside it so one visited once is visibly that.
+ */
+export function statsBy(games: Game[], pick: (game: Game) => string | undefined): GroupedStat[] {
+  const grouped = new Map<string, Game[]>();
 
   for (const game of games) {
-    const house = game.house?.trim();
-    if (!house) continue;
+    if (!game.isComplete) continue;
+    const value = pick(game)?.trim();
+    if (!value) continue;
 
-    // Keyed case-insensitively so "Rose Bowl" and "rose bowl" are one alley,
-    // and displayed as it was first written.
-    const key = house.toLowerCase();
-    const seen = byHouse.get(key);
+    const key = value.toLowerCase();
+    const seen = grouped.get(key);
     if (seen) seen.push(game);
-    else byHouse.set(key, [game]);
+    else grouped.set(key, [game]);
   }
 
-  const stats: HouseStat[] = [...byHouse.values()].map((played) => {
-    const total = played.reduce((sum, game) => sum + game.total, 0);
+  return [...grouped.values()]
+    .map((played) => {
+      const total = played.reduce((sum, game) => sum + game.total, 0);
+      return {
+        name: pick(played[0])!.trim(),
+        games: played.length,
+        average: Math.round(total / played.length),
+        high: Math.max(...played.map((game) => game.total)),
+        lastAt: Math.max(...played.map((game) => game.playedAt)),
+      };
+    })
+    .sort((a, b) => b.average - a.average || b.games - a.games);
+}
 
-    return {
-      house: played[0].house!.trim(),
-      games: played.length,
-      average: Math.round(total / played.length),
-      high: Math.max(...played.map((game) => game.total)),
-      lastAt: Math.max(...played.map((game) => game.playedAt)),
-    };
-  });
+/**
+ * How the season looks ball by ball.
+ *
+ * The one most bowlers actually want. A bowler who owns two balls has an
+ * opinion about which is better and, until the ball was a field, no way to
+ * find out whether they were right.
+ */
+export function ballStats(games: Game[]): GroupedStat[] {
+  return statsBy(games, (game) => game.ball);
+}
 
-  return stats.sort((a, b) => b.average - a.average || b.games - a.games);
+/** By lane. Small samples, mostly — which is why the game count is beside it. */
+export function laneStats(games: Game[]): GroupedStat[] {
+  return statsBy(games, (game) => game.lane);
+}
+
+/** By how the lane was playing. */
+export function conditionStats(games: Game[]): GroupedStat[] {
+  return statsBy(games, (game) => game.condition);
+}
+
+/**
+ * What has been written in a field before, most-used first.
+ *
+ * For offering rather than for reading, which is why it is not `statsBy`'s
+ * order: a suggestion list wants the ball you *reach for*, not the one you
+ * happen to bowl best with.
+ */
+export function valuesUsed(games: Game[], pick: (game: Game) => string | undefined): string[] {
+  return statsBy(games, pick)
+    .slice()
+    .sort((a, b) => b.games - a.games || b.lastAt - a.lastAt)
+    .map((one) => one.name);
 }
 
 /**
@@ -872,10 +1005,7 @@ export function houseStats(games: Game[]): HouseStat[] {
  * not the one they happen to bowl best at.
  */
 export function housesPlayed(games: Game[]): string[] {
-  return houseStats(games)
-    .slice()
-    .sort((a, b) => b.games - a.games || b.lastAt - a.lastAt)
-    .map((house) => house.house);
+  return valuesUsed(games, (game) => game.house);
 }
 
 export interface PositionStat {

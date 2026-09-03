@@ -333,6 +333,40 @@ all anybody else can see of them. `SharedGame` carries `rolls` and `playedAt`
 for that and deliberately not `pinfalls`: leaves are not shared, so a member's
 page can show frames and strikes and never what they left.
 
+**The ball, the lane and the condition were a sentence, and are fields now.**
+`Game.note`'s own comment named all three — "the lane, the oil, a ball changed
+at the fifth". A sentence is the right place to *explain* a game and the wrong
+place to *count* one: nothing can average a season by ball while the ball is a
+phrase inside prose. All three are free text and deliberately so, offering what
+has already been typed rather than a table of ball models the app would then
+have to maintain. `defaultBall` is pre-filled on the finishing step for the same
+reason `homeHouse` is: per-ball averages are worth nothing if the field stops
+getting filled in.
+
+`statsBy` is the one grouping behind house, ball, lane and condition. Four
+plausible copy-pastes of an average are four chances for them to stop meaning
+the same thing. It fixed one on the way: **`houseStats` did not filter
+unfinished games** and `summarise` always has, so a season average and a
+per-house average disagreed about what a game is — a two-frame abandonment
+carried a total of about 24 into one of them and not the other.
+
+Note that these read the *stored* `total` rather than rescoring, which is
+deliberate and is what the denormalisation on `Game` exists for. `tally`
+rescores instead, because it is answering a different question. They agree on
+real data because `saveGame` writes the total from the scorer; they diverge on
+synthetic data, which is how a seeded season with `total: 0` briefly made every
+average on every card read zero.
+
+**Consistency is the stat this app was missing.** Averages and highs describe
+the middle and the ceiling and say nothing about the range — and the range is
+what most people are actually trying to fix. 150 ± 40 and 150 ± 12 are the same
+average and two completely different bowlers, and only one of them can be
+relied on for a team. It is also the more honest goal: a ceiling moves rarely,
+a spread moves with practice. Population deviation, not sample — these are all
+the games there are. Under `MIN_FOR_SPREAD` games it returns null rather than a
+number, because a spread over three games is noise wearing a number's clothes
+and a number on a screen is believed.
+
 **Splits get their own section, because the leave list cannot answer the
 question.** "What you leave" is ranked by how often a leave happens, which puts
 the ten pin and the head pin at the top and a split rarely on the screen at

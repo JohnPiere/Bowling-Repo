@@ -436,6 +436,30 @@ export const JA: Record<string, string> = {
   'Already been': '過去の予定',
   '{n} came': '{n}人参加',
 
+  'Typical game': 'いつものスコア',
+  'Steadiness': '安定度',
+  'Half your games land between {low} and {high}. Two bowlers can average the same and be nothing alike — the spread is the part practice moves.':
+    '半分のゲームが{low}〜{high}に収まっています。平均が同じでも安定感は別物で、練習で動くのはこちらです。',
+  'Only games that said which ball. The one you own an opinion about.':
+    'ボールを記録したゲームのみです。',
+  'Only games that said how the lane was playing.': 'レーンの状態を記録したゲームのみです。',
+  'Small samples, mostly — the game count beside each one is the caveat.':
+    'ほとんどが少ないゲーム数です。横のゲーム数と合わせて見てください。',
+
+  // ── The ball, the lane, and how it played ──
+  'Ball': 'ボール',
+  'Lane': 'レーン',
+  'How it played': 'レーンの状態',
+  'Storm Phaze II': 'ストーム フェイズII',
+  'Fresh': 'フレッシュ',
+  'Usual ball': 'よく使うボール',
+  'Pre-filled the same way. Per-ball averages are only worth having if the field gets filled in.':
+    '同じように自動入力されます。ボール別平均は、入力されてこそ意味があります。',
+  'By ball': 'ボール別',
+  'By lane': 'レーン別',
+  'By condition': 'レーン状態別',
+  'Consistency': '安定感',
+
   // ── Counting up ──
   'Counted up': '累計',
   'All time': '通算',

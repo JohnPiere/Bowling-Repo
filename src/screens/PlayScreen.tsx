@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { FrameStrip } from '../components/FrameStrip';
 import { PinKeypad } from '../components/PinKeypad';
 import { PinRack } from '../components/PinRack';
 import { Icon } from '../components/Icon';
-import { saveGame } from '../lib/db';
+import { saveGame, type Game } from '../lib/db';
 import { frameStrip } from '../lib/framestrip';
+import { valuesUsed } from '../lib/stats';
 import { deckFor } from '../lib/pins';
 import { setBowling } from '../lib/updates';
 import {
@@ -30,6 +31,13 @@ type Entry = 'rack' | 'pad';
 interface Props {
   /** Receives the saved game so the caller can offer to share it. */
   onSaved: (gameId: string) => void;
+  /**
+   * The season so far, only to offer back what has already been typed.
+   *
+   * Nothing on this screen reads a score out of it — a bowler naming their
+   * ball for the fortieth time should be picking, not typing.
+   */
+  games: Game[];
 }
 
 /**
@@ -44,8 +52,16 @@ interface Props {
  * Rolls are held in component state until the game is saved, so a mis-tap can
  * be undone without touching the database.
  */
-export function PlayScreen({ onSaved }: Props) {
+export function PlayScreen({ onSaved, games }: Props) {
   const { preferences } = usePreferences();
+  const suggestions = useMemo(
+    () => ({
+      houses: valuesUsed(games, (game) => game.house),
+      balls: valuesUsed(games, (game) => game.ball),
+      conditions: valuesUsed(games, (game) => game.condition),
+    }),
+    [games],
+  );
   /**
    * Somebody who has settled on one of the two modes is not asked.
    *
@@ -66,6 +82,11 @@ export function PlayScreen({ onSaved }: Props) {
   // Seeded from the usual alley, and editable: most games are bowled in one
   // place, and the house is what per-house averages are made of.
   const [house, setHouse] = useState(() => preferences.homeHouse);
+  // Same argument as the house: most people reach for the same ball most
+  // nights, and the ball is what per-ball averages are made of.
+  const [ball, setBall] = useState(() => preferences.defaultBall);
+  const [lane, setLane] = useState('');
+  const [condition, setCondition] = useState('');
   const [note, setNote] = useState('');
   // When it was bowled. Seeded from the clock and editable, because a game is
   // often written up afterwards — in the car, or the next morning — and filing
@@ -186,6 +207,9 @@ export function PlayScreen({ onSaved }: Props) {
       const saved = await saveGame({
         bowler: 'You',
         house: house.trim() || undefined,
+        ball: ball.trim() || undefined,
+        lane: lane.trim() || undefined,
+        condition: condition.trim() || undefined,
         note: note.trim() || undefined,
         rolls,
         // Only when every ball was entered on the rack; a half-recorded game
@@ -200,6 +224,9 @@ export function PlayScreen({ onSaved }: Props) {
       setPinfalls([]);
       setPending([]);
       setHouse(preferences.homeHouse);
+      setBall(preferences.defaultBall);
+      setLane('');
+      setCondition('');
       setNote('');
       setDay(toDateInput(Date.now()));
       setTime(toTimeInput(Date.now()));
@@ -276,8 +303,68 @@ export function PlayScreen({ onSaved }: Props) {
             value={house}
             onChange={(e) => setHouse(e.target.value)}
             placeholder="Rose Bowl Lanes"
+            list="play-houses"
           />
         </label>
+
+        {/* The three that used to be a sentence in the note. Free text, all of
+            them, offering what has been typed before — the app has never had a
+            table of alleys and does not want one of ball models either. */}
+        <label style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">{t('Ball')}</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={ball}
+            onChange={(e) => setBall(e.target.value)}
+            placeholder={t('Storm Phaze II')}
+            list="play-balls"
+            maxLength={60}
+          />
+        </label>
+
+        <div className="row" style={{ gap: 11, marginBottom: 11 }}>
+          <label className="grow">
+            <span className="hero__label">{t('Lane')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              value={lane}
+              onChange={(e) => setLane(e.target.value)}
+              placeholder="7"
+              inputMode="numeric"
+              maxLength={12}
+            />
+          </label>
+          <label className="grow">
+            <span className="hero__label">{t('How it played')}</span>
+            <input
+              className="input"
+              style={{ marginTop: 5 }}
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+              placeholder={t('Fresh')}
+              list="play-conditions"
+              maxLength={40}
+            />
+          </label>
+        </div>
+
+        <datalist id="play-houses">
+          {suggestions.houses.map((one) => (
+            <option key={one} value={one} />
+          ))}
+        </datalist>
+        <datalist id="play-balls">
+          {suggestions.balls.map((one) => (
+            <option key={one} value={one} />
+          ))}
+        </datalist>
+        <datalist id="play-conditions">
+          {suggestions.conditions.map((one) => (
+            <option key={one} value={one} />
+          ))}
+        </datalist>
 
         <div className="row" style={{ gap: 11, marginBottom: 11 }}>
           <label className="grow">

@@ -39,6 +39,9 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [house, setHouse] = useState(game.house ?? '');
+  const [ball, setBall] = useState(game.ball ?? '');
+  const [lane, setLane] = useState(game.lane ?? '');
+  const [condition, setCondition] = useState(game.condition ?? '');
   const [note, setNote] = useState(game.note ?? '');
   // When it was bowled, which until now could be set once and never again:
   // `reviseGame` has always taken a `playedAt` and nothing ever passed one, so
@@ -102,6 +105,9 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
         .trim(),
     );
     setHouse(game.house ?? '');
+    setBall(game.ball ?? '');
+    setLane(game.lane ?? '');
+    setCondition(game.condition ?? '');
     setNote(game.note ?? '');
     setDay(toDateInput(game.playedAt));
     setTime(toTimeInput(game.playedAt));
@@ -119,6 +125,9 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
       await reviseGame(game.id, {
         rolls: parsed.rolls,
         house,
+        ball,
+        lane,
+        condition,
         note,
         playedAt: fromInputs(day, time) ?? undefined,
       });
@@ -218,6 +227,44 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
             placeholder="Rose Bowl Lanes"
           />
         </label>
+
+        <label style={{ display: 'block', marginBottom: 11 }}>
+          <span className="hero__label">{t('Ball')}</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={ball}
+            onChange={(e) => setBall(e.target.value)}
+            placeholder={t('Storm Phaze II')}
+            maxLength={60}
+          />
+        </label>
+
+        <div className="row" style={{ gap: 11, marginBottom: 11 }}>
+          <label className="grow">
+            <span className="hero__label">{t('Lane')}</span>
+            <input
+              className="input tnum"
+              style={{ marginTop: 5 }}
+              value={lane}
+              onChange={(e) => setLane(e.target.value)}
+              placeholder="7"
+              inputMode="numeric"
+              maxLength={12}
+            />
+          </label>
+          <label className="grow">
+            <span className="hero__label">{t('How it played')}</span>
+            <input
+              className="input"
+              style={{ marginTop: 5 }}
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+              placeholder={t('Fresh')}
+              maxLength={40}
+            />
+          </label>
+        </div>
 
         <div className="row" style={{ gap: 11, marginBottom: 11 }}>
           <label className="grow">

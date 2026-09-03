@@ -12,7 +12,7 @@ import {
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { AvatarError, dataUrlBytes, toAvatarDataUrl } from '../lib/avatar';
 import { START_SCREENS } from '../lib/preferences';
-import { housesPlayed as housesPlayedIn } from '../lib/stats';
+import { housesPlayed as housesPlayedIn, valuesUsed } from '../lib/stats';
 import { forgetLastSync, forgetGames } from '../lib/cloud';
 import { anyFailed, failedSteps, runReset, type ResetStep } from '../lib/reset';
 import { reloadClean } from '../lib/recover';
@@ -84,6 +84,7 @@ export function SettingsScreen({
   // Offered under the alley field, so it is a pick rather than typing for
   // anybody who already has a game in their season.
   const housesPlayed = useMemo(() => housesPlayedIn(games), [games]);
+  const ballsUsed = useMemo(() => valuesUsed(games, (game) => game.ball), [games]);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
@@ -527,9 +528,32 @@ export function SettingsScreen({
             <option key={name} value={name} />
           ))}
         </datalist>
-        <p className="footnote" style={{ marginBottom: 0 }}>
+        <p className="footnote">
           {t(
             'Filled in when you finish a game, and editable there. It is what per-house averages are made of.',
+          )}
+        </p>
+
+        <label style={{ display: 'block' }}>
+          <span className="hero__label">{t('Usual ball')}</span>
+          <input
+            className="input"
+            style={{ marginTop: 5 }}
+            value={preferences.defaultBall}
+            onChange={(event) => update({ defaultBall: event.target.value })}
+            maxLength={60}
+            placeholder={t('Storm Phaze II')}
+            list="settings-balls"
+          />
+        </label>
+        <datalist id="settings-balls">
+          {ballsUsed.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t(
+            'Pre-filled the same way. Per-ball averages are only worth having if the field gets filled in.',
           )}
         </p>
       </div>

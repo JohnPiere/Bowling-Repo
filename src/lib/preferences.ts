@@ -78,6 +78,15 @@ export interface Preferences {
    * in one place; this fills that in and leaves it editable.
    */
   homeHouse: string;
+  /**
+   * The ball reached for most nights, pre-filled beside the alley.
+   *
+   * Same argument as `homeHouse`, and the same shape: typed once in Settings,
+   * offered on the finishing step, editable there. Per-ball averages are only
+   * worth anything if the field actually gets filled in, and a field somebody
+   * types from scratch every game is a field that stops getting filled in.
+   */
+  defaultBall: string;
 }
 
 /** Where the app can open. The tab bar, in the order it draws them. */
@@ -130,6 +139,7 @@ export const DEFAULTS: Preferences = {
   startScreen: 'home',
   scoringEntry: 'ask',
   homeHouse: '',
+  defaultBall: '',
 };
 
 const KEY = 'lane-log.preferences';
