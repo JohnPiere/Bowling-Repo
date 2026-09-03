@@ -176,11 +176,21 @@ precached copy, which is why it looked like a caching problem and why it hit
 whoever had cleared their data or never visited before. The race also explains
 its coming and going without a commit in between.
 
-The setting is a one-time fix and is not in this repository — Settings → Pages →
-Source: **GitHub Actions**. What is here is that it can no longer be silent:
-`pages.yml` reads the deployed URL back after both publishers have settled and
-fails the run if what is being served is not the build it just made. A deploy
-that gets overwritten is a failed deploy and should look like one.
+It is a race and it goes both ways: for `d7180b9` the branch publisher landed
+last and the app was replaced by its own "could not start" screen; for
+`5054860`, the very next push, this workflow landed last and the same code was
+fine. Reading the deployed site back cannot tell those apart — sample it on a
+push that happened to win and it passes while the repository is still
+configured to break the next one.
+
+So `pages.yml` asks what the configuration *is*, which is not a race, and puts
+it right: `build_type` must be `workflow`, and the workflow sets it when it is
+not. That is the whole fix, and it stops the Jekyll publisher being run at all
+rather than out-racing it. It happens in the `build` job, before the deploy,
+so the deploy that follows lands in the mode it just ensured. If the token is
+not allowed to change it the step fails and says which setting to change by
+hand (Settings → Pages → Source: GitHub Actions). The read-back is kept behind
+it as a second check on anything else that could make the site unusable.
 
 The boot guard tells the two apart now, because the advice differs and one of
 them was actively wrong. A failed asset whose path is a source entry

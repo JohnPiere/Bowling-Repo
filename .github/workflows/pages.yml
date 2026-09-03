@@ -45,6 +45,56 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
 
+      # GitHub has two Pages publishers and only one of them is this workflow.
+      # With the repository's Pages source set to "Deploy from a branch",
+      # GitHub also runs its own Jekyll build over the repository *root* and
+      # deploys that — the source `index.html`, whose script tag is
+      # `/src/main.tsx`, which no browser can run. Both fire on every push and
+      # the later one wins, by a few seconds, either way: for d7180b9 the
+      # branch publisher landed last (06:41:31 against 06:41:24) and the app on
+      # a real phone was replaced by its own "could not start" screen; for
+      # 5054860 this workflow landed last (10:44:56 against 10:44:52) and the
+      # same commit was fine. Every run was green both times.
+      #
+      # Reading the site back cannot tell those apart — sample it on a good
+      # push and it passes while the repository is still configured to break
+      # the next one. So ask what the configuration *is*, which is not a race,
+      # and put it right. `build_type: workflow` means this workflow is the
+      # only publisher and the Jekyll one stops being run at all.
+      - name: Make sure this workflow is the only Pages publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages"
+          auth=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+
+          current=$(curl -fsS "${auth[@]}" "$api" | jq -r '.build_type // "unknown"') || current=unknown
+          echo "Pages build_type is '$current'"
+
+          if [ "$current" = "workflow" ]; then
+            echo "This workflow is the only publisher."
+            exit 0
+          fi
+
+          echo "Pages is also publishing the repository root from a branch."
+          echo "That publishes the source tree, which has no built app in it."
+          echo "Switching the source to GitHub Actions."
+
+          code=$(curl -sS -o /tmp/pages-put.txt -w '%{http_code}' -X PUT "${auth[@]}" \
+            -H 'Content-Type: application/json' \
+            "$api" -d '{"build_type":"workflow"}')
+
+          if [ "$code" = "204" ] || [ "$code" = "200" ]; then
+            echo "Done — from now on only this workflow publishes the site."
+            exit 0
+          fi
+
+          echo "::error::Could not switch it (HTTP $code)."
+          cat /tmp/pages-put.txt || true
+          echo "Change it once by hand and this step goes quiet:"
+          echo "  Settings -> Pages -> Build and deployment -> Source: GitHub Actions"
+          exit 1
+
       # Asks GitHub to turn Pages on if it is not on already. The workflow
       # token is often not allowed to create a Pages site — the step then fails
       # with "Resource not accessible by integration", and Pages has to be
@@ -68,19 +118,10 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-      # GitHub has two Pages publishers and only one of them is this workflow.
-      # With the repository's Pages source set to "Deploy from a branch",
-      # GitHub also runs its own Jekyll build over the repository *root* and
-      # deploys that — the source `index.html`, whose script tag is
-      # `/src/main.tsx`, which no browser can run. Both fire on every push and
-      # the later one wins. Measured on 2026-09-03 for d7180b9: this workflow
-      # deployed at 06:41:24, the branch publisher at 06:41:31, and the app on
-      # a real phone was replaced by its own "could not start" screen with
-      # nothing anywhere in the logs to say why. Every run was green.
-      #
-      # So read back what is actually being served, after both have settled.
-      # A deploy that gets overwritten is a failed deploy and should look like
-      # one.
+      # And then the belt to that pair of braces: whatever the configuration
+      # says, read back what is actually being served. This cannot catch the
+      # race on its own, but it does catch a build that deployed something
+      # unusable for any other reason.
       - name: Check the deployed site is this build
         run: |
           url='${{ steps.deploy.outputs.page_url }}'
@@ -93,9 +134,6 @@ jobs:
             case "$html" in
               *'/src/main.tsx'*)
                 echo "::error::$url is serving the repository source, not this build."
-                echo "GitHub's branch publisher ('pages build and deployment') overwrote it."
-                echo "Fix it once, in the repository settings:"
-                echo "  Settings -> Pages -> Build and deployment -> Source: GitHub Actions"
                 exit 1
                 ;;
               *'/assets/index-'*)
