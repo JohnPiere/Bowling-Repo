@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { tf, useTranslation } from '../lib/i18n';
-import { AVATARS, colourOf, DEFAULTS, PLAYER_COLOURS, usePreferences } from '../lib/preferences';
+import {
+  AVATARS,
+  colourOf,
+  DEFAULTS,
+  PLAYER_COLOURS,
+  savePreferences,
+  usePreferences,
+} from '../lib/preferences';
 import { buildBackup, planRestore, type RestorePlan } from '../lib/backup';
 import { AvatarError, dataUrlBytes, toAvatarDataUrl } from '../lib/avatar';
+import { forgetLastSync, forgetGames } from '../lib/cloud';
+import { anyFailed, failedSteps, runReset, type ResetStep } from '../lib/reset';
+import { forgetGuest } from '../lib/session';
 import { Avatar } from '../components/Avatar';
 import { CloudBackup } from '../components/CloudBackup';
-import { initialsOf, saveMyProfile } from '../lib/social';
-import { clearAllGames, putGames, type Game } from '../lib/db';
+import { forgetReadMarks, initialsOf, leaveEverything, resetMyProfile, saveMyProfile } from '../lib/social';
+import { clearAllGames, forgetPushSubscription, putGames, type Game } from '../lib/db';
 import type { Session } from '../lib/session';
 import {
   getInstallState,
@@ -32,6 +42,17 @@ import {
   STORAGE_WARN_AT,
   type StorageReport,
 } from '../lib/storage';
+
+/** What each reset step is called when it has to be reported as unfinished. */
+const NAMES: Record<ResetStep, string> = {
+  backup: 'the copy on the server',
+  crews: 'your crews',
+  profile: 'your crew profile',
+  signOut: 'signing out',
+  games: 'the games on this phone',
+  push: 'notifications',
+  preferences: 'your settings',
+};
 
 /**
  * Settings, which on this app is mostly the two things that make it feel like
@@ -64,6 +85,9 @@ export function SettingsScreen({
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoRef = useRef<HTMLInputElement | null>(null);
   const [profileSync, setProfileSync] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetFailures, setResetFailures] = useState<ResetStep[] | null>(null);
   const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
@@ -114,6 +138,53 @@ export function SettingsScreen({
 
     return () => clearTimeout(timer);
   }, [session.id, session.isGuest, preferences.playerName, preferences.playerPhoto]);
+
+  /**
+   * Put the whole account back to nothing.
+   *
+   * The order and the keep-going rules live in `lib/reset.ts`; this supplies
+   * the work. The remote four are omitted for a guest, which is what makes the
+   * screen report three steps rather than seven that were never going to run.
+   */
+  async function resetEverything() {
+    setResetting(true);
+    setResetFailures(null);
+
+    const outcomes = await runReset({
+      ...(session.isGuest
+        ? {}
+        : {
+            backup: () => forgetGames(session.id),
+            crews: () => leaveEverything(session.id),
+            profile: () => resetMyProfile(session.id),
+            signOut: async () => onSignOut?.(),
+          }),
+      games: () => clearAllGames(),
+      push: async () => {
+        // Both halves: the browser's subscription and this device's record of
+        // it. Leaving the record would have the next install think it is
+        // already subscribed to a push service that has forgotten it.
+        await unsubscribeFromPush().catch(() => undefined);
+        await forgetPushSubscription();
+      },
+      preferences: async () => {
+        forgetReadMarks();
+        forgetLastSync();
+        forgetGuest();
+        // Written but deliberately not announced. `onboardedAt` going to null
+        // is the gate the first-run screen is behind, and firing the change
+        // event here would unmount this screen the instant the reset landed —
+        // taking the report of what happened with it, which on the one screen
+        // that can half-fail is the part worth reading.
+        savePreferences(DEFAULTS);
+      },
+    });
+
+    setResetting(false);
+    setConfirmReset(false);
+    setResetFailures(anyFailed(outcomes) ? failedSteps(outcomes) : []);
+    onRestored?.();
+  }
 
   async function readPhoto(file: File) {
     setPhotoError(null);
@@ -195,6 +266,9 @@ export function SettingsScreen({
       update({
         playerName: DEFAULTS.playerName,
         playerIcon: DEFAULTS.playerIcon,
+        // The photograph above all: it is the only thing here that is a picture
+        // of somebody, and it arrived after this list was written.
+        playerPhoto: DEFAULTS.playerPhoto,
         playerColour: DEFAULTS.playerColour,
         onboardedAt: null,
       });
@@ -576,7 +650,7 @@ export function SettingsScreen({
       <div className="card">
         <p className="muted" style={{ margin: '0 0 11px' }}>
           {t(
-            'Removes every game and every scanned sheet on this device. Your preferences and this device’s notification setting are left alone.',
+            'Removes every game and every scanned sheet on this device, and the name, tile and photo you set. Your crews, the copy on the server and this device’s notification setting are left alone — the full reset below takes those too.',
           )}
         </p>
 
@@ -637,6 +711,126 @@ export function SettingsScreen({
             onClick={() => setConfirmClear(false)}
           >
             {t('Keep my games')}
+          </button>
+        </div>
+      )}
+
+      <h2 className="section-title">{t('Start over')}</h2>
+      <div className="card">
+        <p className="muted" style={{ margin: '0 0 11px' }}>
+          {session.isGuest
+            ? t(
+                'Everything on this phone: the games, the sheets, the name and tile, the notification setting. You end up back at the first screen.',
+              )
+            : t(
+                'Everything, everywhere: the games on this phone and the copy on the server, every crew, the name and picture your crews see, and the notification setting. You are signed out and end up back at the first screen.',
+              )}
+        </p>
+
+        {resetFailures === null ? (
+          <button
+            type="button"
+            className="btn-lg btn-lg--danger"
+            onClick={() => setConfirmReset(true)}
+          >
+            {t('Reset this account')}
+          </button>
+        ) : (
+          <>
+            {resetFailures.length === 0 ? (
+              <div className="note note--good">{t('Done. Nothing of yours is left.')}</div>
+            ) : (
+              <div className="note note--warn">
+                {tf(
+                  'This phone is clear, but {what} could not be reached. Sign in again on a better connection and reset once more to finish it.',
+                  { what: resetFailures.map((step) => t(NAMES[step])).join(', ') },
+                )}
+              </div>
+            )}
+
+            {/* The reset is already written; this only announces it, which is
+                what swaps the app to the first-run screen. Doing that
+                automatically would have hidden the note above. */}
+            <button
+              type="button"
+              className="btn-lg btn-lg--primary"
+              onClick={() => window.dispatchEvent(new Event('lane-log:preferences'))}
+            >
+              {t('Start again')}
+            </button>
+          </>
+        )}
+
+        {!session.isGuest && (
+          <p className="footnote" style={{ marginBottom: 0 }}>
+            {t(
+              'Your Google account itself is not touched — this app has no key that could, and should not have one. Remove its access from your Google account’s third-party app list.',
+            )}
+          </p>
+        )}
+      </div>
+
+      {confirmReset && (
+        <div className="card card--danger">
+          <div className="hero__label" style={{ marginBottom: 6 }}>
+            {t('Reset this account?')}
+          </div>
+
+          {/* Named one at a time. This is the only screen in the app where a
+              vague sentence would cost somebody a season and a crew. */}
+          <ul className="resetlist">
+            <li>
+              {tf(games.length === 1 ? '{n} game on this phone' : '{n} games on this phone', {
+                n: games.length,
+              })}
+            </li>
+            {games.some((game) => game.hasSheet) && (
+              <li>
+                {tf(
+                  games.filter((game) => game.hasSheet).length === 1
+                    ? '{n} scanned sheet'
+                    : '{n} scanned sheets',
+                  { n: games.filter((game) => game.hasSheet).length },
+                )}
+              </li>
+            )}
+            <li>{t('Your name, tile, photo, language and every other setting')}</li>
+            <li>{t('This device’s notifications')}</li>
+            {!session.isGuest && (
+              <>
+                <li>{t('The copy of your season on the server')}</li>
+                <li>
+                  {t(
+                    'Every crew: you leave the ones you joined, and the ones you own are deleted for everybody in them',
+                  )}
+                </li>
+                <li>{t('The name and picture your crews see')}</li>
+              </>
+            )}
+          </ul>
+
+          <p className="footnote">
+            {t(
+              'Nothing here can be undone. If you want your games afterwards, export them first — the button is above.',
+            )}
+          </p>
+
+          <button
+            type="button"
+            className="btn-lg btn-lg--danger"
+            disabled={resetting}
+            onClick={() => void resetEverything()}
+          >
+            {resetting ? t('Resetting…') : t('Yes, reset everything')}
+          </button>
+          <button
+            type="button"
+            className="btn-lg"
+            style={{ marginTop: 9 }}
+            disabled={resetting}
+            onClick={() => setConfirmReset(false)}
+          >
+            {t('Keep my account')}
           </button>
         </div>
       )}

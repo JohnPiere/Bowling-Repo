@@ -159,8 +159,8 @@ export const JA: Record<string, string> = {
   'Yes, delete everything': 'はい、すべて削除する',
   'Keep my games': '削除しない',
   'Clearing…': '消去中…',
-  'Removes every game and every scanned sheet on this device. Your preferences and this device’s notification setting are left alone.':
-    'この端末のゲームと撮影したシートをすべて削除します。設定と通知の許可はそのまま残ります。',
+  'Removes every game and every scanned sheet on this device, and the name, tile and photo you set. Your crews, the copy on the server and this device’s notification setting are left alone — the full reset below takes those too.':
+    'この端末のゲームと撮影したシート、設定した名前・アイコン・写真を削除します。クルー、サーバー上の控え、通知設定はそのまま残ります。下の「すべてリセット」ならそれらも削除します。',
   '{n} games and {sheets} scanned sheets will be deleted from this device.':
     'この端末から{n}ゲームと{sheets}枚のシートを削除します。',
   'There is no account and no server, so this cannot be undone. Export a backup first if you want one.':
@@ -356,6 +356,50 @@ export const JA: Record<string, string> = {
   'Looking through your games…': 'ゲームを読み込み中…',
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
+
+  // ── When the app's own files have moved ──
+  'Reload the app': 'アプリを再読み込み',
+  'The app was updated while it was open. Reload the page and try again.':
+    '開いている間にアプリが更新されました。ページを再読み込みしてからもう一度お試しください。',
+  'The sign-in page did not open. Check that this address is listed under Redirect URLs in the Supabase dashboard.':
+    'サインイン画面が開きませんでした。このアドレスがSupabaseのRedirect URLsに登録されているか確認してください。',
+
+  // ── Starting over ──
+  'Start over': 'すべてリセット',
+  'Everything on this phone: the games, the sheets, the name and tile, the notification setting. You end up back at the first screen.':
+    'この端末のすべて。ゲーム、スコアシート、名前とアイコン、通知設定を削除し、最初の画面に戻ります。',
+  'Everything, everywhere: the games on this phone and the copy on the server, every crew, the name and picture your crews see, and the notification setting. You are signed out and end up back at the first screen.':
+    'すべてを削除します。この端末のゲームとサーバー上の控え、参加中のすべてのクルー、クルーに表示される名前と写真、通知設定。サインアウトして最初の画面に戻ります。',
+  'Reset this account': 'アカウントをリセット',
+  'Reset this account?': 'アカウントをリセットしますか？',
+  'Done. Nothing of yours is left.': '完了しました。あなたのデータは残っていません。',
+  'This phone is clear, but {what} could not be reached. Sign in again on a better connection and reset once more to finish it.':
+    'この端末は消去しましたが、{what}に接続できませんでした。通信状態のよい場所でもう一度サインインし、リセットし直してください。',
+  'Start again': '最初から始める',
+  'Your Google account itself is not touched — this app has no key that could, and should not have one. Remove its access from your Google account’s third-party app list.':
+    'Googleアカウント自体は削除されません。このアプリにはその権限がなく、持つべきでもありません。Googleアカウントの「サードパーティ製アプリ」からアクセスを削除してください。',
+  '{n} game on this phone': 'この端末の{n}ゲーム',
+  '{n} games on this phone': 'この端末の{n}ゲーム',
+  '{n} scanned sheet': 'スコアシート{n}枚',
+  '{n} scanned sheets': 'スコアシート{n}枚',
+  'Your name, tile, photo, language and every other setting': '名前・アイコン・写真・言語などすべての設定',
+  'This device’s notifications': 'この端末の通知',
+  'The copy of your season on the server': 'サーバー上のシーズンの控え',
+  'Every crew: you leave the ones you joined, and the ones you own are deleted for everybody in them':
+    'すべてのクルー。参加中のクルーからは退出し、自分がオーナーのクルーは全員から削除されます',
+  'The name and picture your crews see': 'クルーに表示される名前と写真',
+  'Nothing here can be undone. If you want your games afterwards, export them first — the button is above.':
+    'ここでの操作は取り消せません。ゲームを残したい場合は、先に上のボタンから書き出してください。',
+  'Yes, reset everything': 'はい、すべてリセットする',
+  'Keep my account': 'リセットしない',
+  'Resetting…': 'リセット中…',
+  'the copy on the server': 'サーバー上の控え',
+  'your crews': 'クルー',
+  'your crew profile': 'クルーのプロフィール',
+  'signing out': 'サインアウト',
+  'the games on this phone': 'この端末のゲーム',
+  'notifications': '通知',
+  'your settings': '設定',
 
   // ── Crew settings ──
   'You are the {role}.': 'あなたは{role}です。',

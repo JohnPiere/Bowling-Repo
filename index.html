@@ -36,6 +36,181 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      The last resort, and deliberately the only script on the page that is not
+      a module: nothing here may depend on the bundle, because the case it
+      exists for is the bundle not arriving.
+
+      A white page is the worst thing a web app can do, because it is the one
+      failure that says nothing at all — and on somebody else's phone, with no
+      console, it cannot even be reported. Two things stop that here.
+
+      **A missing asset heals itself, once.** This site is served from GitHub
+      Pages, where a deploy deletes the old hashed files. A phone that had
+      already installed the service worker keeps being served the precached
+      `index.html`, which names files the server no longer has — and because
+      updates are behind a prompt that the app itself has to draw, the app that
+      would draw it never loads. That is a permanent white page with no way out
+      from inside. Catching the failed asset load, clearing the caches and
+      reloading breaks it. Guarded by a session flag so it cannot loop, and it
+      touches nothing but the HTTP caches: the games are in IndexedDB.
+
+      **Anything else says so.** An error before the app mounts paints its own
+      message, in both languages, with a button that does the same clearing by
+      hand. Somebody can read it out or photograph it.
+    -->
+    <script>
+      (function () {
+        var HEALED = 'lane-log.healed';
+        var ready = false;
+
+        // Before anything else: a ground to fail against. A stylesheet that
+        // never arrives would otherwise leave a white page even when the only
+        // problem is the stylesheet.
+        document.documentElement.style.background = '#161826';
+
+        function clearCaches(done) {
+          var finished = false;
+          function finish() {
+            if (finished) return;
+            finished = true;
+            done();
+          }
+
+          var jobs = [];
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            jobs.push(
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(
+                  regs.map(function (reg) {
+                    return reg.unregister();
+                  }),
+                );
+              }),
+            );
+          }
+          if (window.caches && caches.keys) {
+            jobs.push(
+              caches.keys().then(function (keys) {
+                return Promise.all(
+                  keys.map(function (key) {
+                    return caches.delete(key);
+                  }),
+                );
+              }),
+            );
+          }
+
+          if (!jobs.length) return finish();
+          Promise.all(jobs).then(finish, finish);
+          // Never hang on it: a reload that did not happen is a white page.
+          setTimeout(finish, 4000);
+        }
+
+        function show(detail) {
+          var root = document.getElementById('root');
+          if (!root) return;
+
+          root.innerHTML =
+            '<div style="min-height:100%;display:flex;align-items:center;justify-content:center;' +
+            'padding:28px;font:14px/1.6 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;' +
+            'color:#e9e9ed;background:#161826">' +
+            '<div style="max-width:22rem">' +
+            '<div style="font-size:17px;font-weight:600;margin-bottom:10px">Lane Log could not start</div>' +
+            '<p style="margin:0 0 6px;color:#b2b6ca">Clearing this app&rsquo;s cache usually fixes it. ' +
+            'Your saved games are not touched.</p>' +
+            '<p style="margin:0 0 16px;color:#b2b6ca">キャッシュを消すとたいてい直ります。保存したゲームは削除されません。</p>' +
+            '<button id="lane-log-heal" style="width:100%;min-height:52px;border-radius:12px;' +
+            'border:1px solid #5d5294;background:#2b2741;color:#e7e5fe;font:inherit;font-weight:500">' +
+            'Clear and reload · 消して再読み込み</button>' +
+            '<pre style="margin:16px 0 0;white-space:pre-wrap;word-break:break-word;font-size:11px;' +
+            'color:#75798c">' +
+            String(detail || '').replace(/[<&]/g, '') +
+            '</pre>' +
+            '</div></div>';
+
+          var button = document.getElementById('lane-log-heal');
+          if (button) {
+            button.onclick = function () {
+              button.disabled = true;
+              button.textContent = 'Clearing…';
+              clearCaches(function () {
+                location.reload();
+              });
+            };
+          }
+        }
+
+        function heal(detail) {
+          var already = false;
+          try {
+            already = sessionStorage.getItem(HEALED) === '1';
+          } catch (e) {
+            // Private browsing. One attempt, then the message.
+          }
+
+          if (already) return show(detail);
+
+          try {
+            sessionStorage.setItem(HEALED, '1');
+          } catch (e) {
+            /* as above */
+          }
+          clearCaches(function () {
+            location.reload();
+          });
+        }
+
+        // Capture phase, because a failed <script> or <link> does not bubble.
+        // This is the stale-precache case, and the only one worth healing
+        // automatically: the file the page was told to load is not there.
+        window.addEventListener(
+          'error',
+          function (event) {
+            if (ready) return;
+            var tag = event.target && event.target.tagName;
+            if (tag === 'SCRIPT' || tag === 'LINK') {
+              heal('Could not load ' + (event.target.src || event.target.href || tag));
+            }
+          },
+          true,
+        );
+
+        // Anything else that goes wrong before the app draws. Not healed
+        // automatically — a bug in the app is not fixed by clearing a cache,
+        // and reloading into it twice would only hide the message.
+        window.addEventListener('error', function (event) {
+          if (!ready && event.message) show(event.message);
+        });
+        window.addEventListener('unhandledrejection', function (event) {
+          if (!ready) show(event.reason && (event.reason.message || event.reason));
+        });
+
+        // And the silent case: nothing threw, nothing 404'd, and still nothing
+        // drew. Long enough that a slow connection finishes first.
+        setTimeout(function () {
+          if (!window.__laneLogReady) {
+            show('The app did not start within 20 seconds.');
+          }
+        }, 20000);
+
+        Object.defineProperty(window, '__laneLogReady', {
+          set: function () {
+            ready = true;
+            try {
+              sessionStorage.removeItem(HEALED);
+            } catch (e) {
+              /* nothing to clear */
+            }
+          },
+          get: function () {
+            return ready;
+          },
+        });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -81,6 +81,20 @@ export function saveGuest(session: Session): void {
   }
 }
 
+/**
+ * Forget the guest this device has been.
+ *
+ * Only a full reset does this. Everywhere else the guest id is deliberately
+ * kept — signing out returns the same guest rather than inventing a new one.
+ */
+export function forgetGuest(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // Nothing stored, or nothing storable.
+  }
+}
+
 /** What a Supabase session says about the person holding it. */
 export function toSession(auth: AuthSession): Session {
   const meta = auth.user.user_metadata ?? {};
@@ -185,22 +199,47 @@ export function useSession() {
     setSignInState('redirecting');
     setSignInError(null);
 
-    const unavailable = providerUnavailable(provider, await enabledProviders());
-    if (unavailable) {
-      setSignInState('failed');
-      setSignInError(unavailable);
-      return;
-    }
+    // Everything below can throw, and until now nothing caught it: loading the
+    // SDK is a dynamic import that fails whenever the app's files have moved
+    // under an open page, and a rejection here left the screen saying "handing
+    // over to your provider" for ever. Nothing happening is the one outcome a
+    // sign-in button must not have.
+    try {
+      const unavailable = providerUnavailable(provider, await enabledProviders());
+      if (unavailable) {
+        setSignInState('failed');
+        setSignInError(unavailable);
+        return;
+      }
 
-    const db = await backend();
-    const { error } = await db.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: redirectUrl() },
-    });
+      const db = await backend();
+      const { error } = await db.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: redirectUrl() },
+      });
 
-    if (error) {
+      if (error) {
+        setSignInState('failed');
+        setSignInError(describeBackendFailure(error));
+        return;
+      }
+
+      // `signInWithOAuth` navigates by assigning to `location`, which does not
+      // happen instantly. If we are still here in a few seconds, it did not
+      // happen at all — a blocked navigation, or a redirect the provider
+      // refused — and saying so beats a spinner that never resolves.
+      setTimeout(() => {
+        setSignInState((current) => {
+          if (current !== 'redirecting') return current;
+          setSignInError(
+            'The sign-in page did not open. Check that this address is listed under Redirect URLs in the Supabase dashboard.',
+          );
+          return 'failed';
+        });
+      }, 6000);
+    } catch (err) {
       setSignInState('failed');
-      setSignInError(describeBackendFailure(error));
+      setSignInError(describeBackendFailure(err));
     }
   }, []);
 

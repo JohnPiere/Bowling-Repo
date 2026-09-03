@@ -441,6 +441,15 @@ export function markRead(groupId: string, at = Date.now()): void {
   }
 }
 
+/** Forget every read marker on this device. Part of a full reset. */
+export function forgetReadMarks(): void {
+  try {
+    localStorage.removeItem(READ_KEY);
+  } catch {
+    // Nothing stored, or nothing storable.
+  }
+}
+
 export function lastReadAt(groupId: string): number {
   return readMarks()[groupId] ?? 0;
 }
@@ -656,6 +665,57 @@ export async function removeMember(groupId: string, profileId: string): Promise<
     .delete()
     .eq('group_id', groupId)
     .eq('profile_id', profileId);
+  if (error) throw error;
+}
+
+/**
+ * Get out of every crew.
+ *
+ * The ones you own are *deleted* rather than abandoned, and that is the honest
+ * reading of leaving them: a crew whose only owner walks away is a board nobody
+ * can rename, moderate or close. Anyone who would rather keep one hands it over
+ * first — the settings screen has the button — and the confirmation says how
+ * many crews this is about to end for everybody else.
+ *
+ * Keeps going past a failure and reports the totals: a crew that refuses to go
+ * must not strand the rest of a reset half done.
+ */
+export async function leaveEverything(me: string): Promise<{ left: number; deleted: number }> {
+  const groups = await listGroups(me);
+
+  let left = 0;
+  let deleted = 0;
+
+  for (const group of groups) {
+    try {
+      if (group.yourRole === 'owner') {
+        await deleteGroup(group.id);
+        deleted += 1;
+      } else {
+        await leaveGroup(group.id, me);
+        left += 1;
+      }
+    } catch {
+      // Counted by omission. The caller reports what went, not what did not.
+    }
+  }
+
+  return { left, deleted };
+}
+
+/**
+ * Put the crew-facing profile back to nothing.
+ *
+ * The row itself stays: it hangs off `auth.users` and only the account holder's
+ * own provider can remove that. What can go is everything anybody else ever saw
+ * — the name and the picture.
+ */
+export async function resetMyProfile(me: string): Promise<void> {
+  const db = await backend();
+  const { error } = await db
+    .from('profiles')
+    .update({ name: 'Bowler', initials: '', avatar: null })
+    .eq('id', me);
   if (error) throw error;
 }
 

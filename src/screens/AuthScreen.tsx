@@ -1,4 +1,5 @@
 import { t, tf } from '../lib/i18n';
+import { reloadClean } from '../lib/recover';
 import type { Provider, SignInState } from '../lib/session';
 
 interface Props {
@@ -69,6 +70,18 @@ export function AuthScreen({
       {error && (
         <div className="note note--bad" style={{ marginTop: 12 }}>
           {error}
+          {/* Offered on every failure, not just the one that names it. Sign-in
+              is the one place where the app's own files having moved under it
+              looks exactly like the provider refusing, and a reload that
+              clears the cached build is the fix for a whole class of it. */}
+          <button
+            type="button"
+            className="btn-lg"
+            style={{ marginTop: 10 }}
+            onClick={() => void reloadClean()}
+          >
+            {t('Reload the app')}
+          </button>
           {onDismissError && (
             <button
               type="button"

@@ -2,37 +2,18 @@ import { useState } from 'react';
 import { Icon } from './Icon';
 import { t, tf } from '../lib/i18n';
 import { describeBackendFailure, isBackendConfigured } from '../lib/backend';
-import { forgetGames, pending, syncGames, type SyncResult } from '../lib/cloud';
+import {
+  forgetGames,
+  forgetLastSync,
+  lastSyncAt,
+  pending,
+  rememberSync,
+  syncGames,
+  type SyncResult,
+} from '../lib/cloud';
 import { clearTombstones, listTombstones, markSynced, putGames, type Game } from '../lib/db';
 import { formatDateTime } from '../lib/datetime';
 import type { Session } from '../lib/session';
-
-/**
- * When this device last got its games onto the server.
- *
- * Per device and not per account, so it lives here rather than in Postgres: the
- * question it answers is "is this phone's season safe", and a second phone
- * syncing does not make the answer yes.
- */
-const LAST_SYNC = 'lane-log.lastSync';
-
-function lastSyncAt(): number | null {
-  try {
-    const raw = localStorage.getItem(LAST_SYNC);
-    const at = raw ? Number(raw) : NaN;
-    return Number.isFinite(at) ? at : null;
-  } catch {
-    return null;
-  }
-}
-
-function rememberSync(at: number): void {
-  try {
-    localStorage.setItem(LAST_SYNC, String(at));
-  } catch {
-    // A private window. The sync still happened; only the note about it is lost.
-  }
-}
 
 /**
  * Backing a season up to the account.
@@ -102,7 +83,7 @@ export function CloudBackup({
       setResult(null);
       setForgotten(true);
       setSyncedAt(null);
-      rememberSync(0);
+      forgetLastSync();
     } catch (err) {
       setError(describeBackendFailure(err));
     } finally {

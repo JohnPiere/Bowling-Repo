@@ -62,7 +62,18 @@ let client: Promise<SupabaseClient> | null = null;
 export function backend(): Promise<SupabaseClient> {
   if (client) return client;
 
-  client = import('@supabase/supabase-js').then(({ createClient }) =>
+  client = import('@supabase/supabase-js')
+    .catch((cause: unknown) => {
+      // The cached promise is cleared, or one failed fetch would poison every
+      // later call for the life of the page: `client` would keep handing back
+      // the same rejection and sign-in would be dead until a reload.
+      client = null;
+      throw new BackendUnavailable(
+        'The part of the app that talks to the server could not be loaded.',
+        { cause },
+      );
+    })
+    .then(({ createClient }) =>
     createClient(BACKEND_URL, BACKEND_KEY, {
       auth: {
         // PKCE rather than the implicit flow. There is no server to hold a client
@@ -86,6 +97,17 @@ export function backend(): Promise<SupabaseClient> {
 
   return client;
 }
+
+/**
+ * The SDK chunk itself would not load.
+ *
+ * Its own error, because the cause is almost never the network: the chunk is
+ * hashed, it is deliberately kept out of the precache, and a service worker
+ * still serving an older `index.html` will ask for a filename the server threw
+ * away on the last deploy. What that needs is a reload, not a retry, and
+ * `describeBackendFailure` says so.
+ */
+export class BackendUnavailable extends Error {}
 
 /**
  * Whether this device has a session worth restoring.
@@ -132,6 +154,16 @@ export function redirectUrl(): string {
  */
 export function describeBackendFailure(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
+
+  // A dynamic import that failed is an app whose files moved under it — a new
+  // deploy, an old service worker — and no amount of trying again in this page
+  // will fix it.
+  if (
+    error instanceof BackendUnavailable ||
+    /dynamically imported module|Importing a module script failed/i.test(message)
+  ) {
+    return 'The app was updated while it was open. Reload the page and try again.';
+  }
 
   if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
     return 'Cannot reach the server. Your games are safe on this device — only the crew screens need a connection.';

@@ -177,6 +177,42 @@ export function planPull(local: Game[], rows: BackupRow[], deleted: string[] = [
   return { toWrite, alreadyHere, rejected };
 }
 
+/**
+ * When this device last got its games onto the server.
+ *
+ * Per device and not per account: the question it answers is "is this phone's
+ * season safe", and a second phone syncing does not make the answer yes. It
+ * lives here rather than in the card that draws it so that a full reset has one
+ * place to forget it from.
+ */
+const LAST_SYNC = 'lane-log.lastSync';
+
+export function lastSyncAt(): number | null {
+  try {
+    const raw = localStorage.getItem(LAST_SYNC);
+    const at = raw ? Number(raw) : NaN;
+    return Number.isFinite(at) && at > 0 ? at : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberSync(at: number): void {
+  try {
+    localStorage.setItem(LAST_SYNC, String(at));
+  } catch {
+    // A private window. The sync still happened; only the note about it is lost.
+  }
+}
+
+export function forgetLastSync(): void {
+  try {
+    localStorage.removeItem(LAST_SYNC);
+  } catch {
+    // Nothing stored, or nothing storable. Either way there is nothing to forget.
+  }
+}
+
 /** Split a list into request-sized pieces. */
 export function chunk<T>(items: T[], size = CHUNK): T[][] {
   const out: T[][] = [];

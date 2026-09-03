@@ -28,3 +28,8 @@ createRoot(document.getElementById('root') as HTMLElement).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// Tells the boot guard in index.html that the bundle arrived and ran. Without
+// it the guard would eventually paint its "could not start" screen over a
+// perfectly good app.
+(window as unknown as { __laneLogReady: boolean }).__laneLogReady = true;

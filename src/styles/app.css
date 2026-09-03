@@ -2326,6 +2326,11 @@ body {
   background: linear-gradient(90deg, rgba(224, 163, 182, 0.55), var(--negative));
 }
 
+/* What a reset takes, one line each. A list because a paragraph of six clauses
+   is the wrong shape for the only screen where every word costs a season. */
+.resetlist { margin: 0 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.resetlist li { margin-bottom: 4px; }
+
 /* ── The league table ──────────────────────────────────────────────────── */
 
 /*

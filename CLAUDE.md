@@ -119,6 +119,33 @@ not send it unless the switch on the share screen is turned on — it is off eve
 time. "Oily left, wrong ball" is written for yourself, and the crew reading it
 should be a decision rather than a consequence of having kept one.
 
+**A white page is the one failure that says nothing, and `index.html` carries a
+guard against it.** The app is served from GitHub Pages, where a deploy renames
+every hashed file and deletes the old ones. A phone that has the service worker
+installed keeps being served the *precached* shell, which names files the server
+no longer has — and because updates sit behind a prompt the app itself has to
+draw, a shell that cannot load can never ask. That is a permanent white page
+with no way out from inside, and it is what a real phone hit.
+
+The guard is the only non-module script on the page and nothing in it may import
+anything, because the case it exists for is the bundle not arriving. It paints
+the dark ground first, so a missing stylesheet is not a white page either; it
+catches a failed `<script>`/`<link>` load in the capture phase, clears the
+service worker and every cache and reloads **once** per session; and anything
+else before mount paints a message in both languages with a button that does the
+same by hand. `main.tsx` sets `window.__laneLogReady` so the guard knows the app
+arrived. `lib/recover.ts` is the same clearing, for code that can import.
+
+Nothing there touches IndexedDB. It clears the copy of the *program*, never the
+copy of the season.
+
+The lazily-imported chunks are the other half of the same failure: the Supabase
+SDK is deliberately not precached, so for a client still on the old shell it
+404s and sign-in did nothing at all. `backend()` now clears its cached promise
+on failure — one bad fetch used to poison every later call — and `signIn` is
+wrapped, because a sign-in button whose only failure mode is silence is worse
+than one that refuses.
+
 **Dates go through `datetime.ts`.** `toLocaleDateString(undefined, …)` follows
 the *browser*, so a phone in English shows "Aug 31" in the middle of a
 Japanese screen. One helper decides, and it reads the app's own setting.
