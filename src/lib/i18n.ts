@@ -452,6 +452,10 @@ export const JA: Record<string, string> = {
     '最も残るのは{pin}番ピンで、{n}回。カバー率は{rate}%です。',
   'From {n} frames scored on the rack.': 'ピン入力した{n}フレームの集計です。',
 
+  'Share this night': 'この日を共有',
+  'Drawing…': '作成中…',
+  'The card could not be drawn on this device.': 'この端末では画像を作成できませんでした。',
+
   // ── Goals, which are yours alone ──
   'Goals': '目標',
   'Set a goal': '目標を設定',
@@ -662,6 +666,13 @@ export const JA: Record<string, string> = {
   'Down {n} from the first game to the last.': '1ゲーム目から最終ゲームで{n}点ダウン。',
   'What you wrote': 'メモ',
   'Game {n}': '{n}ゲーム目',
+
+  // ── The shareable card ──
+  // Drawn onto a canvas rather than into the DOM, so these go through `tf`
+  // like everything else: a Japanese bowler posts this into a Japanese chat.
+  '{strikes} strikes · {spares} spares': 'ストライク{strikes} · スペア{spares}',
+  '{n} game · {average} average': '{n}ゲーム · アベレージ{average}',
+  '{n} games · {average} average': '{n}ゲーム · アベレージ{average}',
 
   // ── Stats: how a night goes ──
   'How a night goes': '1日の流れ',

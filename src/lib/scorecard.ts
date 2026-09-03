@@ -16,7 +16,8 @@
  */
 
 import type { Game } from './db';
-import { formatDay } from './datetime';
+import { formatDay, formatLongDate } from './datetime';
+import { tf } from './i18n';
 import { frameMarks, FRAMES_PER_GAME, scoreGame } from './scoring';
 
 export interface ScorecardCell {
@@ -118,67 +119,105 @@ export function drawScorecard(
   context.fillText(String(game.total), width - pad, pad + 100);
 
   // ── The grid ──
-  const gridWidth = width - pad * 2;
-  const columnWidth = gridWidth / FRAMES_PER_GAME;
-  const top = CARD.gridTop;
-  const numbersBottom = top + CARD.numbersHeight;
-  const marksBottom = numbersBottom + CARD.marksHeight;
-  const bottom = marksBottom + CARD.totalsHeight;
+  drawGrid(context, cells, {
+    x: pad,
+    y: CARD.gridTop,
+    width: width - pad * 2,
+    numbers: CARD.numbersHeight,
+    marks: CARD.marksHeight,
+    totals: CARD.totalsHeight,
+    numberFont: 22,
+    markFont: 56,
+    totalFont: 40,
+  });
+
+  // ── The foot ──
+  context.textAlign = 'left';
+  context.fillStyle = INK.muted;
+  context.font = `400 26px ${FONT}`;
+  context.fillText(tf('{strikes} strikes · {spares} spares', { strikes, spares }), pad, height - pad);
+
+  context.textAlign = 'right';
+  context.fillStyle = INK.accent;
+  context.font = `600 26px ${FONT}`;
+  context.fillText('Lane Log', width - pad, height - pad);
+}
+
+export interface GridBox {
+  x: number;
+  y: number;
+  width: number;
+  /** Height of the band carrying the frame numbers. */
+  numbers: number;
+  marks: number;
+  totals: number;
+  numberFont: number;
+  markFont: number;
+  totalFont: number;
+}
+
+/**
+ * Ten frames, ruled, with their marks and running totals.
+ *
+ * Taken out of `drawScorecard` when the series card arrived: a night is three
+ * of these stacked, and two implementations of a frame grid would be two
+ * chances to disagree about where the tenth's third mark goes. The box carries
+ * its own font sizes because the series draws the same grid smaller, not a
+ * different grid.
+ */
+export function drawGrid(
+  context: CanvasRenderingContext2D,
+  cells: ScorecardCell[],
+  box: GridBox,
+): void {
+  const columnWidth = box.width / FRAMES_PER_GAME;
+  const numbersBottom = box.y + box.numbers;
+  const marksBottom = numbersBottom + box.marks;
+  const bottom = marksBottom + box.totals;
 
   context.fillStyle = INK.panel;
-  context.fillRect(pad, top, gridWidth, bottom - top);
+  context.fillRect(box.x, box.y, box.width, bottom - box.y);
 
   context.strokeStyle = INK.rule;
   context.lineWidth = 2;
   context.beginPath();
   for (let i = 0; i <= FRAMES_PER_GAME; i++) {
-    const x = pad + i * columnWidth;
-    context.moveTo(x, top);
+    const x = box.x + i * columnWidth;
+    context.moveTo(x, box.y);
     context.lineTo(x, bottom);
   }
-  for (const y of [top, numbersBottom, marksBottom, bottom]) {
-    context.moveTo(pad, y);
-    context.lineTo(pad + gridWidth, y);
+  for (const y of [box.y, numbersBottom, marksBottom, bottom]) {
+    context.moveTo(box.x, y);
+    context.lineTo(box.x + box.width, y);
   }
   context.stroke();
 
   context.textAlign = 'center';
 
   for (const cell of cells) {
-    const centre = pad + (cell.frame - 0.5) * columnWidth;
+    const centre = box.x + (cell.frame - 0.5) * columnWidth;
 
     context.fillStyle = INK.muted;
-    context.font = `500 22px ${FONT}`;
-    context.fillText(String(cell.frame), centre, top + 31);
+    context.font = `500 ${box.numberFont}px ${FONT}`;
+    context.fillText(String(cell.frame), centre, box.y + box.numbers * 0.7);
 
     // The tenth writes three marks where every other frame writes two, so its
     // text is the one that will not fit. The max-width argument condenses it
     // into the cell rather than letting it run into the neighbouring frame.
     context.fillStyle = INK.text;
-    context.font = `600 56px ${FONT}`;
+    context.font = `600 ${box.markFont}px ${FONT}`;
     context.fillText(
       cell.marks,
       centre,
-      marksBottom - 38,
+      marksBottom - box.marks * 0.33,
       // Inset, so a wide tenth still has a gutter either side of it.
       columnWidth - 16,
     );
 
     context.fillStyle = INK.accent;
-    context.font = `500 40px ${FONT}`;
-    context.fillText(cell.total, centre, bottom - 26);
+    context.font = `500 ${box.totalFont}px ${FONT}`;
+    context.fillText(cell.total, centre, bottom - box.totals * 0.31);
   }
-
-  // ── The foot ──
-  context.textAlign = 'left';
-  context.fillStyle = INK.muted;
-  context.font = `400 26px ${FONT}`;
-  context.fillText(`${strikes} strikes · ${spares} spares`, pad, height - pad);
-
-  context.textAlign = 'right';
-  context.fillStyle = INK.accent;
-  context.font = `600 26px ${FONT}`;
-  context.fillText('Lane Log', width - pad, height - pad);
 }
 
 /** The card as a PNG. */
@@ -242,6 +281,199 @@ export async function shareScorecard(game: Game, bowler: string): Promise<ShareO
   link.click();
   // Revoked on the next turn of the loop: revoking immediately can beat the
   // download starting on some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+
+  return 'saved';
+}
+
+// ── A night, rather than a game ────────────────────────────────────────────
+
+/**
+ * The series card.
+ *
+ * People bowl three. The single-game card has been the only thing shareable,
+ * and the thing that actually gets posted to a group chat is the night: three
+ * scores, a total, and the marks that explain them.
+ *
+ * Height is computed rather than fixed, because a series is three games and
+ * sometimes six, and a card padded out to fit six would be mostly empty for
+ * the three that are normal.
+ */
+export const SERIES = {
+  width: 1080,
+  pad: 56,
+  headHeight: 236,
+  /** Per game: a label line, then the grid. */
+  rowHeight: 196,
+  footHeight: 96,
+};
+
+export function seriesCardHeight(count: number): number {
+  return SERIES.headHeight + Math.max(1, count) * SERIES.rowHeight + SERIES.footHeight;
+}
+
+/**
+ * A night's games, in the order they were bowled.
+ *
+ * The caller has them grouped by day already; this only guarantees the order,
+ * because "game 1" on the card had better be the one bowled first.
+ */
+export function seriesOrder(games: Game[]): Game[] {
+  return [...games].sort((a, b) => a.playedAt - b.playedAt);
+}
+
+export function drawSeriesCard(
+  context: CanvasRenderingContext2D,
+  games: Game[],
+  bowler: string,
+): void {
+  const played = seriesOrder(games);
+  const { width, pad } = SERIES;
+  const height = seriesCardHeight(played.length);
+
+  const total = played.reduce((sum, game) => sum + game.total, 0);
+  const best = Math.max(0, ...played.map((game) => game.total));
+  const average = played.length ? Math.round(total / played.length) : 0;
+
+  context.fillStyle = INK.background;
+  context.fillRect(0, 0, width, height);
+
+  // ── The head ──
+  context.textBaseline = 'alphabetic';
+  context.textAlign = 'left';
+  context.fillStyle = INK.muted;
+  context.font = `500 30px ${FONT}`;
+  context.fillText(bowler, pad, pad + 34);
+
+  const when = played[0] ? formatLongDate(played[0].playedAt) : '';
+  const where = played.find((game) => game.house)?.house ?? '';
+  context.fillStyle = INK.text;
+  context.font = `400 26px ${FONT}`;
+  context.fillText([when, where].filter(Boolean).join(' · '), pad, pad + 76);
+
+  // The series total is the number somebody came for, so it is the big one.
+  context.textAlign = 'right';
+  context.fillStyle = INK.text;
+  context.font = `700 128px ${FONT}`;
+  context.fillText(String(total), width - pad, pad + 116);
+
+  context.fillStyle = INK.muted;
+  context.font = `500 26px ${FONT}`;
+  context.fillText(
+    played.length === 1
+      ? tf('{n} game · {average} average', { n: played.length, average })
+      : tf('{n} games · {average} average', { n: played.length, average }),
+    width - pad,
+    pad + 156,
+  );
+
+  // ── One grid per game ──
+  played.forEach((game, index) => {
+    const top = SERIES.headHeight + index * SERIES.rowHeight;
+
+    context.textAlign = 'left';
+    context.fillStyle = INK.muted;
+    context.font = `500 24px ${FONT}`;
+    context.fillText(tf('Game {n}', { n: index + 1 }), pad, top + 26);
+
+    // The best game of the night is worth pointing at; on a night where every
+    // game is the same score, nothing is singled out.
+    context.textAlign = 'right';
+    context.fillStyle = game.total === best && played.length > 1 ? INK.accent : INK.text;
+    context.font = `600 34px ${FONT}`;
+    context.fillText(String(game.total), width - pad, top + 28);
+
+    drawGrid(context, scorecardCells(game), {
+      x: pad,
+      y: top + 46,
+      width: width - pad * 2,
+      numbers: 28,
+      marks: 74,
+      totals: 48,
+      numberFont: 17,
+      markFont: 38,
+      totalFont: 27,
+    });
+  });
+
+  // ── The foot ──
+  const marks = played.reduce(
+    (count, game) => {
+      const card = scoreGame(game.rolls);
+      return {
+        strikes: count.strikes + card.frames.filter((frame) => frame.isStrike).length,
+        spares: count.spares + card.frames.filter((frame) => frame.isSpare).length,
+      };
+    },
+    { strikes: 0, spares: 0 },
+  );
+
+  context.textAlign = 'left';
+  context.fillStyle = INK.muted;
+  context.font = `400 26px ${FONT}`;
+  context.fillText(
+    tf('{strikes} strikes · {spares} spares', {
+      strikes: marks.strikes,
+      spares: marks.spares,
+    }),
+    pad,
+    height - pad,
+  );
+
+  context.textAlign = 'right';
+  context.fillStyle = INK.accent;
+  context.font = `600 26px ${FONT}`;
+  context.fillText('Lane Log', width - pad, height - pad);
+}
+
+export async function seriesCardBlob(games: Game[], bowler: string): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = SERIES.width;
+  canvas.height = seriesCardHeight(games.length);
+
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('This browser would not give us a canvas to draw on.');
+
+  drawSeriesCard(context, games, bowler);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) =>
+        blob ? resolve(blob) : reject(new Error('The card could not be turned into an image.')),
+      'image/png',
+    );
+  });
+}
+
+export function seriesFilename(games: Game[]): string {
+  const played = seriesOrder(games);
+  const day = new Date(played[0]?.playedAt ?? Date.now()).toISOString().slice(0, 10);
+  const total = played.reduce((sum, game) => sum + game.total, 0);
+  return `lane-log-${day}-series-${total}.png`;
+}
+
+/** The night, into the share sheet — or saved, where sharing is not offered. */
+export async function shareSeries(games: Game[], bowler: string): Promise<ShareOutcome> {
+  const blob = await seriesCardBlob(games, bowler);
+  const file = new File([blob], seriesFilename(games), { type: 'image/png' });
+  const total = seriesOrder(games).reduce((sum, game) => sum + game.total, 0);
+
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: `${total} at Lane Log` });
+      return 'shared';
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
+      // As above: a browser that claimed it could share and then would not
+      // falls through to saving, which always works.
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = seriesFilename(games);
+  link.click();
   setTimeout(() => URL.revokeObjectURL(url), 0);
 
   return 'saved';

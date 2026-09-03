@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { t, tf } from '../lib/i18n';
+import { Icon } from '../components/Icon';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
 import { dayKey, groupByDay, sessionSpan } from '../lib/history';
 import { scoreGame } from '../lib/scoring';
 import { ballOutcomes, sessionSwing } from '../lib/stats';
+import { shareSeries } from '../lib/scorecard';
+import { loadPreferences } from '../lib/preferences';
 import { formatLongDate, formatTime, formatWeekday } from '../lib/datetime';
 
 /**
@@ -30,6 +33,28 @@ export function PlayDayScreen({
     () => groupByDay(games.filter((game) => dayKey(game.playedAt) === day))[0],
     [games, day],
   );
+
+  const [cardState, setCardState] = useState<'idle' | 'working' | 'saved' | 'failed'>('idle');
+
+  /**
+   * The night as a picture.
+   *
+   * People bowl three, and the single-game card has been the only shareable
+   * thing — so the thing that actually gets posted to a group chat has had to
+   * be three separate images or a screenshot.
+   */
+  async function shareNight() {
+    if (!group) return;
+    setCardState('working');
+    try {
+      const outcome = await shareSeries(group.games, loadPreferences().playerName);
+      // Backing out of the share sheet is not a failure, and saying so would
+      // be telling somebody off for changing their mind.
+      setCardState(outcome === 'saved' ? 'saved' : 'idle');
+    } catch {
+      setCardState('failed');
+    }
+  }
 
   const outcomes = useMemo(
     () => (group ? ballOutcomes(group.games.filter((g) => g.isComplete)) : null),
@@ -76,7 +101,7 @@ export function PlayDayScreen({
           <div className="day__label">{t('Series total')}</div>
           <div className="day__series tnum">{group.series}</div>
           <div className="profile__meta tnum">
-            {group.games.length} game{group.games.length === 1 ? '' : 's'}
+            {tf(group.games.length === 1 ? '{n} game' : '{n} games', { n: group.games.length })}
           </div>
         </div>
       </div>
@@ -175,7 +200,30 @@ export function PlayDayScreen({
         </div>
       )}
 
-      <button type="button" className="btn-lg" style={{ marginTop: 4 }} onClick={onExport}>
+      {/* The picture first, because it is the one that gets sent to anybody.
+          The printable sheet is the one for keeping. */}
+      <button
+        type="button"
+        className="btn-lg btn-lg--primary"
+        style={{ marginTop: 4 }}
+        disabled={cardState === 'working'}
+        onClick={() => void shareNight()}
+      >
+        <Icon name="share" size={18} />
+        {cardState === 'working'
+          ? t('Drawing…')
+          : cardState === 'saved'
+            ? t('Saved to your photos')
+            : t('Share this night')}
+      </button>
+
+      {cardState === 'failed' && (
+        <div className="note note--bad" style={{ marginTop: 11 }}>
+          {t('The card could not be drawn on this device.')}
+        </div>
+      )}
+
+      <button type="button" className="btn-lg" style={{ marginTop: 11 }} onClick={onExport}>
         {t('Export this day')}
       </button>
 
