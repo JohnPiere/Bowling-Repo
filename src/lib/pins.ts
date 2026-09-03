@@ -14,6 +14,8 @@
  *            1
  */
 
+import { nextRollCursor, pinsAvailable, scoreGame } from './scoring';
+
 export const PIN_COUNT = 10;
 
 /** All ten, standing. */
@@ -137,4 +139,48 @@ export function leavesFromPinfalls(pinfalls: number[][]): number[][] {
   }
 
   return leaves;
+}
+
+/**
+ * The pins on the deck for the next ball.
+ *
+ * Derived from what has been thrown rather than tracked separately, so a
+ * re-rack falls out of the scoring rules instead of being special-cased.
+ *
+ * **Only this frame's balls are replayed, and that is the whole of it.** An
+ * earlier version walked every ball of the game from a single rack, re-racking
+ * only when the deck happened to empty — so a frame that ended *open* carried
+ * its survivors into the next one. Bowl 5 then 1, and the second frame's ball
+ * is scored against a deck that still thinks four pins from the first frame are
+ * lying down: knock eight and the screen offers one pin for the spare attempt
+ * where two are standing. The count was always right, because the fallback on
+ * the last line forced the deck to the size the scorer asked for — which is why
+ * this survived: it showed the wrong *pins* at the right *number*, and the
+ * score was never wrong, only the leave.
+ *
+ * The tenth still re-racks inside the frame, which is what the empty-deck reset
+ * below is for: three balls, and a mark on any of them stands them all up again.
+ */
+export function deckFor(rolls: number[], pinfalls: number[][]): number[] {
+  const available = pinsAvailable(rolls);
+  if (available === FULL_RACK.length) return [...FULL_RACK];
+
+  const cursor = nextRollCursor(rolls);
+  if (!cursor) return [];
+
+  // Where this frame's balls begin in the flat roll list. `frame.rolls` is a
+  // contiguous slice of it, so the offset is the lengths of the frames before.
+  const frames = scoreGame(rolls).frames;
+  let start = 0;
+  for (let i = 0; i < cursor.frame; i++) start += frames[i]?.rolls.length ?? 0;
+
+  let standing = [...FULL_RACK];
+  for (const ball of pinfalls.slice(start)) {
+    standing = standingAfter(standing, ball);
+    if (standing.length === 0) standing = [...FULL_RACK];
+  }
+
+  // If the two still disagree — a game part-entered on the pad, say — trust the
+  // scorer and show a plausible deck of the right size.
+  return standing.length === available ? standing : standing.slice(0, available);
 }

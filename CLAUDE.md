@@ -43,7 +43,7 @@ src/lib/
   leaderboard.ts  ranking, bar scaling, podium order, movement
   stats.ts        season and single-game summaries, trend, leaves, houses
   league.ts       the crew as nights: series, handicap, week by week
-  pins.ts         the rack, adjacency, split detection, leave names
+  pins.ts         the rack and its deck, adjacency, splits, leave names
   history.ts      sorting, searching and grouping games into sessions
   datetime.ts     input round-trips, and every date the app prints
   scorecard.ts    the ten cells, printed and drawn
@@ -73,6 +73,21 @@ gitignored. If you add a dependency that fetches at runtime, vendor it too.
 enough to matter: 400 games once carried 49 MB of blobs into memory to render
 a list of scores. `listGames()` returns games without images; `getSheetImage()`
 fetches one when something actually shows it.
+
+**The rack replays one frame, not the game.** `deckFor` decides which pins the
+bowler is shown, and therefore which pins get recorded against the ball they
+throw. It used to walk every ball from a single rack and re-rack only when the
+deck happened to empty — so a frame that ended *open* carried its survivors into
+the next one, and a spare attempt in frame 2 was offered a deck missing pins
+that frame 1 had knocked down. The score was never wrong, because the last line
+forces the deck to the size the scorer asks for; only the *leave* was, which is
+why it went unnoticed and why it mattered — a wrong leave is indistinguishable
+downstream from one that happened.
+
+It lived in the play screen, where the only way to check it was to bowl a game
+by hand. It is in `lib/` now with a property test that bowls four hundred random
+games and asserts every deck is either a full rack or exactly what survived the
+ball before it. That test found this.
 
 **A scan is never imported silently.** OCR on pencil is good enough to save
 typing and not good enough to trust. Every scan lands on a review screen.

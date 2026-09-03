@@ -6,12 +6,11 @@ import { PinRack } from '../components/PinRack';
 import { Icon } from '../components/Icon';
 import { saveGame } from '../lib/db';
 import { frameStrip } from '../lib/framestrip';
-import { FULL_RACK, standingAfter } from '../lib/pins';
+import { deckFor } from '../lib/pins';
 import {
   FRAMES_PER_GAME,
   isGameComplete,
   nextRollCursor,
-  pinsAvailable,
   scoreGame,
 } from '../lib/scoring';
 import { describeSaveFailure } from '../lib/storage';
@@ -71,7 +70,7 @@ export function PlayScreen({ onSaved }: Props) {
 
   // What is on the deck for the ball being entered. Derived from the pinfalls
   // so a re-rack after a mark happens on its own.
-  const standing = deckFor(pinfalls, pinsAvailable(rolls));
+  const standing = deckFor(rolls, pinfalls);
   const strip = frameStrip(rolls, pinfalls, pending, cursor?.frame ?? null);
 
   function knockDown(pin: number) {
@@ -390,25 +389,3 @@ function rollLabel(rollInFrame: number, standingCount: number): string {
   return tf('Bonus ball — fresh rack, {n} pins', { n: standingCount });
 }
 
-/**
- * The pins on the deck for the next ball.
- *
- * Derived from what has been thrown rather than tracked separately, so a
- * re-rack after a strike or a spare — including the tenth frame's extra
- * balls — falls out of the scoring rules instead of being special-cased here.
- * `available` is the count the scorer says is on the deck, which is the
- * authority; the pinfalls only say which ones they are.
- */
-function deckFor(pinfalls: number[][], available: number): number[] {
-  if (available === FULL_RACK.length) return [...FULL_RACK];
-
-  let standing = [...FULL_RACK];
-  for (const ball of pinfalls) {
-    standing = standingAfter(standing, ball);
-    if (standing.length === 0) standing = [...FULL_RACK];
-  }
-
-  // If the two disagree — a game part-entered on the pad, say — trust the
-  // scorer and show a plausible deck of the right size.
-  return standing.length === available ? standing : standing.slice(0, available);
-}
