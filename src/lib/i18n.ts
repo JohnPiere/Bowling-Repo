@@ -360,6 +360,22 @@ export const JA: Record<string, string> = {
   'That is not a date. The game keeps the one it has.':
     '日付として読み取れません。ゲームは元の日付のままになります。',
 
+  'Posting it is telling them.': '投稿がそのまま通知になります。',
+  'Anyone in the crew with notifications on sees it arrive while they have Lane Log open.':
+    '通知をオンにしているメンバーには、アプリを開いている間に届きます。',
+
+  // ── How far a notification reaches ──
+  'On, even when Lane Log is closed.': 'アプリを閉じていても通知されます。',
+  'On while Lane Log is open. Nothing can wake it when it is closed.':
+    'アプリを開いている間だけ通知されます。閉じている間は通知できません。',
+  'Blocked in browser settings.': 'ブラウザの設定でブロックされています。',
+  'Off.': 'オフです。',
+  'Turn on notifications': '通知をオンにする',
+  'Turn off': 'オフにする',
+  'Working…': '処理中…',
+  'Waking a closed app needs a server to send the notification, and this build is served from static hosting with none. What you get is the crew’s activity while the app is running.':
+    '閉じているアプリを起こすには通知を送るサーバーが必要ですが、この配信元は静的ホスティングのためサーバーがありません。アプリの起動中はクルーの動きが通知されます。',
+
   // ── Challenges, and the crew calendar ──
   'Challenges': 'チャレンジ',
   'Set a challenge': 'チャレンジを作成',

@@ -658,6 +658,45 @@ interception the sign-in check uses, answering `from()` with rows. That
 exercises the real screens, the real queries and the real logic. What it cannot
 check is the SQL and the policies.
 
+**"Notifications" is two things, and only one of them can work here.** Waking a
+*closed* app is the browser's push service, and sending to it needs somebody
+holding a VAPID private key. A static site has nobody: `server/index.mjs` is a
+one-file dev server behind the Vite proxy at `/api`, and on GitHub Pages that
+path is a 404. Raising a notification *while the app runs* needs none of that.
+
+All three reasons the toggle did nothing were real and separate. The build has
+no `VITE_VAPID_PUBLIC_KEY`, so `vapidPublicKey()` fell back to fetching
+`/api/vapid-public-key`, which 404s — and that threw before permission was even
+kept. `/api/subscribe` was not there either. And nothing in the app ever *sent*
+one: the push server's only trigger is a `curl /api/notify` by hand.
+
+So `subscribeToPush` returns a `NotifyReach` — `none`, `alerts` or `push` —
+and takes the permission *first*, because permission alone is the part that
+always works and losing it to a failed subscription was the bug. `pushConfigured()`
+decides whether to try the rest at all. Settings says which of the two you have
+in as many words, since "on" and "off" were both lies for the middle case.
+
+The alerts themselves ride the Realtime subscription that already existed for
+chat, plus a new `watchSharedGames`. `useCrewAlerts` subscribes at the *top* of
+the app, not on the chat screen, and that is the point: a notification about
+the conversation already open is worth nothing and the one about the crew you
+are not looking at is the whole feature. `lib/alerts.ts` holds the two rules
+that decide whether to interrupt — never your own doing, never what is already
+on screen unless the app is backgrounded — as a pure function, because those
+are judgements worth stating as tests rather than discovering on a phone.
+
+The share screen's "send a notification" switch is gone. It said "needs the
+push server running", nothing was running, and it did nothing — the doors
+switch again. Posting to a board *is* telling the crew, and whoever has
+notifications on is told as the row lands.
+
+**Background push is still not built**, and it needs one thing this app does
+not have: something that holds the private key and sends. The place for it is
+a Supabase Edge Function on a database webhook over `messages` and
+`shared_games`, with subscriptions in a table of their own. That is a deploy
+step outside this repository, which is why it is written down here rather than
+half-built.
+
 ## The backup, which is not the social layer
 
 `game_backups` (migration 0002) lives in the same database because that is the

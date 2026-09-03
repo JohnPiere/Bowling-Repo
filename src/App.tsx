@@ -10,6 +10,7 @@ import { OnboardingScreen } from './screens/OnboardingScreen';
 import { colourOf, loadPreferences, usePreferences } from './lib/preferences';
 import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
+import { useCrewAlerts } from './lib/useCrewAlerts';
 import { applyUpdate, onUpdateWaiting } from './lib/updates';
 import { SignedInDialog } from './components/SignedInDialog';
 import { ChallengesScreen } from './screens/ChallengesScreen';
@@ -122,11 +123,36 @@ export function App() {
 
   const { route } = nav;
   const { preferences } = usePreferences();
+
+  /**
+   * Whether the app is on screen at all.
+   *
+   * Backgrounded, nothing is being read, so nothing is exempt from being
+   * announced — including the chat that was open when the phone went into a
+   * pocket.
+   */
+  const [visible, setVisible] = useState(() => document.visibilityState === 'visible');
+  useEffect(() => {
+    const sync = () => setVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
   const crews = useCrews(session);
   // The crew a nested screen is looking at. Fetched on its own rather than
   // picked out of the list: the list carries rosters but not the shared games
   // a board is drawn from, and a link opened cold has no list yet at all.
   const openCrew = useCrew('groupId' in route ? route.groupId : '', session);
+
+  // Every crew, from wherever the bowler is standing. The chat screen has its
+  // own subscription for *drawing* messages; this one is only for telling, and
+  // it is here rather than there because the notification worth having is
+  // about the crew you are not looking at.
+  useCrewAlerts(crews.data, session.isGuest ? '' : session.id, {
+    openChatGroupId: route.name === 'chat' ? route.groupId : null,
+    openBoardGroupId:
+      route.name === 'sharedGames' || route.name === 'group' ? route.groupId : null,
+    visible,
+  });
   const group = 'groupId' in route ? (openCrew.data ?? undefined) : undefined;
 
   /**

@@ -6,7 +6,6 @@ import type { Group } from '../lib/social';
 import { describeBackendFailure } from '../lib/backend';
 import { shareGame as shareLocally, type Game } from '../lib/db';
 import { shareGame as postToCrew } from '../lib/social';
-import { notifyGroup } from '../lib/push';
 import { scoreGame } from '../lib/scoring';
 
 interface Props {
@@ -34,7 +33,6 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
   const [withSheet, setWithSheet] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tellCrew, setTellCrew] = useState(true);
   // Off by default, and only offered when there is one. A note is written for
   // yourself — "oily left", "wrong ball" — and the crew reading it should be a
   // decision rather than a consequence of having kept one.
@@ -62,18 +60,6 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
         playedAt: game.playedAt,
       });
       await shareLocally(game.id, groupId, { withSheet: hasPhoto && withSheet });
-
-      if (tellCrew) {
-        const group = crews.find((entry) => entry.id === groupId);
-        // Deliberately not awaited for its success: the share is already done,
-        // and a push server that is down must not look like a failed share.
-        void notifyGroup({
-          title: group?.name ?? 'Lane Log',
-          body: `You posted a ${game.total} to the board.`,
-          url: `/?screen=groups`,
-          tag: `share-${groupId}`,
-        });
-      }
 
       onShared(groupId);
     } catch (err) {
@@ -194,26 +180,21 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
         </div>
       )}
 
+      {/* This was a switch, and the switch did nothing. It said "needs the push
+          server running" — and on a static host nothing is running, so it was
+          a promise nobody could keep. Telling the crew is not a separate act
+          from posting to their board anyway: the post *is* the telling, and
+          whoever has notifications on is told as it lands. */}
       <h2 className="section-title">{t('Tell the crew')}</h2>
       <div className="card">
-        <div className="row row--between">
-          <span className="grow">
-            <span style={{ display: 'block', fontSize: 13 }}>{t('Send a notification')}</span>
-            <span className="muted">
-              {t('Members with notifications on get a nudge. Needs the push server running.')}
-            </span>
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={tellCrew}
-            aria-label={t('Send a notification')}
-            className={`switch${tellCrew ? ' switch--on' : ''}`}
-            onClick={() => setTellCrew((v) => !v)}
-          >
-            <span className="switch__knob" />
-          </button>
-        </div>
+        <p style={{ margin: 0, fontSize: 13 }}>
+          {t('Posting it is telling them.')}
+        </p>
+        <p className="footnote" style={{ marginBottom: 0 }}>
+          {t(
+            'Anyone in the crew with notifications on sees it arrive while they have Lane Log open.',
+          )}
+        </p>
       </div>
 
       <button

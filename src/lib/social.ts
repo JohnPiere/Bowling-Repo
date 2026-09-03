@@ -840,6 +840,39 @@ export function watchMessages(groupId: string, onInsert: (row: MessageRow) => vo
   };
 }
 
+/**
+ * New posts on a crew's board, as they land.
+ *
+ * The twin of `watchMessages`, and it exists for the same reason: the crew
+ * screens are the only part of the app that can be *told* something happened
+ * rather than having to ask. What listens to it is the alerting in `App`,
+ * which is the whole of what notifications can be without a push server.
+ */
+export function watchSharedGames(
+  groupId: string,
+  onInsert: (row: SharedGameRow) => void,
+): () => void {
+  let closed = false;
+  let channel: RealtimeChannel | null = null;
+
+  void backend().then((db) => {
+    if (closed) return;
+    channel = db
+      .channel(`shared:${groupId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'shared_games', filter: `group_id=eq.${groupId}` },
+        (payload) => onInsert(payload.new as SharedGameRow),
+      )
+      .subscribe();
+  });
+
+  return () => {
+    closed = true;
+    if (channel) void backend().then((db) => db.removeChannel(channel as RealtimeChannel));
+  };
+}
+
 // ── Shared games ───────────────────────────────────────────────────────────
 
 export async function loadSharedGames(groupId: string, me: string): Promise<SharedGame[]> {

@@ -19,8 +19,46 @@ export type PushAvailability =
 
 export type PushStatus = 'subscribed' | 'unsubscribed' | 'denied' | 'unavailable';
 
-/** Server that holds subscriptions and sends notifications. */
+/**
+ * How far notifications actually reach on this install.
+ *
+ * Two different things wear the word "notifications" and only one of them
+ * needs a server:
+ *
+ * - **`alerts`** — permission granted, and the app raises notifications itself
+ *   through the service worker while it is running. No server, no keys, works
+ *   on GitHub Pages today.
+ * - **`push`** — the browser's push service wakes the worker when the app is
+ *   *closed*. That needs somebody holding a VAPID private key to send with,
+ *   and a static site has nobody.
+ *
+ * Telling them apart is the whole of this file's job, because conflating them
+ * is what was broken: the toggle asked for a push subscription, could not get
+ * one, and reported failure — so the alerts that would have worked were never
+ * switched on either.
+ */
+export type NotifyReach = 'none' | 'alerts' | 'push';
+
+/**
+ * Server that holds subscriptions and sends notifications.
+ *
+ * `/api` is the Vite dev proxy pointing at `server/index.mjs`. On GitHub Pages
+ * nothing is there, which is why every call below treats its absence as an
+ * ordinary answer rather than an error.
+ */
 const PUSH_API = import.meta.env.VITE_PUSH_API_URL ?? '/api';
+
+/**
+ * Is there a push server to talk to at all?
+ *
+ * A build for a static host has no VAPID key compiled in and no `/api` behind
+ * it. Asking is pointless and, worse, *slow and noisy*: `vapidPublicKey()`
+ * would fetch a 404 and throw, which is exactly how "turn on notifications"
+ * came to do nothing at all.
+ */
+export function pushConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY || import.meta.env.VITE_PUSH_API_URL);
+}
 
 export function pushAvailability(): PushAvailability {
   if (!('serviceWorker' in navigator)) {
@@ -91,32 +129,83 @@ async function vapidPublicKey(): Promise<string> {
  * Must be called from a user gesture — Safari and Chrome both reject a
  * permission prompt that did not come from a tap.
  */
-export async function subscribeToPush(): Promise<PushStatus> {
+export async function subscribeToPush(): Promise<NotifyReach> {
   const availability = pushAvailability();
   if (availability.state !== 'ready') throw new Error(availability.reason);
 
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    return permission === 'denied' ? 'denied' : 'unsubscribed';
+  if (permission !== 'granted') return 'none';
+
+  // Permission alone is worth having and is the part that always works. It is
+  // returned before anything else can throw, because the previous version
+  // asked the push service first: on a build with no server that threw, the
+  // whole call failed, and somebody who had just granted permission was told
+  // notifications could not be turned on.
+  if (!pushConfigured()) return 'alerts';
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    const subscription =
+      existing ??
+      (await registration.pushManager.subscribe({
+        // Safari supports visible notifications only; a silent push is dropped.
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(await vapidPublicKey()),
+      }));
+
+    await rememberPushSubscription(subscription);
+    await sendSubscriptionToServer(subscription);
+    return 'push';
+  } catch {
+    // The push half is the half that can be missing. Alerts are already on.
+    return 'alerts';
   }
+}
+
+/** What this install is currently getting. */
+export async function currentReach(): Promise<NotifyReach> {
+  if (pushAvailability().state !== 'ready') return 'none';
+  if (Notification.permission !== 'granted') return 'none';
+  if (!pushConfigured()) return 'alerts';
 
   const registration = await navigator.serviceWorker.ready;
-  const existing = await registration.pushManager.getSubscription();
-  if (existing) {
-    await rememberPushSubscription(existing);
-    await sendSubscriptionToServer(existing);
-    return 'subscribed';
+  return (await registration.pushManager.getSubscription()) ? 'push' : 'alerts';
+}
+
+/**
+ * Raise a notification from the app itself.
+ *
+ * This is the whole of what works without a server, and it is not nothing: an
+ * app on a phone stays open in the background for a long time, and a crew
+ * chatting while two of them have Lane Log on screen is exactly the case.
+ *
+ * Silent about failure by design — a notification that could not be shown must
+ * never break the thing it was announcing.
+ */
+export async function alert(message: {
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+}): Promise<boolean> {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(message.title, {
+      body: message.body,
+      icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+      badge: `${import.meta.env.BASE_URL}icons/badge-72.png`,
+      // Tagged so a chatty crew replaces its own notification rather than
+      // stacking eleven of them.
+      tag: message.tag ?? 'lane-log',
+      data: { url: message.url ?? import.meta.env.BASE_URL },
+    });
+    return true;
+  } catch {
+    return false;
   }
-
-  const subscription = await registration.pushManager.subscribe({
-    // Safari supports visible notifications only; a silent push is dropped.
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(await vapidPublicKey()),
-  });
-
-  await rememberPushSubscription(subscription);
-  await sendSubscriptionToServer(subscription);
-  return 'subscribed';
 }
 
 export async function unsubscribeFromPush(): Promise<PushStatus> {
@@ -147,37 +236,6 @@ async function sendSubscriptionToServer(subscription: PushSubscription): Promise
   });
   if (!response.ok) {
     throw new Error('Saved on this device, but the server would not accept the subscription.');
-  }
-}
-
-/**
- * Tell a crew something happened.
- *
- * Fire-and-forget on purpose: a notification that does not go out must never
- * fail the thing it was announcing. Sharing a game succeeds whether or not the
- * push server is reachable, and the caller is told separately.
- *
- * With no backend there is no group membership to fan out to, so this reaches
- * whatever subscriptions the push server holds. A real implementation would
- * take the group id and let the server decide who hears about it.
- */
-export async function notifyGroup(message: {
-  title: string;
-  body: string;
-  url?: string;
-  tag?: string;
-}): Promise<boolean> {
-  try {
-    const response = await fetch(`${PUSH_API}/notify`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(message),
-    });
-    if (!response.ok) return false;
-    const result = (await response.json()) as { sent?: number };
-    return (result.sent ?? 0) > 0;
-  } catch {
-    return false;
   }
 }
 

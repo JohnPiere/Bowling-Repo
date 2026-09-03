@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/Icon';
-import { tf, useTranslation } from '../lib/i18n';
+import { t as translate, tf, useTranslation } from '../lib/i18n';
 import {
   AVATARS,
   colourOf,
@@ -30,12 +30,12 @@ import {
   type InstallState,
 } from '../lib/install';
 import {
-  currentPushStatus,
+  currentReach,
   pushAvailability,
   showLocalTestNotification,
   subscribeToPush,
   unsubscribeFromPush,
-  type PushStatus,
+  type NotifyReach,
 } from '../lib/push';
 import {
   describeSaveFailure,
@@ -98,7 +98,7 @@ export function SettingsScreen({
   const [cleared, setCleared] = useState<number | null>(null);
 
   const [install, setInstall] = useState<InstallState>(getInstallState);
-  const [push, setPush] = useState<PushStatus>('unavailable');
+  const [reach, setReach] = useState<NotifyReach>('none');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageReport | null>(null);
@@ -245,7 +245,7 @@ export function SettingsScreen({
     estimateStorage().then(setStorage, () => setStorage(null));
   }, [games.length]);
   useEffect(() => {
-    currentPushStatus().then(setPush, () => setPush('unavailable'));
+    currentReach().then(setReach, () => setReach('none'));
   }, [install]);
 
   const availability = pushAvailability();
@@ -254,7 +254,12 @@ export function SettingsScreen({
     setBusy(true);
     setMessage(null);
     try {
-      setPush(push === 'subscribed' ? await unsubscribeFromPush() : await subscribeToPush());
+      if (reach === 'none') {
+        setReach(await subscribeToPush());
+      } else {
+        await unsubscribeFromPush();
+        setReach('none');
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -613,13 +618,13 @@ export function SettingsScreen({
           <>
             <div className="row row--between" style={{ marginBottom: 11 }}>
               <span>
-                <span style={{ display: 'block' }}>{t('Push notifications')}</span>
-                <span className="muted">{describe(push)}</span>
+                <span style={{ display: 'block' }}>{t('Notifications')}</span>
+                <span className="muted">{describe(reach)}</span>
               </span>
               <Icon name="bell" size={19} />
             </div>
 
-            {push === 'denied' ? (
+            {Notification.permission === 'denied' ? (
               <div className="note note--warn" style={{ marginBottom: 0 }}>
                 Notifications are blocked for this site. Re-allow them in your browser settings —
                 the app cannot ask again once they are denied.
@@ -628,14 +633,26 @@ export function SettingsScreen({
               <>
                 <button
                   type="button"
-                  className={`btn-lg ${push === 'subscribed' ? '' : 'btn-lg--primary'}`}
+                  className={`btn-lg ${reach === 'none' ? 'btn-lg--primary' : ''}`}
                   onClick={toggleNotifications}
                   disabled={busy}
                 >
-                  {busy ? 'Working…' : push === 'subscribed' ? 'Turn off' : 'Turn on notifications'}
+                  {busy
+                    ? t('Working…')
+                    : reach === 'none'
+                      ? t('Turn on notifications')
+                      : t('Turn off')}
                 </button>
 
-                {push === 'subscribed' && (
+                {reach === 'alerts' && (
+                  <p className="footnote" style={{ marginTop: 11, marginBottom: 0 }}>
+                    {t(
+                      'Waking a closed app needs a server to send the notification, and this build is served from static hosting with none. What you get is the crew’s activity while the app is running.',
+                    )}
+                  </p>
+                )}
+
+                {reach !== 'none' && (
                   <button
                     type="button"
                     className="btn-lg"
@@ -1093,16 +1110,25 @@ export function SettingsScreen({
   );
 }
 
-function describe(status: PushStatus): string {
-  switch (status) {
-    case 'subscribed':
-      return 'On — this device will be notified.';
-    case 'unsubscribed':
-      return 'Off.';
-    case 'denied':
-      return 'Blocked in browser settings.';
+/**
+ * How far notifications reach, said plainly.
+ *
+ * The middle case is the one that matters and the one the old wording had no
+ * way to express: permission is granted and the app can raise a notification,
+ * but nothing can wake it once it is closed, because there is no server
+ * holding a key to push with. "On" would have been a lie and "off" would have
+ * been a different one.
+ */
+function describe(reach: NotifyReach): string {
+  switch (reach) {
+    case 'push':
+      return translate('On, even when Lane Log is closed.');
+    case 'alerts':
+      return translate('On while Lane Log is open. Nothing can wake it when it is closed.');
     default:
-      return 'Not available here.';
+      return Notification.permission === 'denied'
+        ? translate('Blocked in browser settings.')
+        : translate('Off.');
   }
 }
 
