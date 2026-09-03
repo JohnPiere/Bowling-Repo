@@ -357,6 +357,13 @@ export const JA: Record<string, string> = {
   'Nothing to share yet. Bowl a game first.': '共有できるゲームがありません。まず1ゲーム記録してください。',
   'Shared a {n}.': '{n}を共有しました。',
 
+  // ── Coming back signed in ──
+  'Signed in': 'サインインしました',
+  'You are signed in as {name}.': '{name} としてサインインしています。',
+  'Your crews, the board and the chat are open now. Your games stay on this phone either way.':
+    'クルー・ボード・チャットが使えるようになりました。ゲームはどちらにしてもこの端末に残ります。',
+  'Go to your crews': 'クルーへ',
+
   // ── A new version ──
   'A new version is ready.': '新しいバージョンがあります。',
   'It will be applied when you finish this game, or now if you would rather.':

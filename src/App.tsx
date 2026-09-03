@@ -7,10 +7,11 @@ import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/nav
 import { translate, useTranslation } from './lib/i18n';
 import type { Language } from './lib/preferences';
 import { OnboardingScreen } from './screens/OnboardingScreen';
-import { usePreferences } from './lib/preferences';
+import { colourOf, usePreferences } from './lib/preferences';
 import { useSession } from './lib/session';
 import { useCrews, useCrew } from './lib/crews';
 import { applyUpdate, onUpdateWaiting } from './lib/updates';
+import { SignedInDialog } from './components/SignedInDialog';
 import { AuthScreen } from './screens/AuthScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { CreateGroupScreen } from './screens/CreateGroupScreen';
@@ -44,8 +45,17 @@ const invitedCode = new URLSearchParams(window.location.search).get('join') ?? '
 
 export function App() {
   const nav = useNavigation(initialRoute());
-  const { session, restoring, signIn, signOut, signInState, signInError, dismissSignInError } =
-    useSession();
+  const {
+    session,
+    restoring,
+    signIn,
+    signOut,
+    signInState,
+    signInError,
+    dismissSignInError,
+    justSignedIn,
+    acknowledgeSignIn,
+  } = useSession();
   const { t, language } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -91,6 +101,22 @@ export function App() {
     },
     [refresh, session.isGuest, nav],
   );
+
+  /**
+   * Coming back signed in puts the bowler on their crews.
+   *
+   * The route changes *underneath* the dialogue rather than after it, so
+   * whichever way it is dismissed — the button, Escape, the backdrop — what is
+   * behind it is already the screen the account was for. An account is only
+   * ever worth having for the crews; landing back on a dashboard that scores
+   * games perfectly well without one is landing nowhere.
+   */
+  useEffect(() => {
+    if (justSignedIn) nav.selectTab('groups');
+    // `nav.selectTab` is stable, and re-running this on every navigation would
+    // drag the bowler back to the crews list every time they left it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justSignedIn]);
 
   const { route } = nav;
   const { preferences } = usePreferences();
@@ -419,6 +445,18 @@ export function App() {
           </button>
         ))}
       </nav>
+
+      {/* Last in the tree and outside the scrolling main, because it is in the
+          browser's top layer: nothing here stacks against it. */}
+      {justSignedIn && (
+        <SignedInDialog
+          name={justSignedIn.name}
+          email={justSignedIn.email}
+          photo={preferences.playerPhoto}
+          tint={colourOf(preferences.playerColour)}
+          onDismiss={acknowledgeSignIn}
+        />
+      )}
     </div>
   );
 }

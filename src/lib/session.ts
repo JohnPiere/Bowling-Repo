@@ -116,8 +116,48 @@ export function toSession(auth: AuthSession): Session {
 
 export type SignInState = 'idle' | 'redirecting' | 'failed';
 
+/**
+ * Is this page load the one coming back from the provider?
+ *
+ * Read once, at module load, because the SDK strips `?code=` out of the
+ * address bar as soon as it has exchanged it — by the time anything renders
+ * the only evidence that a sign-in just happened is gone. Reading it here also
+ * means a later reload does not re-announce a sign-in that already happened.
+ */
+const RETURNING_FROM_PROVIDER =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
+
+/**
+ * Is this session worth announcing to the person holding it?
+ *
+ * Four conditions, and every one of them has a way of being got wrong that is
+ * invisible until somebody is using the app. Announce a session that was
+ * restored rather than just made and the dialogue appears on every single
+ * launch; announce twice and it appears twice for one sign-in, because
+ * `getSession` and `onAuthStateChange` both deliver the same session on a
+ * redirect landing; announce a guest and it congratulates somebody on signing
+ * in to nothing.
+ */
+export function shouldAnnounceSignIn(
+  landing: boolean,
+  alreadyAnnounced: boolean,
+  next: Session,
+): boolean {
+  return landing && !alreadyAnnounced && !next.isGuest;
+}
+
 export function useSession() {
   const [session, setSession] = useState<Session>(() => loadGuest());
+  /**
+   * The account that has just been connected, until it is acknowledged.
+   *
+   * Signing in leaves the page and comes back as a fresh load, so without this
+   * the whole event is invisible: the bowler taps Continue with Google, waits
+   * through a provider screen, and arrives back at the dashboard with one
+   * word changed somewhere. Whether it worked is a question they have to go
+   * and answer for themselves.
+   */
+  const [justSignedIn, setJustSignedIn] = useState<Session | null>(null);
   /**
    * Whether the account is still being worked out.
    *
@@ -146,17 +186,29 @@ export function useSession() {
 
     let live = true;
     let unsubscribe: (() => void) | undefined;
+    // Announced once. `getSession` and `onAuthStateChange` both deliver the
+    // same session on a redirect landing, and two dialogues for one sign-in
+    // is one more than happened.
+    let announced = false;
+
+    const arrived = (next: Session) => {
+      setSession(next);
+      if (!shouldAnnounceSignIn(RETURNING_FROM_PROVIDER, announced, next)) return;
+      announced = true;
+      setJustSignedIn(next);
+    };
 
     void backend()
       .then(async (db) => {
         const { data } = await db.auth.getSession();
         if (!live) return;
-        if (data.session) setSession(toSession(data.session));
+        if (data.session) arrived(toSession(data.session));
 
         // Fires for the OAuth redirect landing, a token refresh, and sign-out.
         const { data: sub } = db.auth.onAuthStateChange((_event, next) => {
           if (!live) return;
-          setSession(next ? toSession(next) : loadGuest());
+          if (next) arrived(toSession(next));
+          else setSession(loadGuest());
           setSignInState('idle');
         });
         unsubscribe = () => sub.subscription.unsubscribe();
@@ -253,10 +305,23 @@ export function useSession() {
     }
   }, []);
 
+  /** The bowler has seen it. */
+  const acknowledgeSignIn = useCallback(() => setJustSignedIn(null), []);
+
   const dismissSignInError = useCallback(() => {
     setSignInState('idle');
     setSignInError(null);
   }, []);
 
-  return { session, restoring, signIn, signOut, signInState, signInError, dismissSignInError };
+  return {
+    session,
+    restoring,
+    signIn,
+    signOut,
+    signInState,
+    signInError,
+    dismissSignInError,
+    justSignedIn,
+    acknowledgeSignIn,
+  };
 }

@@ -456,6 +456,33 @@ neither the games on the phone nor the copy on the server; what goes is the
 crews, the chat and the boards. Revoking at Google's end is Google's screen, and
 the card says so rather than pretending to do it.
 
+**Signing in has to say so.** It is the only thing in the app that leaves the
+page: the bowler taps Continue with Google, goes through somebody else's
+screens, and comes back to a *fresh load* of the dashboard. Nothing about that
+load says the round trip worked — the one changed word is a name on a screen
+they are not looking at — so the honest reading of a silent return is that it
+failed, and the next thing somebody does is try again.
+
+So a dialogue, once, naming the account; and the route underneath it is
+switched to the crews before it opens, so whichever way it is dismissed — the
+button, Escape, the backdrop — what is behind it is the screen the account was
+for. Landing back on a dashboard that scores games perfectly well without an
+account is landing nowhere.
+
+`RETURNING_FROM_PROVIDER` is read at *module load*, because `detectSessionInUrl`
+strips `?code=` out of the address bar as soon as it has exchanged it: by the
+time anything renders, the only evidence a sign-in just happened is gone.
+`shouldAnnounceSignIn` is the rest of it, and it is a pure function with tests
+because every way of getting it wrong is invisible until somebody is holding
+the phone — announce a restored session and the dialogue greets them on every
+launch, announce twice (`getSession` and `onAuthStateChange` both deliver the
+same session on a landing) and one sign-in is congratulated twice, announce a
+guest and a failed code exchange congratulates somebody on nothing.
+
+The browser check for it stubs the SDK chunk rather than the network: the whole
+event straddles a page load the app does not control, so the only way to watch
+it is to *be* the thing that answers with a session.
+
 **The SDK is dynamically imported and kept out of the precache.** It is 56 KB
 gzipped for screens that cannot work offline anyway, and the app it is bolted
 onto scores games with no account at all. `hasStoredSession()` reads the token

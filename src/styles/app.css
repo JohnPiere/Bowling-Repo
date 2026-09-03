@@ -2440,3 +2440,82 @@ body {
   margin-top: 0;
   row-gap: 8px;
 }
+
+/*
+ * The one dialogue in the app.
+ *
+ * A native <dialog> in the top layer, so it sits over the tab bar without this
+ * stylesheet having to know what the tab bar's z-index is — and so everything
+ * behind it is inert without any of that being written by hand. The element
+ * itself is the backdrop's sibling, so it is laid out as the full viewport and
+ * the card inside it does the centring: `dialog { inset: 0 }` plus a flex body
+ * is what makes a click outside the card land on the dialog element, which is
+ * how it closes.
+ */
+.dialog {
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog::backdrop {
+  /* The app's own ground, not black: a dark UI dimmed with black goes muddy
+     rather than recessed. */
+  background: rgba(12, 13, 22, 0.72);
+}
+.dialog__body {
+  width: min(22rem, calc(100vw - 2 * var(--gutter)));
+  margin: var(--gutter);
+  padding: 22px 18px 18px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow:
+    0 0 0 1px var(--color-accent-800),
+    0 24px 60px -28px rgba(145, 132, 217, 0.9);
+  text-align: center;
+}
+.dialog__mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.dialog__title {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+.dialog__lead {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+.dialog__meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-300);
+  /* An address can be long and has no spaces to break at. */
+  word-break: break-word;
+}
+.dialog__note {
+  margin: 12px 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-neutral-300);
+}
+
+/* The dialogue is the whole screen on a short one, and a rack-sized phone in
+   landscape has less height than the card wants. Let it scroll rather than
+   pushing the button off the bottom. */
+@media (max-height: 460px) {
+  .dialog { align-items: flex-start; overflow: auto; }
+  .dialog__body { margin-top: 12px; margin-bottom: 12px; }
+}
