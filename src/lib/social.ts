@@ -793,20 +793,41 @@ export async function loadMessages(groupId: string, me: string): Promise<Thread>
   };
 }
 
+/**
+ * Say something, and hand back the row the database made.
+ *
+ * It returned nothing, and the chat was left waiting for its own message to
+ * come back down the Realtime socket before it would draw. That is a round
+ * trip through a websocket for the one message the sender already knows
+ * happened — and in a bowling alley, which `cloud.ts` already calls a reliably
+ * bad place for a network, it is the round trip most likely not to complete.
+ * The screen's own `add` has deduped "down the socket *and* in the reply to
+ * our own insert" since it was written; only the second half was missing.
+ *
+ * Returning the row rather than echoing the draft matters: the id and the
+ * timestamp are the server's, so what gets drawn is the stored message and not
+ * an optimistic guess at it.
+ */
 export async function sendMessage(
   groupId: string,
   me: string,
   body: string,
   sharedGameId?: string,
-): Promise<void> {
+): Promise<MessageRow> {
   const db = await backend();
-  const { error } = await db.from('messages').insert({
-    group_id: groupId,
-    author_id: me,
-    body: body.trim(),
-    shared_game_id: sharedGameId ?? null,
-  });
+  const { data, error } = await db
+    .from('messages')
+    .insert({
+      group_id: groupId,
+      author_id: me,
+      body: body.trim(),
+      shared_game_id: sharedGameId ?? null,
+    })
+    .select('*')
+    .single();
+
   if (error) throw error;
+  return data as MessageRow;
 }
 
 /**

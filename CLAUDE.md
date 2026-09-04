@@ -194,6 +194,24 @@ strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
 half that still means something beside a game of a different length. The series
 card ends on the same four over the whole night.
 
+**A chat waited for its own message to come back down the socket.**
+`sendMessage` returned `void`, so nothing was drawn until Realtime delivered
+the row — a round trip through a websocket for the one message the sender
+already knows happened, in a bowling alley, which `cloud.ts` already calls a
+reliably bad place for a network. Sharing a game looked like nothing at all:
+the picker closed (which only happens on success) and the thread stayed empty.
+
+The local echo was *designed* — `add` has deduped "down the socket **and** in
+the reply to our own insert" since it was written — and only the second half
+was ever wired. `sendMessage` returns the inserted row now, so what is drawn
+carries the server's id and timestamp rather than being an optimistic guess at
+them, and Realtime delivering the same row a moment later is deduped rather
+than doubled.
+
+The author map is seeded from the roster too, or the first message in an empty
+crew draws against a "?" avatar — which is the one message somebody is certain
+to be looking at.
+
 **Two components shared the class `picker`, and the older one won.** The
 scanner's crop box owns `.picker` and sets `aspect-ratio: 3 / 4`, a black
 ground, `touch-action: none` and `user-select: none` on it. The chat's

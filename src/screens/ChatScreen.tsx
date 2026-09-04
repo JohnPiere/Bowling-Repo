@@ -79,6 +79,19 @@ export function ChatScreen({ group, session }: Props) {
       .then((thread) => {
         if (!live) return;
         authorsRef.current = thread.authors;
+        // The roster fills in anybody the thread has not heard from yet —
+        // including you, in a chat with nothing in it. Without this the first
+        // message in an empty crew draws against a "?" avatar, which is the
+        // one message somebody is certain to be looking at.
+        for (const member of group.members) {
+          if (!authorsRef.current.has(member.id)) {
+            authorsRef.current.set(member.id, {
+              id: member.id,
+              name: member.name,
+              avatar: member.photo ?? null,
+            } as ProfileRow);
+          }
+        }
         postsRef.current = thread.posts;
         setMessages(thread.messages);
       })
@@ -115,11 +128,13 @@ export function ChatScreen({ group, session }: Props) {
     setSending(true);
     setError(null);
     try {
-      await sendMessage(group.id, session.id, body);
-      // Not added locally: the row comes back down the socket with the id and
-      // timestamp the database gave it. Echoing it here first would show a
-      // message that has not been stored, which is the one lie a chat must not
-      // tell.
+      // Drawn from the row the insert gave back, not from the draft: the id
+      // and the timestamp are the server's, so this is the stored message
+      // rather than an optimistic guess at it. `add` dedupes, so the socket
+      // delivering the same row a moment later is not a second message — and
+      // the socket not delivering it at all is no longer a blank chat.
+      const row = await sendMessage(group.id, session.id, body);
+      add(toMessage(row, authorsRef.current, session.id, postsRef.current));
       setDraft('');
     } catch (err) {
       setError(describeBackendFailure(err));
@@ -161,12 +176,15 @@ export function ChatScreen({ group, session }: Props) {
       // on the next time the chat is opened.
       postsRef.current.set(post.id, post);
 
-      await sendMessage(
+      const row = await sendMessage(
         group.id,
         session.id,
         draft.trim() || tf('Shared a {n}.', { n: game.total }),
         post.id,
       );
+      // Same as a typed message: the picker closing was the only sign anything
+      // had happened, because the card waited on a socket to come back.
+      add(toMessage(row, authorsRef.current, session.id, postsRef.current));
       setDraft('');
       setPicking(false);
     } catch (err) {
