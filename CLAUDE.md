@@ -242,6 +242,28 @@ showed Settings and nothing else, so the tab bar was the only way off. It goes
 to the season when there is nothing to go back to, and still goes back when the
 screen was reached from a game's own page.
 
+**The frame editor is on the finishing step too, and the strip must not empty
+while you use it.** Correcting a frame meant saving the game you already knew
+was wrong and going to find it again — the moment somebody is least inclined
+to, and a wrong frame left in is a wrong leave in the statistics for good. It
+is the same component, over rolls that are still component state.
+
+The bug that came with it is worth keeping, because the report was "the score
+is not calculated right anymore" and the arithmetic was never wrong. While a
+frame was being re-thrown the strip drew `prefixRolls` — frames one to N plus
+the balls entered so far — so fixing frame 6 blanked frames 7 to 10 and took
+their running totals with them. Nothing to do with the score; everything to do
+with a screen that empties the second half of your game while you fix the
+first half and gives you no way to know it is only drawing.
+
+`replaceFrame` itself is fuzzed against a second scorer now
+(`amend.property.test.ts`), over thousands of random games and edits: the
+result is always legal, always scores the same as an independent walk of the
+rules, never leaves a ball outside a frame — a ball `tally` would count as
+thrown and nothing else would — and never turns a finished game into an
+unfinished one. That last is the one that would read as a wrong score, since an
+incomplete game keeps a partial total and drops out of every average.
+
 **A game is corrected on the rack, and `pinfalls` has to travel with the
 rolls.** The correction used to be a line of marks — `X 9/ 72 …` — typed into
 an input. That is a fast way to retype a whole game and a poor way to fix one

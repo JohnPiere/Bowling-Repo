@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { FrameStrip } from '../components/FrameStrip';
+import { FrameEditor } from '../components/FrameEditor';
 import { PinKeypad } from '../components/PinKeypad';
 import { PinRack } from '../components/PinRack';
 import { Icon } from '../components/Icon';
@@ -94,6 +95,15 @@ export function PlayScreen({ onSaved, games }: Props) {
   // it under the moment it was typed puts it on the wrong day.
   const [day, setDay] = useState(() => toDateInput(Date.now()));
   const [time, setTime] = useState(() => toTimeInput(Date.now()));
+  /**
+   * Fixing a frame before the game is written, rather than after.
+   *
+   * Correcting one meant saving the game you knew was wrong and going to find
+   * it again — which is the moment somebody is least inclined to, and a wrong
+   * frame left in is a wrong leave in the statistics for good. The same editor
+   * the game record uses, on rolls that are still component state.
+   */
+  const [fixing, setFixing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -198,6 +208,7 @@ export function PlayScreen({ onSaved, games }: Props) {
     setRolls([]);
     setPinfalls([]);
     setPending([]);
+    setFixing(false);
     setStarted(skipChooser);
   }
 
@@ -249,6 +260,7 @@ export function PlayScreen({ onSaved, games }: Props) {
       setDay(toDateInput(Date.now()));
       setTime(toTimeInput(Date.now()));
       setStarted(skipChooser);
+      setFixing(false);
       onSaved(saved.id);
     } catch (err) {
       // Keep the rolls on screen: a failed save must not cost the game.
@@ -305,13 +317,37 @@ export function PlayScreen({ onSaved, games }: Props) {
   if (complete) {
     return (
       <>
-        <FrameStrip frames={strip} />
+        {fixing ? (
+          <FrameEditor
+            rolls={rolls}
+            pinfalls={pinfalls}
+            onChange={(next) => {
+              setRolls(next.rolls);
+              setPinfalls(next.pinfalls);
+            }}
+          />
+        ) : (
+          <FrameStrip frames={strip} />
+        )}
 
         <div className="note note--good" style={{ marginTop: 12 }}>
           {tf('Game finished — {n} pins. Check when and where before saving.', {
             n: card.total,
           })}
         </div>
+
+        {/* A swap, not a second line: the finishing step scrolls, but a button
+            that is only ever useful before saving should not sit next to the
+            one that saves. */}
+        <button
+          type="button"
+          className="btn-lg"
+          style={{ marginBottom: 11 }}
+          onClick={() => setFixing((now) => !now)}
+        >
+          <Icon name="grid" size={18} />
+          {fixing ? t('Done fixing') : t('Fix a frame')}
+        </button>
 
         <label className="field" style={{ display: 'block', marginBottom: 11 }}>
           <span className="hero__label">{t('Where you bowled')}</span>

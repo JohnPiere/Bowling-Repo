@@ -63,9 +63,22 @@ export function FrameEditor({ rolls, pinfalls, onChange }: Props) {
   // Done when the next ball would land in a later frame, or the game is over.
   const frameDone = frame !== null && (cursor === null || cursor.frame > frame);
 
-  const shown = frame === null ? rolls : prefixRolls;
-  const shownPins = frame === null ? pinfalls : prefixPins;
-  const strip = frameStrip(shown, shownPins, pending, frame);
+  /*
+   * The strip shows the whole game while a frame is being re-thrown, not the
+   * part of it up to that frame.
+   *
+   * It used to show `prefixRolls`, which is frames one to N with the balls
+   * entered so far — so re-throwing frame 6 blanked frames 7 to 10 and took
+   * their running totals with them. Nothing was wrong with the arithmetic;
+   * `replaceFrame` is checked against a second scorer over thousands of random
+   * edits. But a screen that empties the second half of your game while you
+   * fix the first half is telling you the score is broken, and there is no way
+   * to know it is not.
+   *
+   * So: the game as it stands, with the frame being fixed lit up. It changes
+   * when the frame is finished and spliced, which is the moment it should.
+   */
+  const strip = frameStrip(rolls, pinfalls, pending, frame);
 
   function stop() {
     setFrame(null);

@@ -679,6 +679,7 @@ export const JA: Record<string, string> = {
     'フレームをタップすると投げ直せます。このゲームにはピンの記録がないため、ラックは本数を数えるだけで、どのピンかは記録しません。',
   'That frame is full.': 'このフレームは投げ終わりました。',
   'Save the correction': '修正を保存',
+  'Done fixing': '修正を終える',
   'A scan gets a frame wrong now and then. The photo stays, so you can check against it.':
     'スキャンはときどきフレームを読み違えます。写真は残るので、見比べて確認できます。',
   'Mis-tapped a ball? Put it right here.': '押し間違えたときは、ここで直せます。',
