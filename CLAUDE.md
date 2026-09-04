@@ -194,6 +194,20 @@ strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
 half that still means something beside a game of a different length. The series
 card ends on the same four over the whole night.
 
+**A button is shrink-to-fit, and `.btn-quick` only looked full width by
+accident.** `.play` is a flex column, so it stretched its children — and the
+moment the frame editor drew the same button anywhere else, on the finishing
+step or a saved game, it came out 151px wide against a 358px rack and read as
+sitting off to one side. It carries its own `width: 100%` now, which is a no-op
+where it always worked.
+
+**The share screen draws the frames, not a scorecard.** It showed the plain
+`Scorecard` — ten cells of marks and totals — which is the right shape for a
+game with no pin record and the wrong one for the game you have *just bowled on
+the rack*, where the leaves are the part worth looking at before deciding to
+post it. Same fallback as the game record, for the same reason: ten empty racks
+read as a bug rather than as an absence.
+
 **A game names as many balls as it used, and belongs to all of them.** Most
 people carry two — a strike ball and a plastic one for the ten pin — and a
 single `ball` field made the second invisible: "my average with the Phaze II"

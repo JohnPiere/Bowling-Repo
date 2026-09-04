@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
+import { FrameStrip } from '../components/FrameStrip';
+import { frameStrip } from '../lib/framestrip';
 import type { Group } from '../lib/social';
 import { describeBackendFailure } from '../lib/backend';
 import { shareGame as shareLocally, type Game } from '../lib/db';
@@ -41,6 +43,22 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
   const card = scoreGame(game.rolls);
   const hasPhoto = Boolean(game.hasSheet);
 
+  /*
+   * The frames as they were bowled, pin diagrams and all — the same strip the
+   * play screen draws, with no ball in flight.
+   *
+   * This screen showed the plain `Scorecard`: ten cells of marks and totals,
+   * which is the right shape for a game with no pin record and the wrong one
+   * for the game you have *just bowled on the rack*, where the leaves are the
+   * part worth looking at before deciding to post it.
+   *
+   * Same fallback as the game record, and for the same reason: a game entered
+   * on the pad has no pin data, and ten empty racks read as a bug rather than
+   * as an absence.
+   */
+  const hasPins = (game.pinfalls?.length ?? 0) === game.rolls.length && game.rolls.length > 0;
+  const strip = frameStrip(game.rolls, game.pinfalls ?? [], [], null);
+
   async function share() {
     if (!groupId) return;
     setBusy(true);
@@ -78,7 +96,7 @@ export function ShareScreen({ game, crews, me, onShared, onCancel }: Props) {
             {game.total}
           </span>
         </div>
-        <Scorecard scorecard={card} />
+        {hasPins ? <FrameStrip frames={strip} /> : <Scorecard scorecard={card} />}
       </div>
 
       <h2 className="section-title">{t('Which crew')}</h2>

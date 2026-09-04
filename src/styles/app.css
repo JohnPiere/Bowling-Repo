@@ -2340,6 +2340,11 @@ body {
 /* One tap for the ball that takes everything. Dashed, because it is a
    shortcut past the rack rather than another thing to press in sequence. */
 .btn-quick {
+  /* A button is shrink-to-fit, and this one only looked full width because
+     `.play` is a flex column that stretches its children. Drawn anywhere else
+     — the frame editor on the finishing step, or on a saved game — it came out
+     151px wide against a 358px rack and read as sitting off to one side. */
+  width: 100%;
   min-height: 44px;
   border-radius: 12px;
   border: 1px dashed var(--color-accent-700);
