@@ -235,7 +235,7 @@ export function App() {
             <p style={{ margin: '4px 0 8px' }}>
               {t('It will be applied when you finish this game, or now if you would rather.')}
             </p>
-            <button type="button" className="btn-lg" onClick={applyUpdate}>
+            <button type="button" className="btn-lg" onClick={() => applyUpdate(true)}>
               {t('Update now')}
             </button>
           </div>

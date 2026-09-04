@@ -40,6 +40,16 @@ let bowling = false;
 let applying = false;
 
 /**
+ * Whether the update being applied is one the bowler tapped for.
+ *
+ * The banner is shown *while* a game is in progress, so "Update now" is a
+ * deliberate choice to lose the game on screen, and it has to work. An update
+ * the app decided to take on its own is the opposite: nobody agreed to it, and
+ * it must not land on a game that started after it was set going.
+ */
+let requested = false;
+
+/**
  * How long to give the worker handover before reloading anyway.
  *
  * Long enough that the ordinary path — skip waiting, `controllerchange`,
@@ -77,6 +87,7 @@ export function updateArrived(handOver: () => void): void {
   apply = handOver;
   // A new worker is a fresh chance to hand over, whatever became of the last.
   applying = false;
+  requested = false;
 
   if (!bowling) {
     // Through `applyUpdate` rather than straight to `handOver`, so this path
@@ -103,10 +114,15 @@ export function updateArrived(handOver: () => void): void {
  *
  * A reload is what the handover was going to do anyway, so do it when the
  * handover does not.
+ *
+ * `asked` is true only for the banner's own button. An update somebody chose
+ * is taken whatever is on the screen; one the app started by itself is not, and
+ * `reloadOnce` is where that difference is spent.
  */
-export function applyUpdate(): void {
+export function applyUpdate(asked = false): void {
   if (applying) return;
   applying = true;
+  requested = asked;
 
   apply?.();
   setTimeout(reloadOnce, HANDOVER_MS);
@@ -124,6 +140,32 @@ export function applyUpdate(): void {
  * `index.html` guards its own recovery the same way and for the same reason.
  */
 function reloadOnce(): void {
+  // Checked here and not only when the reload was scheduled, because between
+  // those two moments a bowler can have thrown a ball.
+  //
+  // This is the race that resets the screen out of nowhere. An update arriving
+  // while nothing is being bowled — the app just opened, or a game was just
+  // saved — applies straight away and arms this for 1500ms. Start a game
+  // inside that window and the reload lands on top of it. Nothing on the
+  // screen explains it, and it only happens when a deploy has just gone out,
+  // which is what makes it look random.
+  //
+  // Not for an update the bowler tapped: the banner is drawn *during* a game,
+  // so "Update now" means "yes, now, I know what is on the screen", and a
+  // button that refused would be the dead button this file was written to fix.
+  //
+  // The draft in `lib/draft.ts` means such a reload no longer costs the game;
+  // this means the app stops causing one.
+  if (bowling && !requested) {
+    // Back to the banner. The update is still installed and still wanted — it
+    // goes in the same place a held update goes, and is taken when the game
+    // ends.
+    applying = false;
+    waiting = true;
+    notify();
+    return;
+  }
+
   try {
     if (sessionStorage.getItem(RELOADED)) {
       // Let the bowler ask again; there is nothing else left to offer them.

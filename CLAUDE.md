@@ -540,6 +540,27 @@ dependencies. As the cleanup of the effect that tracks the rolls, it ran on
 *every ball* — which took the held update between two frames and reloaded the
 page out from under the game it was there to protect.
 
+**And the timer had to ask again, because the answer changes underneath it.**
+That fallback reload is armed 1500ms ahead, and `applyUpdate` decided then
+whether a game was in progress. An update landing while nothing was being
+bowled — the app has just opened, or a game has just been saved — applied on
+the spot and armed the reload; throw a ball inside that window and it fired on
+top of the game. Nothing on the screen explained it, it needed a deploy to
+happen at all, and it therefore looked exactly like the app resetting itself at
+random, which is how it was reported.
+
+So `reloadOnce` re-reads `bowling` at the moment it fires and puts the update
+back behind the banner rather than taking it. The one exception is an update
+somebody *tapped* for: the banner is drawn during a game and offers to update
+now if you would rather, so `applyUpdate(true)` from that button goes through
+whatever is on screen — a refusal there would be the dead button this file was
+written to fix. The distinction is one flag and it is the whole behaviour.
+
+What it does not cover is the handover's own reload, which lives in
+`registerSW`: once `SKIP_WAITING` is sent, `controllerchange` fires and the
+plugin reloads. That window is tens of milliseconds against 1500, and the draft
+is what stands behind both.
+
 `scratchpad`-style simulations are what caught both: two builds with different
 version numbers and a static server that can be pointed at either while a real
 service worker is installed against it. Neither bug is visible in a unit test,

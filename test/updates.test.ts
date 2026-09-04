@@ -124,7 +124,7 @@ describe('taking the update', () => {
 
     setBowling(true);
     updateArrived(() => undefined); // a handover that cannot land
-    applyUpdate();
+    applyUpdate(true);
 
     expect(reload).not.toHaveBeenCalled(); // give the real path its chance first
     vi.advanceTimersByTime(2000);
@@ -147,12 +147,12 @@ describe('taking the update', () => {
 
     setBowling(true);
     updateArrived(() => undefined);
-    applyUpdate();
+    applyUpdate(true);
     vi.advanceTimersByTime(2000);
 
     // A second worker arrives, is held, and is asked for again.
     updateArrived(() => undefined);
-    applyUpdate();
+    applyUpdate(true);
     vi.advanceTimersByTime(2000);
 
     expect(reload).toHaveBeenCalledOnce();
@@ -170,14 +170,14 @@ describe('taking the update', () => {
 
     setBowling(true);
     updateArrived(() => undefined);
-    applyUpdate(); // spends nothing: the reload is refused
+    applyUpdate(true); // spends nothing: the reload is refused
     vi.advanceTimersByTime(2000);
 
     const second = vi.fn();
     updateArrived(second); // a later worker, still held by the game
     expect(second).not.toHaveBeenCalled();
 
-    applyUpdate();
+    applyUpdate(true);
     expect(second).toHaveBeenCalledOnce();
     vi.unstubAllGlobals();
   });
@@ -188,9 +188,9 @@ describe('taking the update', () => {
 
     setBowling(true);
     updateArrived(handOver);
-    applyUpdate();
-    applyUpdate();
-    applyUpdate();
+    applyUpdate(true);
+    applyUpdate(true);
+    applyUpdate(true);
 
     expect(handOver).toHaveBeenCalledOnce();
   });
