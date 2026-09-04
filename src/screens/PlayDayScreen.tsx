@@ -3,7 +3,7 @@ import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import { ScoreTrendChart } from '../components/charts/ScoreTrendChart';
 import type { Game } from '../lib/db';
-import { dayKey, groupByDay, sessionSpan } from '../lib/history';
+import { groupByDay, sessionSpan } from '../lib/history';
 import { scoreGame } from '../lib/scoring';
 import { ballOutcomes, sessionSwing } from '../lib/stats';
 import { shareSeries } from '../lib/scorecard';
@@ -29,10 +29,9 @@ export function PlayDayScreen({
   onOpenGame: (gameId: string) => void;
   onExport: () => void;
 }) {
-  const group = useMemo(
-    () => groupByDay(games.filter((game) => dayKey(game.playedAt) === day))[0],
-    [games, day],
-  );
+  // Found by session key rather than filtered by date: a day can hold two
+  // outings, and this screen is one of them.
+  const group = useMemo(() => groupByDay(games).find((one) => one.key === day), [games, day]);
 
   const [cardState, setCardState] = useState<'idle' | 'working' | 'saved' | 'failed'>('idle');
 

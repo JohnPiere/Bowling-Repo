@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './components/Icon';
 import { daySheetHtml, downloadHtml } from './lib/exporting';
-import { dayKey, groupByDay } from './lib/history';
+import { groupByDay } from './lib/history';
 import { listGames, type Game } from './lib/db';
 import { TAB_ROUTES, useNavigation, type Route, type RouteName } from './lib/navigation';
 import { translate, useTranslation } from './lib/i18n';
@@ -304,7 +304,10 @@ export function App() {
             day={route.day}
             onOpenGame={(gameId) => nav.push({ name: 'game', gameId })}
             onExport={() => {
-              const [session] = groupByDay(games.filter((g) => dayKey(g.playedAt) === route.day));
+              // By session, not by date: a day can hold a morning and a
+              // night, and exporting "that day" would staple two outings
+              // together.
+              const session = groupByDay(games).find((one) => one.key === route.day);
               if (session) {
                 downloadHtml(
                   `lane-log-${new Date(session.at).toISOString().slice(0, 10)}.html`,

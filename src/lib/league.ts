@@ -25,7 +25,7 @@
  */
 
 import { backend } from './backend';
-import { dayKey } from './history';
+import { dayKey, sessionKey, splitSessions } from './history';
 import {
   handicap,
   initialsOf,
@@ -89,16 +89,28 @@ export function allowanceFor(average: number): number {
  * dropped those would be missing the nights somebody actually turned up for.
  */
 export function seriesFrom(games: SharedGameRow[], allowance: number): Series[] {
-  const nights = new Map<string, SharedGameRow[]>();
+  const days = new Map<string, SharedGameRow[]>();
 
   for (const game of games) {
     const key = dayKey(Date.parse(game.played_at));
-    const seen = nights.get(key);
+    const seen = days.get(key);
     if (seen) seen.push(game);
-    else nights.set(key, [game]);
+    else days.set(key, [game]);
   }
 
-  const out: Series[] = [...nights.entries()].map(([key, played]) => {
+  // The same boundary the history screen uses, from the same function. If they
+  // disagreed about where a night ends they would disagree about which games
+  // were "that Tuesday" — and the handicap is per game, so a day wrongly read
+  // as one six-game series pays six allowances against one scratch total.
+  const nights = [...days.values()].flatMap((list) =>
+    splitSessions(
+      [...list].sort((a, b) => Date.parse(a.played_at) - Date.parse(b.played_at)),
+      (game) => Date.parse(game.played_at),
+    ),
+  );
+
+  const out: Series[] = nights.map((played) => {
+    const key = sessionKey(Date.parse(played[0].played_at));
     const scratch = played.reduce((sum, game) => sum + game.total, 0);
 
     return {

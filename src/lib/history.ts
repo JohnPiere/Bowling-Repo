@@ -26,6 +26,50 @@ export function dayKey(at: number): string {
 }
 
 /**
+ * The longest a session can pause and still be one session.
+ *
+ * A three-game series takes about two hours and the gaps inside it are the
+ * length of a lane change or a cigarette. Four hours is longer than any hole
+ * inside one outing and shorter than the gap between two — somebody who bowls
+ * before work and again that evening has been to the alley twice, and filing
+ * both under one date made a 6-game series out of two 3-game ones, with an
+ * average across a morning and a night that describes neither.
+ *
+ * A day was the boundary because it is the one people name — "that Tuesday" —
+ * and it still is. This only splits a day that plainly holds two.
+ */
+export const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
+
+/**
+ * Split games that already share a day into the sessions they were bowled in.
+ *
+ * Generic over the timestamp so the league can use the same boundary on rows
+ * from the server. It has to: the league's unit is the series and the history
+ * screen's is the night, and if they disagreed about where a night ends they
+ * would disagree about which games were "that Tuesday".
+ *
+ * The input must be in the order they were bowled; the caller sorts, because
+ * both callers already have.
+ */
+export function splitSessions<T>(played: T[], at: (one: T) => number): T[][] {
+  const sessions: T[][] = [];
+
+  for (const one of played) {
+    const current = sessions[sessions.length - 1];
+    const last = current?.[current.length - 1];
+    if (current && last !== undefined && at(one) - at(last) < SESSION_GAP_MS) current.push(one);
+    else sessions.push([one]);
+  }
+
+  return sessions;
+}
+
+/** A session's own key: the day it fell on, plus when it started. */
+export function sessionKey(at: number): string {
+  return `${dayKey(at)}@${at}`;
+}
+
+/**
  * Games matching a search.
  *
  * Matches the house and the date as it is written on screen, which is what
@@ -69,6 +113,14 @@ export interface DayGroup {
   series: number;
   high: number;
   average: number;
+  /**
+   * True when another session fell on the same calendar day.
+   *
+   * The list writes the date, so two outings on one day come out as two rows
+   * reading "Sep 2, 2026 · Wed" with nothing between them. Only then is the
+   * start time worth the width.
+   */
+  sharesItsDay: boolean;
 }
 
 /**
@@ -88,19 +140,29 @@ export function groupByDay(games: Game[], sort: SortKey = 'new'): DayGroup[] {
     else days.set(key, [game]);
   }
 
-  const groups: DayGroup[] = [...days.entries()].map(([key, list]) => {
-    const played = [...list].sort((a, b) => a.playedAt - b.playedAt);
-    const series = played.reduce((sum, game) => sum + game.total, 0);
+  const groups: DayGroup[] = [...days.values()].flatMap((list) => {
+    const order = [...list].sort((a, b) => a.playedAt - b.playedAt);
 
-    return {
-      key,
-      at: played[0].playedAt,
-      house: played.find((game) => game.house)?.house,
-      games: played,
-      series,
-      high: Math.max(...played.map((game) => game.total)),
-      average: Math.round(series / played.length),
-    };
+    // A day can hold two outings. Bowling in the morning and again that night
+    // is not a six-game series, and an average across both describes neither.
+    const sessions = splitSessions(order, (game) => game.playedAt);
+
+    return sessions.map((played) => {
+      const series = played.reduce((sum, game) => sum + game.total, 0);
+
+      return {
+        // Keyed by when it started rather than by the date, so the two
+        // sessions of one day are two rows the screens can tell apart.
+        key: sessionKey(played[0].playedAt),
+        at: played[0].playedAt,
+        house: played.find((game) => game.house)?.house,
+        games: played,
+        series,
+        high: Math.max(...played.map((game) => game.total)),
+        average: Math.round(series / played.length),
+        sharesItsDay: sessions.length > 1,
+      };
+    });
   });
 
   // Sorting by score sorts the *days* by their best game, not by their series:

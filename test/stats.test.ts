@@ -20,6 +20,7 @@ import {
   summarise,
 } from '../src/lib/stats';
 import { scoreGame } from '../src/lib/scoring';
+import { groupByDay } from '../src/lib/history';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 7, 31);
@@ -362,11 +363,28 @@ describe('dailyStats', () => {
     expect(night.average).toBe(Math.round((80 + 150 + 300) / 3));
   });
 
-  it('agrees with the history screen about what a day is', () => {
-    // Both screens group by `groupByDay`, so a night's average is one number
-    // and not two that drift.
+  it('agrees with the history screen about what a night is', () => {
+    // Both read `groupByDay`, so a night's average is one number and not two
+    // that drift. Asserted against the grouping itself rather than against a
+    // single game's key: a session is keyed by when it *started*, so one game
+    // out of three no longer keys the same as the night it belongs to — which
+    // is the point of the key, not a disagreement.
     const days = dailyStats(saturday);
-    expect(days[0].key).toBe(dailyStats([saturday[2]])[0].key);
+    const nights = groupByDay(saturday, 'old');
+    expect(days).toHaveLength(nights.length);
+    expect(days[0].key).toBe(nights[0].key);
+    expect(days[0].games).toBe(nights[0].games.length);
+  });
+
+  it('splits a morning and an evening into two nights', () => {
+    // Bowling before work and again that night is two outings, not a
+    // six-game series with an average that describes neither.
+    const morning = game(open4s, 4, { id: 'am', playedAt: NOW - 4 * DAY });
+    const evening = game(strikes, 4, { id: 'pm', playedAt: NOW - 4 * DAY + 10 * 3600_000 });
+    const days = dailyStats([morning, evening]);
+    expect(days).toHaveLength(2);
+    expect(days[0].games).toBe(1);
+    expect(days[1].games).toBe(1);
   });
 
   it('has nothing to say about an empty season', () => {

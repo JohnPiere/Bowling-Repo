@@ -926,12 +926,23 @@ second copy of it, free to drift. `lib/league.ts` builds on that rather than
 beside it: `allowanceFor` is `handicap(avg) - avg`, so the board and the league
 cannot disagree about what a handicap is.
 
-**A night is a day, and `history.ts` decides where it ends.** The league's unit
-is the series — every game bowled on one evening — and it has to use the same
-boundary the history screen does, or the two will disagree about which games
-were "that Tuesday". The handicap in a series is **per game**: three games earn
-three allowances, and one per series would quietly halve the handicap of anyone
-who bowls more than one.
+**A night is a session, not a day, and `history.ts` decides where it ends.** It
+*was* a day, and that was wrong for anyone who bowls twice: a morning and an
+evening came out as one six-game series with an average that describes neither.
+`splitSessions` cuts a day wherever there is a gap of `SESSION_GAP_MS` — four
+hours, which is longer than any hole inside one outing and shorter than the gap
+between two.
+
+The league uses the same function, and has to: its unit is the series and the
+history screen's is the night, and if they disagreed about where a night ends
+they would disagree about which games were "that Tuesday". The handicap makes
+it worse than cosmetic — it is **per game**, so a day wrongly read as one
+six-game series pays six allowances against one scratch total.
+
+A session is keyed by when it *started* rather than by its date, since two
+sessions of one day need two keys the screens can tell apart; `sharesItsDay`
+says when the list should print the start time, because on the ordinary
+one-session day it is noise.
 
 **Reactions are counted on the client.** `loadSharedGames` reads the reaction
 rows for the posts it is about to draw and folds them in with `heartsBy`, rather

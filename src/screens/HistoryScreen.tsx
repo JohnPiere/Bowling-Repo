@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 import { Icon } from '../components/Icon';
 import type { Game } from '../lib/db';
 import { groupByDay, searchGames, SORTS, type SortKey } from '../lib/history';
@@ -98,8 +98,13 @@ export function HistoryScreen({
                     <span className="session__weekday">{formatWeekday(day.at, 'short')}</span>
                   </span>
                   <span className="session__meta">
+                    {/* Only where the date does not already say which outing
+                        this is: on a day with one session it is noise. */}
+                    {day.sharesItsDay ? `${formatTime(day.at)} · ` : ''}
                     {day.house ? `${day.house} · ` : ''}
-                    {day.games.length} game{day.games.length === 1 ? '' : 's'}
+                    {tf(day.games.length === 1 ? '{n} game' : '{n} games', {
+                      n: day.games.length,
+                    })}
                   </span>
                 </span>
 
