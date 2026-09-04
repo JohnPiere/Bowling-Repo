@@ -194,6 +194,36 @@ strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
 half that still means something beside a game of a different length. The series
 card ends on the same four over the whole night.
 
+**A game names as many balls as it used, and belongs to all of them.** Most
+people carry two — a strike ball and a plastic one for the ten pin — and a
+single `ball` field made the second invisible: "my average with the Phaze II"
+meant "games where the Phaze II is the one I happened to write down".
+
+`Game.balls` is the list and `ball` stays for games saved before there was one;
+`ballsOf` is the only thing that reads either, which is what keeps old games in
+the averages. `statsBy` takes a pick returning one value *or several*, so it is
+still the single grouping behind house, ball, lane and condition — four copies
+of an average being four chances to disagree is the reason it exists.
+
+The consequence has to be said on the screen: a game naming two balls counts in
+**both** rows, so the averages overlap and the game counts can add to more than
+the season. That is the honest shape — somebody throws the spare ball at the
+ten pin for three frames, and neither "the whole game was the spare ball" nor
+"the spare ball never happened" is true. The row means *games you threw it in*.
+
+The bag is seeded from the last game that named one, and that needs an effect
+rather than a `useState` initialiser: the season arrives after the first
+render, so on a cold load — which is most of the time, since a game usually
+starts from opening the app — the initialiser sees nothing to copy. It fills in
+once and never again, because a bowler who takes a ball back out has to have
+that stick.
+
+**Undo works in balls, and the strip is read in frames.** Two taps on a game of
+strikes take back two whole frames, because a strike *is* one ball — measured,
+and reported as "it deleted all frames". It is correct and it was illegible, so
+the button names what it will take back: "Undo X" rather than "Undo". Verified
+one ball per tap in both entry modes, including a fast double-tap.
+
 **The ball you used is the ball offered next time.** `defaultBall` could only
 be set in Settings, so naming a ball on the finishing step was forgotten the
 moment the game saved and the field came back empty every night — which is the

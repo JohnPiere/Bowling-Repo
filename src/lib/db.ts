@@ -32,7 +32,21 @@ export interface Game {
    * alleys and does not want one of ball models either. What it offers instead
    * is what you have already typed, most-used first.
    */
+  /**
+   * Kept for games saved before a game could name more than one. Read through
+   * `ballsOf`, never directly — a game saved since writes `balls` and leaves
+   * this undefined, and two fields for one fact is exactly how they drift.
+   */
   ball?: string;
+  /**
+   * Every ball thrown in the game, in the order they were named.
+   *
+   * Most people carry two: one for the first ball and a plastic one for the
+   * ten pin. Recording only the first made the spare ball invisible, and made
+   * "my average with the Phaze II" quietly mean "games where the Phaze II
+   * happened to be the one I wrote down".
+   */
+  balls?: string[];
   lane?: string;
   /** How the lane was playing — fresh, burnt, dry, whatever you call it. */
   condition?: string;
@@ -200,6 +214,28 @@ export async function getGame(id: string): Promise<Game | undefined> {
  * The photo goes to its own store in the same transaction, so a game never
  * ends up claiming a photo that was not written.
  */
+/**
+ * The balls a game names, trimmed, de-duplicated and never an empty list.
+ *
+ * `undefined` rather than `[]` for a game that named none, so the field is
+ * absent exactly the way `ball` was — a stored empty array would be a third
+ * state to test for everywhere that reads it.
+ */
+function cleanBalls(balls: string[] | undefined): string[] | undefined {
+  if (!balls) return undefined;
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const ball of balls) {
+    const name = ball.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    kept.push(name);
+  }
+  return kept.length > 0 ? kept : undefined;
+}
+
 export async function saveGame(
   game: Omit<Game, 'id' | 'updatedAt' | 'hasSheet'> & { id?: string; sheetImage?: Blob },
 ): Promise<Game> {
@@ -208,6 +244,7 @@ export async function saveGame(
 
   const record: Game = {
     ...rest,
+    balls: cleanBalls(rest.balls),
     id,
     hasSheet: Boolean(sheetImage),
     updatedAt: Date.now(),
@@ -242,6 +279,7 @@ export async function reviseGame(
     pinfalls?: number[][];
     house?: string;
     ball?: string;
+    balls?: string[];
     lane?: string;
     condition?: string;
     note?: string;
@@ -284,6 +322,9 @@ export async function reviseGame(
     isComplete: card.isComplete,
     house: changes.house === undefined ? game.house : changes.house || undefined,
     ball: changes.ball === undefined ? game.ball : changes.ball.trim() || undefined,
+    // Written whole. A correction that names balls replaces the list rather
+    // than adding to it, so taking one back out is possible.
+    balls: changes.balls === undefined ? game.balls : cleanBalls(changes.balls),
     lane: changes.lane === undefined ? game.lane : changes.lane.trim() || undefined,
     condition:
       changes.condition === undefined ? game.condition : changes.condition.trim() || undefined,

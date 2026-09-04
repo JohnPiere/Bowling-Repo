@@ -7,8 +7,9 @@ import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { FrameStrip } from '../components/FrameStrip';
 import { FrameEditor } from '../components/FrameEditor';
+import { BallPicker } from '../components/BallPicker';
 import { frameStrip } from '../lib/framestrip';
-import { gameSummary } from '../lib/stats';
+import { ballsOf, gameSummary, valuesUsed } from '../lib/stats';
 import type { Group } from '../lib/social';
 import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '../lib/db';
 import { scoreGame } from '../lib/scoring';
@@ -17,6 +18,11 @@ import { formatDay, fromInputs, toDateInput, toTimeInput } from '../lib/datetime
 
 interface Props {
   game: Game;
+  /**
+   * The season, only to offer back what has already been typed. Nothing here
+   * reads a score out of it.
+   */
+  games: Game[];
   /** The crews this bowler is in, for naming the ones it was shared to. */
   crews: Group[];
   onShare: () => void;
@@ -30,7 +36,7 @@ interface Props {
  * Also where a game is deleted — which the storage warning tells people to do,
  * so it had better be possible.
  */
-export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props) {
+export function GameScreen({ game, games, crews, onShare, onChanged, onDeleted }: Props) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoSize, setPhotoSize] = useState<number | null>(null);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -49,7 +55,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
     pinfalls: [],
   });
   const [house, setHouse] = useState(game.house ?? '');
-  const [ball, setBall] = useState(game.ball ?? '');
+  const [balls, setBalls] = useState<string[]>(() => ballsOf(game));
   const [lane, setLane] = useState(game.lane ?? '');
   const [condition, setCondition] = useState(game.condition ?? '');
   const [note, setNote] = useState(game.note ?? '');
@@ -110,7 +116,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
     // stored rather than from whatever the scan happened to read.
     setDraft({ rolls: [...game.rolls], pinfalls: game.pinfalls ? [...game.pinfalls] : [] });
     setHouse(game.house ?? '');
-    setBall(game.ball ?? '');
+    setBalls(ballsOf(game));
     setLane(game.lane ?? '');
     setCondition(game.condition ?? '');
     setNote(game.note ?? '');
@@ -131,7 +137,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
         // step, so leaving this off would silently lose every leave.
         pinfalls: draft.pinfalls,
         house,
-        ball,
+        balls,
         lane,
         condition,
         note,
@@ -208,17 +214,11 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           />
         </label>
 
-        <label style={{ display: 'block', marginBottom: 11 }}>
-          <span className="hero__label">{t('Ball')}</span>
-          <input
-            className="input"
-            style={{ marginTop: 5 }}
-            value={ball}
-            onChange={(e) => setBall(e.target.value)}
-            placeholder={t('Storm Phaze II')}
-            maxLength={60}
-          />
-        </label>
+        <BallPicker
+          value={balls}
+          used={valuesUsed(games, ballsOf)}
+          onChange={setBalls}
+        />
 
         <div className="row" style={{ gap: 11, marginBottom: 11 }}>
           <label className="grow">
@@ -329,6 +329,20 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           </div>
         )}
         {hasPins ? <FrameStrip frames={strip} /> : <Scorecard scorecard={card} />}
+
+        {/* What was in the bag. Drawn under the frames rather than beside the
+            house, because it is the answer to "why did that game go like
+            that" and belongs next to the game rather than to the address. */}
+        {ballsOf(game).length > 0 && (
+          <div className="chips" style={{ marginTop: 11 }}>
+            {ballsOf(game).map((one) => (
+              <span key={one} className="tag">
+                {one}
+              </span>
+            ))}
+          </div>
+        )}
+
         {game.note && <p className="gamenote">{game.note}</p>}
       </div>
 

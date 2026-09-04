@@ -1,10 +1,12 @@
 import { pinsAvailable, PINS } from '../lib/scoring';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 
 interface Props {
   rolls: number[];
   onRoll: (pins: number) => void;
   onUndo: () => void;
+  /** The mark the next undo takes back, so the step is legible. */
+  undoMark?: string | null;
   disabled?: boolean;
 }
 
@@ -14,7 +16,7 @@ interface Props {
  * Counts above what is standing are disabled rather than hidden, so the keypad
  * keeps a stable shape between balls instead of reflowing under the thumb.
  */
-export function PinKeypad({ rolls, onRoll, onUndo, disabled = false }: Props) {
+export function PinKeypad({ rolls, onRoll, onUndo, undoMark, disabled = false }: Props) {
   const available = pinsAvailable(rolls);
   const isFirstBall = available === PINS;
 
@@ -43,7 +45,7 @@ export function PinKeypad({ rolls, onRoll, onUndo, disabled = false }: Props) {
         onClick={onUndo}
         disabled={rolls.length === 0}
       >
-        {t('Undo')}
+        {undoMark ? tf('Undo {mark}', { mark: undoMark }) : t('Undo')}
       </button>
     </div>
   );

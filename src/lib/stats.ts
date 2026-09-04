@@ -985,25 +985,39 @@ export interface GroupedStat {
  * Ordered by average, because comparing is the whole point of the list. The
  * game count rides beside it so one visited once is visibly that.
  */
-export function statsBy(games: Game[], pick: (game: Game) => string | undefined): GroupedStat[] {
-  const grouped = new Map<string, Game[]>();
+export function statsBy(
+  games: Game[],
+  /**
+   * One value per game, or several. A game naming two balls belongs to both
+   * groups — the alternative is picking one of them as "the" ball, which is
+   * what the single field did and is how a spare ball stayed invisible.
+   */
+  pick: (game: Game) => string | string[] | undefined,
+): GroupedStat[] {
+  const grouped = new Map<string, { name: string; games: Game[] }>();
 
   for (const game of games) {
     if (!game.isComplete) continue;
-    const value = pick(game)?.trim();
-    if (!value) continue;
+    const picked = pick(game);
+    const values = (Array.isArray(picked) ? picked : [picked])
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
 
-    const key = value.toLowerCase();
-    const seen = grouped.get(key);
-    if (seen) seen.push(game);
-    else grouped.set(key, [game]);
+    for (const value of values) {
+      const key = value.toLowerCase();
+      const seen = grouped.get(key);
+      if (seen) seen.games.push(game);
+      // The first spelling wins, so "Phaze II" and "phaze ii" are one row
+      // named the way it was first written.
+      else grouped.set(key, { name: value, games: [game] });
+    }
   }
 
   return [...grouped.values()]
-    .map((played) => {
+    .map(({ name, games: played }) => {
       const total = played.reduce((sum, game) => sum + game.total, 0);
       return {
-        name: pick(played[0])!.trim(),
+        name,
         games: played.length,
         average: Math.round(total / played.length),
         high: Math.max(...played.map((game) => game.total)),
@@ -1019,9 +1033,28 @@ export function statsBy(games: Game[], pick: (game: Game) => string | undefined)
  * The one most bowlers actually want. A bowler who owns two balls has an
  * opinion about which is better and, until the ball was a field, no way to
  * find out whether they were right.
+ *
+ * A game that names two balls counts in both rows, so these averages overlap
+ * and the game counts can add to more than the season. That is the honest
+ * shape: most people throw a spare ball at the ten pin for three frames, and
+ * neither "the whole game was the spare ball" nor "the spare ball never
+ * happened" is true. The row means *games you threw it in* — the screen says
+ * so, because an average that quietly means something else is worse than none.
  */
 export function ballStats(games: Game[]): GroupedStat[] {
-  return statsBy(games, (game) => game.ball);
+  return statsBy(games, ballsOf);
+}
+
+/**
+ * The balls a game names.
+ *
+ * Games saved before one could name more than one carry a single `ball`, so
+ * this is the only place that reads either field. Everything else asks here,
+ * which is what keeps the old games in the averages.
+ */
+export function ballsOf(game: Game): string[] {
+  if (game.balls?.length) return game.balls;
+  return game.ball ? [game.ball] : [];
 }
 
 /** By lane. Small samples, mostly — which is why the game count is beside it. */
@@ -1041,7 +1074,10 @@ export function conditionStats(games: Game[]): GroupedStat[] {
  * order: a suggestion list wants the ball you *reach for*, not the one you
  * happen to bowl best with.
  */
-export function valuesUsed(games: Game[], pick: (game: Game) => string | undefined): string[] {
+export function valuesUsed(
+  games: Game[],
+  pick: (game: Game) => string | string[] | undefined,
+): string[] {
   return statsBy(games, pick)
     .slice()
     .sort((a, b) => b.games - a.games || b.lastAt - a.lastAt)

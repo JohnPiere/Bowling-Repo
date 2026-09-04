@@ -431,6 +431,9 @@ export function App() {
         {route.name === 'game' && gameInView && (
           <GameScreen
             game={gameInView}
+            // The season, only to offer back the balls already named — the
+            // same reason the play screen takes it.
+            games={games}
             crews={crews.data}
             onShare={() => nav.push({ name: 'shareGame', gameId: gameInView.id })}
             onChanged={refresh}

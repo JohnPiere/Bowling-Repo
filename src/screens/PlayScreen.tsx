@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { FrameStrip } from '../components/FrameStrip';
 import { FrameEditor } from '../components/FrameEditor';
+import { BallPicker } from '../components/BallPicker';
 import { PinKeypad } from '../components/PinKeypad';
 import { PinRack } from '../components/PinRack';
 import { Icon } from '../components/Icon';
 import { saveGame, type Game } from '../lib/db';
 import { frameStrip } from '../lib/framestrip';
-import { valuesUsed } from '../lib/stats';
+import { ballsOf, valuesUsed } from '../lib/stats';
 import { deckFor } from '../lib/pins';
 import { setBowling } from '../lib/updates';
 import {
   clearingIsStrike,
+  frameBounds,
+  frameMarks,
   FRAMES_PER_GAME,
   isGameComplete,
   nextRollCursor,
@@ -20,6 +23,22 @@ import {
 import { usePreferences } from '../lib/preferences';
 import { describeSaveFailure } from '../lib/storage';
 import { fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
+
+/**
+ * The bag from the last game that named one, or the Settings default.
+ *
+ * Most people carry the same two every night, so the honest default for "which
+ * balls" is "the same as last time". An empty field every night is the surest
+ * way to stop it being filled in at all, and per-ball averages are worth
+ * nothing if it is not.
+ */
+function lastBagIn(games: Game[], fallback: string): string[] {
+  // `listGames` hands them back newest first, so the first with a bag is the
+  // most recent one.
+  const last = games.find((game) => ballsOf(game).length > 0);
+  if (last) return ballsOf(last);
+  return fallback ? [fallback] : [];
+}
 
 /**
  * How the bowler is entering the game.
@@ -59,7 +78,7 @@ export function PlayScreen({ onSaved, games }: Props) {
   const suggestions = useMemo(
     () => ({
       houses: valuesUsed(games, (game) => game.house),
-      balls: valuesUsed(games, (game) => game.ball),
+      balls: valuesUsed(games, ballsOf),
       conditions: valuesUsed(games, (game) => game.condition),
     }),
     [games],
@@ -84,9 +103,31 @@ export function PlayScreen({ onSaved, games }: Props) {
   // Seeded from the usual alley, and editable: most games are bowled in one
   // place, and the house is what per-house averages are made of.
   const [house, setHouse] = useState(() => preferences.homeHouse);
-  // Same argument as the house: most people reach for the same ball most
-  // nights, and the ball is what per-ball averages are made of.
-  const [ball, setBall] = useState(() => preferences.defaultBall);
+  /**
+   * The balls for this game, seeded from the last one bowled.
+   *
+   * Most people carry the same two every night, so the answer to "which balls"
+   * is almost always "the same as last time" — and the field being empty every
+   * night is the surest way to stop it being filled in, which makes per-ball
+   * averages worth nothing. Falls back to the Settings default for a first-ever
+   * game, which is the only time there is nothing to copy.
+   */
+  const [balls, setBalls] = useState<string[]>(() => lastBagIn(games, preferences.defaultBall));
+  /**
+   * The season arrives after the first render, so the initialiser above sees
+   * an empty list on a cold load and the bag comes up empty — which is most of
+   * the time, since a game usually starts from opening the app. This fills it
+   * in once, the first time there is anything to copy from, and never again:
+   * a bowler who takes a ball back out has to have that stick.
+   */
+  const seeded = useRef(games.length > 0);
+  useEffect(() => {
+    if (seeded.current || games.length === 0) return;
+    seeded.current = true;
+    if (balls.length > 0) return;
+    const bag = lastBagIn(games, preferences.defaultBall);
+    if (bag.length > 0) setBalls(bag);
+  }, [games, balls.length, preferences.defaultBall]);
   const [lane, setLane] = useState('');
   const [condition, setCondition] = useState('');
   const [note, setNote] = useState('');
@@ -162,6 +203,21 @@ export function PlayScreen({ onSaved, games }: Props) {
     setPending([]);
   }
 
+  /**
+   * What the next Undo takes back, as it is written on the sheet.
+   *
+   * Undo works in *balls* and the strip is read in *frames*, and on a game of
+   * strikes those are the same thing — so two taps take back two whole frames
+   * and it looks like the game was wiped rather than stepped back. Naming the
+   * ball is what makes the step legible: two taps read as "Undo X" then
+   * "Undo X" instead of half the strip disappearing.
+   */
+  function undoMark(): string | null {
+    if (rolls.length === 0) return null;
+    const marks = frameMarks(scoreGame(rolls).frames[frameBounds(rolls).findLastIndex((b) => b.length > 0)]);
+    return marks[marks.length - 1] ?? null;
+  }
+
   function undo() {
     if (pending.length > 0) {
       setPending([]);
@@ -219,7 +275,7 @@ export function PlayScreen({ onSaved, games }: Props) {
       const saved = await saveGame({
         bowler: 'You',
         house: house.trim() || undefined,
-        ball: ball.trim() || undefined,
+        balls,
         lane: lane.trim() || undefined,
         condition: condition.trim() || undefined,
         note: note.trim() || undefined,
@@ -246,14 +302,17 @@ export function PlayScreen({ onSaved, games }: Props) {
        * Only a ball actually named. Clearing the field is not the same as
        * saying you have no ball, and it must not wipe the default.
        */
-      const named = ball.trim();
+      // Settings keeps one, which is what its field is; the game keeps all of
+      // them. Naming the first means the Settings value stays true rather than
+      // aspirational, and it is what seeds a first-ever game.
+      const named = balls[0]?.trim() ?? '';
       if (named && named !== preferences.defaultBall) update({ defaultBall: named });
 
       setRolls([]);
       setPinfalls([]);
       setPending([]);
       setHouse(preferences.homeHouse);
-      setBall(named || preferences.defaultBall);
+      // The same bag next game, which is what happens in real life.
       setLane('');
       setCondition('');
       setNote('');
@@ -364,18 +423,7 @@ export function PlayScreen({ onSaved, games }: Props) {
         {/* The three that used to be a sentence in the note. Free text, all of
             them, offering what has been typed before — the app has never had a
             table of alleys and does not want one of ball models either. */}
-        <label style={{ display: 'block', marginBottom: 11 }}>
-          <span className="hero__label">{t('Ball')}</span>
-          <input
-            className="input"
-            style={{ marginTop: 5 }}
-            value={ball}
-            onChange={(e) => setBall(e.target.value)}
-            placeholder={t('Storm Phaze II')}
-            list="play-balls"
-            maxLength={60}
-          />
-        </label>
+        <BallPicker value={balls} used={suggestions.balls} onChange={setBalls} />
 
         <div className="row" style={{ gap: 11, marginBottom: 11 }}>
           <label className="grow">
@@ -406,11 +454,6 @@ export function PlayScreen({ onSaved, games }: Props) {
 
         <datalist id="play-houses">
           {suggestions.houses.map((one) => (
-            <option key={one} value={one} />
-          ))}
-        </datalist>
-        <datalist id="play-balls">
-          {suggestions.balls.map((one) => (
             <option key={one} value={one} />
           ))}
         </datalist>
@@ -505,6 +548,7 @@ export function PlayScreen({ onSaved, games }: Props) {
           rolls={rolls}
           onRoll={(pins) => setRolls((current) => [...current, pins])}
           onUndo={() => setRolls((current) => current.slice(0, -1))}
+          undoMark={undoMark()}
         />
 
         {footLink()}
@@ -568,7 +612,11 @@ export function PlayScreen({ onSaved, games }: Props) {
           onClick={undo}
           disabled={rolls.length === 0 && pending.length === 0}
         >
-          {pending.length > 0 ? t('Clear') : t('Undo')}
+          {pending.length > 0
+            ? t('Clear')
+            : undoMark()
+              ? tf('Undo {mark}', { mark: undoMark()! })
+              : t('Undo')}
         </button>
         {/* Says what the ball *was*, not how many pins it took: a cleared deck
             is a strike or a spare, and reading "10" back at someone who just
