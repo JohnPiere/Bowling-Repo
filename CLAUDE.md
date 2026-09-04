@@ -20,7 +20,7 @@ npm run push:server      # :8787, proxied at /api in dev
 
 # Browser checks. Opt-in: npm i -D playwright
 npm run build && npm run preview &
-npm run verify:app       # 33 checks
+npm run verify:app       # 34 checks
 npm run verify:scanner   # 6 generated sheets
 
 # Headers are ignored by `vite preview`, so test the CSP against this instead.
@@ -164,6 +164,40 @@ in flight — and it scrolls, so it must not inherit a squeeze that exists only
 because a rack and two buttons have to fit under the strip. It falls back to the
 plain `Scorecard` for a game with no pin data, since ten empty racks read as a
 bug rather than as an absence.
+
+**Three things a real phone found, and each was a different kind of wrong.**
+
+**The STRIKE shout moved the buttons.** It was its own element above the
+legend, so clearing the deck pushed the legend, the leave line and *both
+buttons* 32px down — measured — at the exact moment the last pin went down, and
+tipped the screen into scrolling. A button that moves as you complete the tap
+that summons it is the one thing the scoring step must not do. It shares the
+leave line's slot now, at a fixed 22px, which costs nothing and loses nothing:
+a swept deck has no leave, so that line was already reading "10 down" directly
+under a shout saying STRIKE. The prototype drew it higher; the rule about the
+screen not moving wins, and the slot goes entirely below 780px where the
+commit button says "Strike" 44px lower anyway.
+
+Neither existing browser check could see it — the fit check runs at 320×568 and
+Playwright's default is 1280×720, and the slot is hidden under 780px in both.
+The new one runs at 390×844 for that reason.
+
+**`color-scheme` was set nowhere.** The app is dark and everything the
+*browser* drew inside it was not: the segments of a time input, the highlight
+on the one being edited, the calendar and clock popups, the scrollbars. It
+showed up as AM/PM being unreadable — a light-scheme selection highlight on a
+dark field, so the half you had selected looked like the half you had not. One
+line on `:root` fixes every native control at once. AM/PM also gets a tinted
+box of its own, because it is a two-way switch and which way it is set is the
+thing people came to check.
+
+**"Not now" was a button that did nothing.** Saving a game `replace`s the play
+route with the share screen, and `nav.back` refuses to pop the last entry by
+design — so on the commonest path there is (open on Play, bowl, save) the share
+screen was the *only* entry on the stack. No back arrow either: the appbar
+showed Settings and nothing else, so the tab bar was the only way off. It goes
+to the season when there is nothing to go back to, and still goes back when the
+screen was reached from a game's own page.
 
 **A game is corrected on the rack, and `pinfalls` has to travel with the
 rolls.** The correction used to be a line of marks — `X 9/ 72 …` — typed into

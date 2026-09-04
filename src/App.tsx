@@ -450,7 +450,18 @@ export function App() {
             crews={crews.data}
             me={session.id}
             game={gameInView}
-            onCancel={nav.back}
+            /*
+             * Somewhere definite, not just "back".
+             *
+             * Saving a game `replace`s the play route with this one, so on the
+             * commonest path of all — open the app on Play, bowl, save — this
+             * screen is the *only* entry on the stack. `nav.back` refuses to
+             * pop the last one, by design, so "Not now" was a button that did
+             * nothing and there was no back arrow either: the only way off the
+             * screen was the tab bar. Reached from a game's own page instead,
+             * there is something to go back to and it goes there.
+             */
+            onCancel={() => (nav.canGoBack ? nav.back() : nav.selectTab('home'))}
             onShared={(groupId) => {
               refresh();
               nav.replace({ name: 'sharedGames', groupId });

@@ -73,12 +73,6 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false }: Props
         ))}
       </div>
 
-      {/* The shout, where the prototype puts it: the deck is clear and the
-          screen says so before the commit button has to. */}
-      {swept && (
-        <div className="rack__shout">{standing.length === 10 ? t('STRIKE') : t('SPARE')}</div>
-      )}
-
       <div className="rack__legend" aria-hidden="true">
         <span>
           <i className="rack__key rack__key--standing" />
@@ -94,15 +88,33 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false }: Props
         </span>
       </div>
 
-      {/* describeLeave already says "split" where it is one, so there is no
-          separate flag — two words for the same fact reads as a stutter.
-          Nothing tapped yet is not a gutter ball, it is a ball not thrown, so
-          the line waits rather than naming the full rack as a leave. */}
-      <div className="rack__leave">
-        {down.size === 0 ? (
-          <span className="muted">{t('Tap the pins this ball took down')}</span>
+      {/*
+        One slot under the rack, holding whichever of the two has something to
+        say. The shout used to sit *above* the legend as its own element,
+        appearing when the deck cleared — which pushed the legend, the leave
+        line and both buttons 32px down at the exact moment the last pin went
+        down, measured, and tipped the screen into scrolling. A button that
+        moves as you complete the tap that summons it is the one thing the
+        scoring step must not do.
+
+        Swapping them rather than reserving room for both is what costs
+        nothing, and it loses nothing either: a swept deck has no leave, so
+        this line was already reading "10 down" directly under a shout saying
+        STRIKE. The prototype drew the shout higher up; the fixed height here
+        is the rule about the screen not moving, which wins.
+
+        describeLeave already says "split" where it is one, so there is no
+        separate flag — two words for the same fact reads as a stutter.
+        Nothing tapped yet is not a gutter ball, it is a ball not thrown, so
+        the line waits rather than naming the full rack as a leave.
+      */}
+      <div className="rack__say">
+        {swept ? (
+          <span className="rack__shout">{standing.length === 10 ? t('STRIKE') : t('SPARE')}</span>
+        ) : down.size === 0 ? (
+          <span className="rack__leave muted">{t('Tap the pins this ball took down')}</span>
         ) : (
-          <span className="muted">
+          <span className="rack__leave muted">
             {tf('{n} down', { n: down.size })}
             {remaining.length > 0 &&
               ` · ${tf('leaves {leave}', { leave: describeLeave(remaining) })}`}

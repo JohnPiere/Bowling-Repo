@@ -28,6 +28,67 @@
  * depends on row height and gap agreeing with lib/leaderboard.ts.
  */
 
+/*
+ * The browser's own controls are dark too.
+ *
+ * Without this the app is dark and everything the *browser* draws inside it is
+ * not: the segments of a `<input type=time>`, the highlight on the one being
+ * edited, the calendar and clock popups, the scrollbars. On the finishing step
+ * that showed up as AM/PM being impossible to read — a light-scheme selection
+ * highlight on a dark field, so the half you had selected looked the same as
+ * the half you had not. One line, and it fixes every native control at once
+ * rather than each one being painted over separately.
+ */
+:root {
+  color-scheme: dark;
+}
+
+/*
+ * The date and time fields, which are the only typing on the finishing step.
+ *
+ * Chrome draws these as segments rather than as text, and by default the one
+ * you are editing is marked only by a selection colour. AM/PM is two letters
+ * and the hardest of them to see, so it gets a box of its own — a control that
+ * looks like a control, rather than punctuation you can somehow change.
+ */
+input[type='time']::-webkit-datetime-edit-ampm-field,
+input[type='time']::-webkit-datetime-edit-hour-field,
+input[type='time']::-webkit-datetime-edit-minute-field,
+input[type='date']::-webkit-datetime-edit-day-field,
+input[type='date']::-webkit-datetime-edit-month-field,
+input[type='date']::-webkit-datetime-edit-year-field {
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+input[type='time']::-webkit-datetime-edit-ampm-field {
+  /* Marked even when nothing is focused: it is a two-way switch, and which way
+     it is set is the thing people came to check. */
+  background: rgba(145, 132, 217, 0.16);
+  color: var(--color-accent-200);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+input[type='time']::-webkit-datetime-edit-ampm-field:focus,
+input[type='time']::-webkit-datetime-edit-hour-field:focus,
+input[type='time']::-webkit-datetime-edit-minute-field:focus,
+input[type='date']::-webkit-datetime-edit-day-field:focus,
+input[type='date']::-webkit-datetime-edit-month-field:focus,
+input[type='date']::-webkit-datetime-edit-year-field:focus {
+  background: var(--color-accent);
+  color: #fff;
+  outline: none;
+}
+/* The picker button is a 24px glyph in a 44px row; the row is the target. */
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+input[type='time']:hover::-webkit-calendar-picker-indicator,
+input[type='date']:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -2207,7 +2268,10 @@ body {
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* The deck is clear, and the screen says so before the button has to. */
+/* The deck is clear, and the screen says so before the button has to. Drawn
+   into the same slot as the leave line rather than above it — see the note in
+   `PinRack`: as its own element it moved everything below it 32px at the
+   moment the last pin went down. */
 .rack__shout {
   font-size: 15px;
   font-weight: 600;
@@ -2229,7 +2293,19 @@ body {
 .rack__key--knocked { background: var(--color-accent); }
 .rack__key--gone { background: var(--color-neutral-900); }
 
-.rack__leave { min-height: 16px; text-align: center; }
+/* Tall enough for the shout, which is the bigger of the two things that can
+   land here. Fixed rather than fitted: this is the line that must not change
+   height, because two 44px buttons sit directly under it. */
+.rack__say {
+  /* Fixed, not a minimum. The shout is 15px at 600 and the leave line is 11px
+     at 400, so a minimum still let the taller one win by 4px — measured — and
+     4px is still the commit button moving under the thumb. */
+  height: 22px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  overflow: hidden;
+}
 .pill--warn { border-color: var(--negative); color: var(--negative); }
 
 /* One tap for the ball that takes everything. Dashed, because it is a
@@ -2307,7 +2383,12 @@ body {
   /* The leave caption goes before the strip does. It names what you left,
      which is worth keeping — but not at the price of ten frames drawn 37px
      wide, where the pin diagram is the first thing to become unreadable. */
-  .rack__leave { display: none; }
+  /* The whole slot, not just the caption. Its other tenant is the STRIKE
+     shout, and the commit button under it already reads "Strike" — so on a
+     short screen this line says nothing that is not said 44px lower, and
+     keeping it would put the shout's height back into a column that has 16px
+     to spare. */
+  .rack__say { display: none; }
 
   .play__commit .btn-lg { min-height: 46px; }
   .linkbtn--centred { padding: 2px 0; font-size: 11px; }

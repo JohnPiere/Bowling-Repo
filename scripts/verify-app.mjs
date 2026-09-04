@@ -604,6 +604,71 @@ async function main() {
     await context.close();
   }
 
+  // ── Nothing moves under the thumb ─────────────────────────────────────
+  //
+  // A taller phone than the fit check above, on purpose: the line under the
+  // rack is hidden below 780px, so a shift there is invisible at 320x568 and
+  // at Playwright's own 1280x720. It was real — the STRIKE shout used to be
+  // its own element, appearing when the deck cleared and pushing the legend,
+  // the leave line and *both buttons* 32px down at the exact moment the last
+  // pin went down. The button you are reaching for moved as you summoned it.
+  {
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+
+    await check('the commit buttons do not move as the last pin goes down', async () => {
+      await tab(page, 'Play').click();
+      await page.getByRole('button', { name: /Tap the pins/ }).click();
+      await page.waitForSelector('.rack__deck');
+
+      const tops = () =>
+        page.evaluate(() => {
+          const top = (sel) => {
+            const el = document.querySelector(sel);
+            return el ? Math.round(el.getBoundingClientRect().top) : null;
+          };
+          const screen = document.querySelector('.screen');
+          return {
+            quick: top('.btn-quick'),
+            commit: top('.play__commit'),
+            over: screen.scrollHeight - screen.clientHeight,
+          };
+        });
+
+      for (let pin = 1; pin <= 9; pin += 1) {
+        await page.locator(`[aria-label^="Pin ${pin},"]`).click();
+        await page.waitForTimeout(20);
+      }
+      const nine = await tops();
+
+      await page.locator('[aria-label^="Pin 10,"]').click();
+      // Long enough for the shout's entrance animation to have run.
+      await page.waitForTimeout(450);
+      const ten = await tops();
+
+      assert(
+        ten.commit === nine.commit,
+        `the commit row moved ${ten.commit - nine.commit}px when the deck cleared`,
+      );
+      assert(
+        ten.quick === nine.quick,
+        `the quick button moved ${ten.quick - nine.quick}px when the deck cleared`,
+      );
+      assert(ten.over === 0, `the screen scrolled by ${ten.over}px with the deck swept`);
+
+      // And the shout is actually drawn, or this is checking an empty slot.
+      assert(
+        (await page.locator('.rack__shout').count()) === 1,
+        'the deck cleared and nothing said so',
+      );
+
+      return 'deck swept, shout drawn, nothing moved';
+    });
+
+    await context.close();
+  }
+
   // ── Push ──────────────────────────────────────────────────────────────
   {
     const context = await newContext(browser);
