@@ -194,6 +194,20 @@ strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
 half that still means something beside a game of a different length. The series
 card ends on the same four over the whole night.
 
+**Two components shared the class `picker`, and the older one won.** The
+scanner's crop box owns `.picker` and sets `aspect-ratio: 3 / 4`, a black
+ground, `touch-action: none` and `user-select: none` on it. The chat's
+game-sharing list used the same name and overrode only the four properties it
+had thought about — so it came out as a tall black panel a thumb could not
+scroll and whose rows would not take a press. It is `.gamepicker` now, and the
+list is grouped by `groupByDay`, so a morning and an evening are two headings
+rather than ten identical rows.
+
+**The home card's marks are badges.** They were `.tag`s reading "3 X" and "2 /"
+in 10px grey — the same treatment as "Scan" and "Shared", which are labels
+rather than scores. They borrow the strip's language now, which borrows the
+sheet's: filled corner to corner for a strike, one triangular half for a spare.
+
 **A pin diagram says which ball took each pin, the way the sheet does.** The
 Korona legend in `docs/SHEET_FORMAT.md` is explicit: an open ring is a pin the
 first ball took, a filled one a pin *standing after ball one*, so one diagram

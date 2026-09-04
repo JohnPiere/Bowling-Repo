@@ -595,7 +595,47 @@ body {
 }
 .gamecard__date { font-size: 13px; font-weight: 500; }
 .gamecard__alley { font-size: 11px; color: var(--color-neutral-500); margin-top: 4px; }
-.gamecard__tags { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.gamecard__tags { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+
+/*
+ * A strike and a spare, as the marks they are.
+ *
+ * They were `.tag`s reading "3 X" and "2 /" in 10px grey — the same treatment
+ * as "Scan" and "Shared", which are labels rather than scores, and small
+ * enough to be decoded rather than read. The card has the room: it is the
+ * biggest thing on the home screen and these are the two numbers on it worth
+ * looking at after the score itself.
+ *
+ * The glyph borrows the strip's language, which borrows the sheet's: a strike
+ * is filled corner to corner, a spare is filled on one diagonal half.
+ */
+.marktag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-neutral-300);
+}
+.marktag__glyph {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 19px;
+}
+.marktag__glyph--strike {
+  background: var(--color-accent);
+  color: #fff;
+}
+.marktag__glyph--spare {
+  background: linear-gradient(135deg, transparent 48%, var(--color-accent-700) 48%);
+  box-shadow: inset 0 0 0 1px var(--color-accent-700);
+  color: #fff;
+}
 .gamecard__right { flex: none; text-align: right; }
 .gamecard__score {
   display: block;
@@ -1990,15 +2030,51 @@ body {
  * pushing the composer off a short screen — the keyboard is usually up when
  * this opens, and the box it opens into is already half a phone.
  */
-.picker {
+/*
+ * Picking one of your games to put in the chat.
+ *
+ * It was `.picker`, which the scanner's crop box already owned — and that rule
+ * sets `aspect-ratio: 3 / 4`, a black ground, `touch-action: none` and
+ * `user-select: none`. This list inherited all four, so it came out as a tall
+ * black panel that a thumb could not scroll and whose rows would not take a
+ * press. Two components, one class name, and the older one won on everything
+ * the newer one had not thought to override.
+ */
+.gamepicker {
   flex: none;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--color-divider);
-  max-height: 42vh;
+  max-height: 46vh;
   overflow-y: auto;
+  /* The thread behind it scrolls too, so the chain stops here rather than
+     handing a flick at the end of the list back to the messages. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
-.picker .game-row:disabled { opacity: 0.5; }
+.gamepicker__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 6px;
+  /* Solid, or the rows scroll through the heading. */
+  background: var(--color-bg);
+}
+.gamepicker__night { margin-bottom: 10px; }
+/* The divider people actually navigate by: which night, and where. */
+.gamepicker__when {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px 6px;
+  font-size: 12px;
+  color: var(--color-neutral-300);
+  border-bottom: 1px solid var(--color-divider);
+  margin-bottom: 6px;
+}
+.gamepicker .game-row { margin-bottom: 6px; }
+.gamepicker .game-row:disabled { opacity: 0.5; }
 
 /* ── Group settings ────────────────────────────────────────────────────── */
 

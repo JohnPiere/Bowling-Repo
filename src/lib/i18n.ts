@@ -681,6 +681,8 @@ export const JA: Record<string, string> = {
   'Save the correction': '修正を保存',
   'Done fixing': '修正を終える',
   'Undo {mark}': '{mark}を取り消す',
+  '{n} strikes': 'ストライク{n}回',
+  '{n} spares': 'スペア{n}回',
   'Balls': 'ボール',
   'Remove {ball}': '{ball}を外す',
   'Add {ball}': '{ball}を追加',

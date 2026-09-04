@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t, tf } from '../lib/i18n';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
@@ -15,8 +15,19 @@ import {
 } from '../lib/social';
 import type { ChatMessage, Group } from '../lib/social';
 import { listGames, shareGame as shareLocally, type Game } from '../lib/db';
-import { formatDay } from '../lib/datetime';
+import { formatDay, formatTime } from '../lib/datetime';
+import { groupByDay } from '../lib/history';
+import { frameMarks, scoreGame } from '../lib/scoring';
 import type { Session } from '../lib/session';
+
+/** Strikes and spares off the sheet's own marks, so a perfect game is twelve. */
+function gameShape(game: Game): { strikes: number; spares: number } {
+  const marks = scoreGame(game.rolls).frames.flatMap(frameMarks);
+  return {
+    strikes: marks.filter((mark) => mark === 'X').length,
+    spares: marks.filter((mark) => mark === '/').length,
+  };
+}
 
 /** How far back the picker offers. A chat is about tonight, not about April. */
 const RECENT = 10;
@@ -165,6 +176,10 @@ export function ChatScreen({ group, session }: Props) {
     }
   }
 
+  // Grouped by session — the same boundary the history screen uses, so a
+  // morning and an evening are two headings rather than one.
+  const sessions = useMemo(() => (recent ? groupByDay(recent) : []), [recent]);
+
   function openPicker() {
     setPicking(true);
     // Read once, the first time it is asked for: a chat that queried the whole
@@ -215,8 +230,15 @@ export function ChatScreen({ group, session }: Props) {
       </div>
 
       {picking && !session.isGuest && (
-        <div className="picker">
-          <div className="row row--between" style={{ marginBottom: 6 }}>
+        /*
+         * `gamepicker`, not `picker`: the scanner's crop box owns that class
+         * and sets `aspect-ratio: 3/4`, a black ground, `touch-action: none`
+         * and `user-select: none` on it. This list inherited all four — a tall
+         * black panel that could not be scrolled by thumb and whose rows could
+         * not be picked. Two components, one class name.
+         */
+        <div className="gamepicker">
+          <div className="row row--between gamepicker__head">
             <span className="hero__label">{t('Share a game')}</span>
             <button type="button" className="linkbtn" onClick={() => setPicking(false)}>
               {t('Cancel')}
@@ -228,25 +250,43 @@ export function ChatScreen({ group, session }: Props) {
             <p className="empty">{t('Nothing to share yet. Bowl a game first.')}</p>
           )}
 
-          {recent?.map((game) => (
-            <button
-              key={game.id}
-              type="button"
-              className="game-row"
-              disabled={sending}
-              onClick={() => shareIntoChat(game)}
-            >
-              <span className="game-row__score tnum">{game.total}</span>
-              <span className="grow">
-                <span className="game-row__name" style={{ display: 'block' }}>
-                  {formatDay(game.playedAt)}
+          {/* Grouped the way the history screen groups, so "which game was
+              that" is answered by the heading rather than by reading ten
+              identical rows. A morning and an evening are two headings. */}
+          {sessions.map((night) => (
+            <div key={night.key} className="gamepicker__night">
+              <div className="gamepicker__when">
+                <span>{formatDay(night.at)}</span>
+                <span className="muted tnum">
+                  {night.sharesItsDay ? `${formatTime(night.at)} · ` : ''}
+                  {night.house || t('No alley recorded')}
                 </span>
-                <span className="game-row__sub">
-                  {game.house || t('No alley recorded')}
-                </span>
-              </span>
-              {game.sharedTo?.includes(group.id) && <span className="pill">{t('Shared')}</span>}
-            </button>
+              </div>
+
+              {night.games.map((game) => {
+                const shared = game.sharedTo?.includes(group.id);
+                return (
+                  <button
+                    key={game.id}
+                    type="button"
+                    className="game-row"
+                    disabled={sending}
+                    onClick={() => shareIntoChat(game)}
+                  >
+                    <span className="game-row__score tnum">{game.total}</span>
+                    <span className="grow">
+                      <span className="game-row__name" style={{ display: 'block' }}>
+                        {formatTime(game.playedAt)}
+                      </span>
+                      <span className="game-row__sub tnum">
+                        {tf('{strikes} strikes · {spares} spares', gameShape(game))}
+                      </span>
+                    </span>
+                    {shared && <span className="pill">{t('Shared')}</span>}
+                  </button>
+                );
+              })}
+            </div>
           ))}
         </div>
       )}

@@ -189,8 +189,17 @@ export function GameRow({ game, onOpen }: { game: Game; onOpen?: () => void }) {
         <span className="gamecard__date">{formatDay(game.playedAt)}</span>
         <span className="gamecard__alley">{game.house || t('No alley recorded')}</span>
         <span className="gamecard__tags">
-          <span className="tag tnum">{tf('{n} X', { n: strikes })}</span>
-          <span className="tag tnum">{tf('{n} /', { n: spares })}</span>
+          {/* The same two shapes the strip and the sheet use — a filled block
+              for a strike, a half-filled one for a spare — rather than "3 X"
+              in grey, which reads as a serial number until you decode it. */}
+          <span className="marktag" aria-label={tf('{n} strikes', { n: strikes })}>
+            <span className="marktag__glyph marktag__glyph--strike">X</span>
+            <span className="tnum">{strikes}</span>
+          </span>
+          <span className="marktag" aria-label={tf('{n} spares', { n: spares })}>
+            <span className="marktag__glyph marktag__glyph--spare">/</span>
+            <span className="tnum">{spares}</span>
+          </span>
           {game.source === 'scan' && <span className="tag">{t('Scan')}</span>}
           {game.sharedTo && game.sharedTo.length > 0 && <span className="tag">{t('Shared')}</span>}
         </span>
