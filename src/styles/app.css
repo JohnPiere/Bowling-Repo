@@ -2041,6 +2041,23 @@ body {
    of a whole game, and ten cells that appear one at a time is a progress bar. */
 .strip__cell--todo { opacity: 0.5; }
 
+/* A cell you can throw again. Only the frame editor passes `onPickFrame`, so
+   nothing on the play screen picks this up — see the note in `FrameStrip`.
+   The cell is a button there, and `button` in this codebase resets to the
+   surrounding font rather than the browser's, which a bare div did not need. */
+.strip__cell--pickable {
+  cursor: pointer;
+  background: none;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.strip__cell--pickable:hover,
+.strip__cell--pickable:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--color-accent-300);
+  outline: none;
+}
+
 .strip__head {
   display: flex;
   width: 100%;

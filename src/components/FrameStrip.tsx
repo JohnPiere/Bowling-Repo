@@ -1,5 +1,6 @@
 import { pinRows, type StripFrame } from '../lib/framestrip';
-import { t } from '../lib/i18n';
+import type React from 'react';
+import { t, tf } from '../lib/i18n';
 
 /**
  * The ten frames, two rows of five.
@@ -9,25 +10,59 @@ import { t } from '../lib/i18n';
  * side by side show where the misses are, and a 9 with the 10-pin left looks
  * nothing like a 9 with the headpin left.
  *
- * Cells are not tappable. Undo walks back a ball at a time, and a saved game
- * has a proper frame editor behind "Correct it" — a tap here that silently
+ * **Cells are only tappable where something is listening.** On the play screen
+ * nothing is: Undo walks back a ball at a time, and a tap here that silently
  * discarded the frames after it would be the one destructive gesture on the
- * screen, sitting right next to the pins.
+ * screen, sitting right next to the pins. The frame editor passes
+ * `onPickFrame` and `editable`, and there a tap re-throws that frame and keeps
+ * everything after it — which is the opposite of destructive and is the whole
+ * point of the screen.
  */
-export function FrameStrip({ frames }: { frames: StripFrame[] }) {
+export function FrameStrip({
+  frames,
+  onPickFrame,
+  editable,
+}: {
+  frames: StripFrame[];
+  /** Given only where a tap means something. */
+  onPickFrame?: (frame: number) => void;
+  /** Which frames may be picked, 0-based. Anything else stays inert. */
+  editable?: number[];
+}) {
+  const canPick = new Set(editable ?? []);
+
   return (
     <div className="strip" role="table" aria-label={t('Frames')}>
-      {frames.map((frame) => (
+      {frames.map((frame) => {
+        // `frame.number` is 1-based on the sheet; everything in `lib/` counts
+        // frames from zero.
+        const pickable = Boolean(onPickFrame) && canPick.has(frame.number - 1);
+
+        return (
         <div
           key={frame.number}
           className={[
             'strip__cell',
             frame.isCurrent ? 'strip__cell--now' : '',
             !frame.isCurrent && !frame.isComplete ? 'strip__cell--todo' : '',
+            pickable ? 'strip__cell--pickable' : '',
           ]
             .filter(Boolean)
             .join(' ')}
-          role="row"
+          {...(pickable
+            ? {
+                role: 'button',
+                tabIndex: 0,
+                'aria-label': tf('Fix frame {n}', { n: frame.number }),
+                onClick: () => onPickFrame?.(frame.number - 1),
+                onKeyDown: (event: React.KeyboardEvent) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onPickFrame?.(frame.number - 1);
+                  }
+                },
+              }
+            : { role: 'row' })}
         >
           <div className="strip__head">
             <span className="strip__num">{frame.number}</span>
@@ -66,7 +101,8 @@ export function FrameStrip({ frames }: { frames: StripFrame[] }) {
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

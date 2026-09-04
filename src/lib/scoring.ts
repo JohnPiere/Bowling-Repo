@@ -237,3 +237,73 @@ export function frameMarks(frame: Frame): string[] {
   });
   return marks;
 }
+
+/**
+ * Where each frame's balls sit in the flat roll list.
+ *
+ * The list is flat because that is what the scorer reads, and a frame is one
+ * ball or two or three depending on what was thrown — so "frame 3" is a slice
+ * to be found rather than an index that can be computed. Always ten entries;
+ * a frame not yet bowled has a length of zero.
+ */
+export function frameBounds(rolls: number[]): { start: number; length: number }[] {
+  const bounds: { start: number; length: number }[] = [];
+  let start = 0;
+  for (const frame of scoreGame(rolls).frames) {
+    bounds.push({ start, length: frame.rolls.length });
+    start += frame.rolls.length;
+  }
+  return bounds;
+}
+
+/**
+ * Frames that can be re-entered.
+ *
+ * Finished, and not the one being bowled: correcting the ball you have just
+ * thrown is Undo's job, and two ways to do the same thing on the same screen
+ * would fight over the same tap.
+ */
+export function editableFrames(rolls: number[]): number[] {
+  const cursor = nextRollCursor(rolls);
+  return scoreGame(rolls)
+    .frames.filter(
+      (frame) => frame.isComplete && frame.rolls.length > 0 && frame.index !== cursor?.frame,
+    )
+    .map((frame) => frame.index);
+}
+
+/**
+ * Put different balls in one frame, keeping everything thrown after it.
+ *
+ * A strike is one ball and an open is two, so replacing a frame changes the
+ * *length* of the list and shifts every later ball along it. That is fine —
+ * the scorer re-derives frames from the list — but it is why this cannot be an
+ * assignment to an index.
+ *
+ * `pinfalls` travels with `rolls` because it is indexed by the same list, ball
+ * for ball. Splicing one without the other would put every later ball's pins
+ * against the wrong ball: the same failure `leavesFromPinfalls` had, and the
+ * same reason it went unnoticed — nothing downstream can tell a wrong leave
+ * from one that happened.
+ */
+export function replaceFrame(
+  rolls: number[],
+  pinfalls: number[][],
+  frame: number,
+  newRolls: number[],
+  newPinfalls: number[][],
+): { rolls: number[]; pinfalls: number[][] } {
+  const bounds = frameBounds(rolls)[frame];
+  if (!bounds) return { rolls: [...rolls], pinfalls: [...pinfalls] };
+
+  const { start, length } = bounds;
+  return {
+    rolls: [...rolls.slice(0, start), ...newRolls, ...rolls.slice(start + length)],
+    // A game entered on the pad has no pinfalls at all, and an empty list has
+    // to stay empty rather than becoming a ragged one with a hole before it.
+    pinfalls:
+      pinfalls.length === 0
+        ? []
+        : [...pinfalls.slice(0, start), ...newPinfalls, ...pinfalls.slice(start + length)],
+  };
+}

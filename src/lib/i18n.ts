@@ -667,6 +667,30 @@ export const JA: Record<string, string> = {
   'What you wrote': 'メモ',
   'Game {n}': '{n}ゲーム目',
 
+  // ── Fixing a frame on the rack ──
+  'Fix frame {n}': '{n}フレーム目を修正',
+  'Fixing frame {n}': '{n}フレーム目を修正中',
+  'Ball {n} — {pins} standing': '{n}投目 — 残り{pins}本',
+  'Was': '修正前',
+  'Nothing to fix here yet.': 'まだ修正できるフレームがありません。',
+  'Tap a frame to throw it again. The frames after it stay as they were.':
+    'フレームをタップすると投げ直せます。それ以降のフレームはそのまま残ります。',
+  'Tap a frame to throw it again. This game has no pin data, so the rack counts pins here rather than recording which ones.':
+    'フレームをタップすると投げ直せます。このゲームにはピンの記録がないため、ラックは本数を数えるだけで、どのピンかは記録しません。',
+  'That frame is full.': 'このフレームは投げ終わりました。',
+  'Save the correction': '修正を保存',
+  'A scan gets a frame wrong now and then. The photo stays, so you can check against it.':
+    'スキャンはときどきフレームを読み違えます。写真は残るので、見比べて確認できます。',
+  'Mis-tapped a ball? Put it right here.': '押し間違えたときは、ここで直せます。',
+  'On {name} board': '{name}のボードに掲載中',
+  'This game and its photo are removed from this device for good.':
+    'このゲームと写真は、この端末から完全に削除されます。',
+  'This game is removed from this device for good.':
+    'このゲームは、この端末から完全に削除されます。',
+  'It also comes off the boards it was shared to.': '共有したボードからも削除されます。',
+  'If you back up to your account, the next backup takes it off the server as well.':
+    'アカウントにバックアップしている場合は、次回のバックアップでサーバーからも削除されます。',
+
   // ── Battles: two people, one game each, days apart ──
   'Battles': 'バトル',
   'Start a battle': 'バトルを始める',

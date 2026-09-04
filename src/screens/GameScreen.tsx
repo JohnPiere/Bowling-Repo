@@ -6,12 +6,12 @@ import { loadPreferences } from '../lib/preferences';
 import { Icon } from '../components/Icon';
 import { Scorecard } from '../components/Scorecard';
 import { FrameStrip } from '../components/FrameStrip';
+import { FrameEditor } from '../components/FrameEditor';
 import { frameStrip } from '../lib/framestrip';
 import { gameSummary } from '../lib/stats';
 import type { Group } from '../lib/social';
 import { deleteGame, getSheetImage, reviseGame, unshareGame, type Game } from '../lib/db';
-import { frameMarks, scoreGame } from '../lib/scoring';
-import { tryParseMarks } from '../lib/marks';
+import { scoreGame } from '../lib/scoring';
 import { formatBytes } from '../lib/storage';
 import { formatDay, fromInputs, toDateInput, toTimeInput } from '../lib/datetime';
 
@@ -37,7 +37,17 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
+  /**
+   * The game being corrected, held apart from the stored one until saved.
+   *
+   * Loaded from the game rather than started empty — the point of the editor
+   * is to fix one frame of what is already there, so it opens showing every
+   * frame as bowled.
+   */
+  const [draft, setDraft] = useState<{ rolls: number[]; pinfalls: number[][] }>({
+    rolls: [],
+    pinfalls: [],
+  });
   const [house, setHouse] = useState(game.house ?? '');
   const [ball, setBall] = useState(game.ball ?? '');
   const [lane, setLane] = useState(game.lane ?? '');
@@ -98,12 +108,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   function startEditing() {
     // Seed the box from the game itself, so a correction starts from what is
     // stored rather than from whatever the scan happened to read.
-    setDraft(
-      scoreGame(game.rolls)
-        .frames.map((frame) => frameMarks(frame).join(''))
-        .join(' ')
-        .trim(),
-    );
+    setDraft({ rolls: [...game.rolls], pinfalls: game.pinfalls ? [...game.pinfalls] : [] });
     setHouse(game.house ?? '');
     setBall(game.ball ?? '');
     setLane(game.lane ?? '');
@@ -115,15 +120,16 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
   }
 
   async function saveEdit() {
-    const parsed = tryParseMarks(draft);
-    if ('error' in parsed) return;
-
     setBusy(true);
     try {
       // `playedAt` only when the two fields make a date. They cannot make a
       // worse one than the game already has: `undefined` leaves it alone.
       await reviseGame(game.id, {
-        rolls: parsed.rolls,
+        rolls: draft.rolls,
+        // Handed over together, always. `reviseGame` drops pin data it is not
+        // given alongside changed rolls rather than letting it slide out of
+        // step, so leaving this off would silently lose every leave.
+        pinfalls: draft.pinfalls,
         house,
         ball,
         lane,
@@ -176,8 +182,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
     }
   }
 
-  const edited = editing && draft.trim() ? tryParseMarks(draft) : null;
-  const editedCard = edited && !('error' in edited) ? scoreGame(edited.rolls) : null;
+  const editedCard = editing ? scoreGame(draft.rolls) : null;
 
   if (editing) {
     return (
@@ -189,33 +194,8 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
               {editedCard ? editedCard.total : '—'}
             </span>
           </div>
-          {editedCard && <Scorecard scorecard={editedCard} />}
+          <FrameEditor rolls={draft.rolls} pinfalls={draft.pinfalls} onChange={setDraft} />
         </div>
-
-        {edited && 'error' in edited && <div className="note note--bad">{edited.error}</div>}
-        {edited &&
-          !('error' in edited) &&
-          edited.warnings.map((warning) => (
-            <div key={warning} className="note note--warn">
-              {warning}
-            </div>
-          ))}
-
-        <label style={{ display: 'block', marginBottom: 11 }}>
-          <span className="hero__label">{t('Marks')}</span>
-          <input
-            className="input tnum"
-            style={{ marginTop: 5, letterSpacing: '0.08em' }}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.toUpperCase())}
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-        </label>
-        <p className="muted" style={{ margin: '-6px 0 12px' }}>
-          {t('One group a frame. X for a strike, / for a spare, - for a miss.')}
-        </p>
 
         <label style={{ display: 'block', marginBottom: 11 }}>
           <span className="hero__label">{t('Where you bowled')}</span>
@@ -313,7 +293,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           onClick={saveEdit}
         >
           <Icon name="check" size={18} />
-          {busy ? 'Saving…' : 'Save the correction'}
+          {busy ? t('Saving…') : t('Save the correction')}
         </button>
         <button
           type="button"
@@ -447,8 +427,8 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
       </button>
       <p className="footnote">
         {game.source === 'scan'
-          ? 'A scan gets a frame wrong now and then. The photo stays, so you can check against it.'
-          : 'Mis-tapped a ball? Put it right here.'}
+          ? t('A scan gets a frame wrong now and then. The photo stays, so you can check against it.')
+          : t('Mis-tapped a ball? Put it right here.')}
       </p>
 
       <h2 className="section-title">{t('Sharing')}</h2>
@@ -462,7 +442,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
           {sharedWith.map((group) => (
             <div key={group!.id} className="card" style={{ padding: 12 }}>
               <div className="row row--between">
-                <span style={{ fontSize: 13 }}>On {group!.name}'s board</span>
+                <span style={{ fontSize: 13 }}>{tf('On {name} board', { name: group!.name })}</span>
                 <button type="button" className="chip" onClick={() => retract(group!.id)}>
                   {t('Unshare')}
                 </button>
@@ -480,9 +460,11 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
       {confirming ? (
         <>
           <div className="note note--bad">
-            This game and {game.hasSheet ? 'its photo are' : 'it is'} removed from this device for
-            good. {sharedWith.length > 0 && 'It also comes off the boards it was shared to. '}
-            If you back up to your account, the next backup takes it off the server as well.
+            {game.hasSheet
+              ? t('This game and its photo are removed from this device for good.')
+              : t('This game is removed from this device for good.')}{' '}
+            {sharedWith.length > 0 && `${t('It also comes off the boards it was shared to.')} `}
+            {t('If you back up to your account, the next backup takes it off the server as well.')}
           </div>
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn-lg" onClick={() => setConfirming(false)}>
@@ -494,7 +476,7 @@ export function GameScreen({ game, crews, onShare, onChanged, onDeleted }: Props
               onClick={remove}
               disabled={busy}
             >
-              {busy ? 'Deleting…' : 'Delete for good'}
+              {busy ? t('Deleting…') : t('Delete for good')}
             </button>
           </div>
         </>

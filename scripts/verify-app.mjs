@@ -735,9 +735,9 @@ async function main() {
       return 'shared, then retracted';
     });
 
-    await check('a saved game can be corrected, and a bad correction refused', async () => {
+    await check('a saved game is corrected on the rack, and its pin data keeps up', async () => {
       // Bowl a game whose first frame is wrong, the way a misread scan or a
-      // mis-tap leaves one.
+      // mis-tap leaves one: two gutters, then eleven strikes.
       await tab(page, 'Play').click();
       const start = page.getByRole('button', { name: 'Just count the pins' });
       if (await start.count()) await start.click();
@@ -759,12 +759,29 @@ async function main() {
       await page.getByRole('button', { name: 'Fix a frame' }).click();
       await page.waitForSelector('text=Corrected game');
 
-      // The box starts from what is stored, not from whatever a scan read.
-      const seeded = await page.getByLabel('Marks').inputValue();
-      assert(seeded.startsWith('--'), `the marks box was not seeded from the game: ${seeded}`);
+      // The strip is the editor, and it opens showing the game as it stands
+      // rather than as an empty one — the whole difference from starting over.
+      const seededMarks = await page
+        .locator('.strip__cell')
+        .first()
+        .locator('.strip__box')
+        .allInnerTexts();
+      // The strip prints counts; "-" for a miss is the paper convention and
+      // belongs to `frameMarks`, which is what the scorecard and the card use.
+      assert(
+        seededMarks.join('') === '00',
+        `the strip was not seeded from the game: ${JSON.stringify(seededMarks)}`,
+      );
 
-      await page.getByLabel('Marks').fill(seeded.replace(/^--/, 'X'));
+      // A frame not yet finished cannot be picked, and every finished one can.
+      const pickable = await page.locator('.strip__cell--pickable').count();
+      assert(pickable === 10, `${pickable} frames offered for fixing, expected 10`);
+
+      await page.getByRole('button', { name: 'Fix frame 1', exact: true }).click();
+      await page.waitForSelector('.rack__deck');
+      await page.getByRole('button', { name: /^X/ }).click();
       await page.waitForTimeout(300);
+
       const rescored = await page.locator('.card .tnum').first().textContent();
       assert(rescored === '300', `rescoring gave ${rescored}, expected 300`);
 
@@ -779,27 +796,122 @@ async function main() {
         return new Promise((res) => {
           const rq = db.transaction('games').objectStore('games').getAll();
           rq.onsuccess = () =>
-            res(rq.result.map((g) => ({ total: g.total, rolls: g.rolls.length })));
+            res(
+              rq.result.map((g) => ({
+                total: g.total,
+                rolls: g.rolls.length,
+                pinfalls: g.pinfalls ? g.pinfalls.length : null,
+                counts: g.pinfalls ? g.pinfalls.map((pins, i) => pins.length === g.rolls[i]) : [],
+              })),
+            );
         });
       });
       const perfect = stored.find((g) => g.total === 300 && g.rolls === 12);
       assert(perfect, `the correction did not persist: ${JSON.stringify(stored)}`);
+      // This game was entered on the pad, so it never had pin data and must not
+      // gain a frame of it — a leave nobody observed is worse than no leave.
+      assert(
+        perfect.pinfalls === null,
+        `a pad-entered game came back with pin data: ${JSON.stringify(perfect)}`,
+      );
 
-      // A correction that describes an impossible game must not be storable.
+      // Now the half that was silently wrong before. A game bowled on the rack
+      // carries a pin list indexed by its rolls, ball for ball. Correcting a
+      // frame changes the length of that list, and the old editor left the pins
+      // behind: measured at twelve rolls beside thirteen pinfalls, with a
+      // strike reading back as one pin still standing. Nothing downstream can
+      // tell that from a leave that happened.
+      const withPins = await page.evaluate(async () => {
+        const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        const frames = [[9, 0], [10], [7, 3], [10], [5, 4], [10], [8, 1], [10], [6, 2], [9, 1, 10]];
+        const rolls = [];
+        const pinfalls = [];
+        for (const frame of frames) {
+          let standing = [...FULL];
+          for (const count of frame) {
+            const fell = standing.slice(0, count);
+            rolls.push(count);
+            pinfalls.push(fell);
+            standing = standing.filter((pin) => !fell.includes(pin));
+            if (standing.length === 0) standing = [...FULL];
+          }
+        }
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        await new Promise((res, rej) => {
+          const tx = db.transaction('games', 'readwrite');
+          tx.objectStore('games').put({
+            id: 'racked',
+            bowler: 'You',
+            rolls,
+            pinfalls,
+            // The stored total is what the lists print, and a seed of 0 makes
+            // a game nothing can find.
+            total: 151,
+            isComplete: true,
+            source: 'manual',
+            playedAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          tx.oncomplete = res;
+          tx.onerror = rej;
+        });
+        return rolls.length;
+      });
+
+      // Seeded straight into IndexedDB, which the running app has no reason to
+      // notice — the list it is showing was read at mount.
+      await page.reload({ waitUntil: 'networkidle' });
+
+      // Found by its score rather than by position: the pad game above is in
+      // the list too, and editing the wrong one would pass this check while
+      // proving nothing.
+      await tab(page, 'History').click();
+      await page.waitForTimeout(600);
+      await page.locator('.gameline').filter({ hasText: '151' }).first().click();
+      await page.waitForSelector('text=Correct it');
+      const opened = await page.locator('.tnum').first().textContent();
+      assert(opened?.includes('151'), `opened the wrong game: ${opened}`);
       await page.getByRole('button', { name: 'Fix a frame' }).click();
-      await page.getByLabel('Marks').fill('75 44 44 44 44 44 44 44 44 44');
+      await page.getByRole('button', { name: 'Fix frame 1', exact: true }).click();
+      await page.waitForSelector('.rack__deck');
+      await page.getByRole('button', { name: /^X/ }).click();
       await page.waitForTimeout(300);
-      assert(
-        (await page.locator('.note--bad').count()) > 0,
-        'an impossible game was accepted without complaint',
-      );
-      assert(
-        await page.getByRole('button', { name: 'Save the correction' }).isDisabled(),
-        'an impossible game could still be saved',
-      );
-      await page.getByRole('button', { name: 'Cancel' }).click();
+      await page.getByRole('button', { name: 'Save the correction' }).click();
+      await page.waitForTimeout(700);
 
-      return 'seeded from the game, rescored live, persisted; impossible refused';
+      const racked = await page.evaluate(async () => {
+        const db = await new Promise((res) => {
+          const r = indexedDB.open('lane-log');
+          r.onsuccess = () => res(r.result);
+        });
+        return new Promise((res) => {
+          const rq = db.transaction('games').objectStore('games').get('racked');
+          rq.onsuccess = () => {
+            const g = rq.result;
+            res({
+              rolls: g.rolls,
+              pinfalls: g.pinfalls ? g.pinfalls.length : null,
+              aligned: g.pinfalls
+                ? g.pinfalls.every((pins, i) => pins.length === g.rolls[i])
+                : false,
+            });
+          };
+        });
+      });
+      assert(
+        racked.rolls.length === withPins - 1,
+        `the frame was not replaced: ${racked.rolls.length} rolls`,
+      );
+      assert(
+        racked.pinfalls === racked.rolls.length,
+        `pins fell out of step: ${racked.rolls.length} rolls, ${racked.pinfalls} pinfalls`,
+      );
+      assert(racked.aligned, 'a ball is recorded with a different number of pins than it took');
+
+      return 'seeded from the game, fixed on the rack, pins still against the right balls';
     });
 
     await check('a game opens, shows its stored photo, and can be deleted', async () => {

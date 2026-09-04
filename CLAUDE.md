@@ -165,6 +165,43 @@ because a rack and two buttons have to fit under the strip. It falls back to the
 plain `Scorecard` for a game with no pin data, since ten empty racks read as a
 bug rather than as an absence.
 
+**A game is corrected on the rack, and `pinfalls` has to travel with the
+rolls.** The correction used to be a line of marks — `X 9/ 72 …` — typed into
+an input. That is a fast way to retype a whole game and a poor way to fix one
+ball: you have to read your own game back out of a string.
+
+Worse, it was quietly destroying the pin data. `pinfalls` is indexed by the
+roll list, ball for ball, and `reviseGame` spread the stored game and replaced
+`rolls` — so correcting a frame from `9-` to `X` took a ball *out* of that list
+and left the pins where they were. Measured on a real game: twelve rolls beside
+thirteen pinfalls, with a strike reading back as one pin still standing. The
+same failure `leavesFromPinfalls` had, in the same place it cannot be seen —
+nothing downstream can tell a wrong leave from one that happened.
+
+So `reviseGame` takes `pinfalls` now and drops them when a caller changes the
+rolls without handing over pins to match. Losing a leave is a smaller loss than
+inventing one, and it is the only choice that is honest about what is known.
+
+`FrameEditor` is the editor itself, and its state is **loaded, not started**.
+The strip shows the game as bowled; tapping a finished frame re-throws just
+that one at the deck that frame actually had, and `replaceFrame` splices both
+halves back together so they cannot come apart. A frame is one ball or two or
+three, so "frame 3" is a slice to be found rather than an index — `frameBounds`
+does that, and it is why this cannot be an assignment.
+
+A game with no pin data keeps none. Tapping pins there says *how many* fell,
+and recording which ones for a single frame of a scanned game would be
+inventing a leave nobody observed; the footnote says so, since the rack cannot
+look any different while it is being used.
+
+Two things fell out of it. `FrameStrip` cells are tappable only where something
+is listening — the play screen passes no `onPickFrame`, because a tap there
+that discarded the frames after it would be the one destructive gesture on the
+screen, sitting next to the pins. And the browser check that covered the old
+editor was half testing something the rack makes impossible: you cannot express
+an illegal game by tapping standing pins. It checks the alignment instead, and
+putting the old `reviseGame` back fails it on "16 rolls, 17 pinfalls".
+
 **A profile picture is bounded, and that bound is load-bearing.** It lives in
 `localStorage` beside the rest of the profile so every avatar on every screen
 has it while rendering — a tile that flashed initials on the way to a picture is

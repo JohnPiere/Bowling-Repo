@@ -238,6 +238,8 @@ export async function reviseGame(
   id: string,
   changes: {
     rolls?: number[];
+    /** The pins behind those rolls, ball for ball. See the note below. */
+    pinfalls?: number[][];
     house?: string;
     ball?: string;
     lane?: string;
@@ -252,9 +254,32 @@ export async function reviseGame(
   const rolls = changes.rolls ?? game.rolls;
   const card = scoreGame(rolls);
 
+  /**
+   * Pin data survives a correction only when it still describes these balls.
+   *
+   * `pinfalls` is indexed by the roll list, ball for ball. Correcting a frame
+   * from `9-` to `X` takes a ball *out* of that list, so the stored pins slide
+   * against it and every later ball reads its predecessor's — measured, on a
+   * real game: twelve rolls beside thirteen pinfalls, and a strike reading
+   * back as one pin left standing.
+   *
+   * Nothing downstream can tell that from a leave that happened, which is the
+   * whole reason `leavesFromPinfalls` was worth fixing. So a caller that
+   * changes the rolls must hand over the pins to match; one that cannot gets
+   * them dropped rather than kept wrong. Losing a leave is a smaller loss than
+   * inventing one.
+   */
+  const pinfalls = (() => {
+    if (changes.pinfalls) {
+      return changes.pinfalls.length === rolls.length ? changes.pinfalls : undefined;
+    }
+    return changes.rolls ? undefined : game.pinfalls;
+  })();
+
   const updated: Game = {
     ...game,
     rolls,
+    pinfalls,
     total: card.total,
     isComplete: card.isComplete,
     house: changes.house === undefined ? game.house : changes.house || undefined,
