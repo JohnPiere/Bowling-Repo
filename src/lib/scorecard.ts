@@ -81,6 +81,8 @@ const INK = {
   text: '#efedf6',
   muted: '#8e88a3',
   accent: '#b5abfc',
+  /** Pins the second ball took. `--color-accent-200`, for the same reason. */
+  late: '#e7e5fe',
 };
 
 const FONT =
@@ -145,7 +147,7 @@ export function drawScorecard(
     markFont: 56,
     totalFont: 40,
     pins: hasPins ? CARD.pinsHeight : 0,
-    down: hasPins ? strip.map((frame) => frame.down) : undefined,
+    down: hasPins ? strip.map((frame) => frame.downBy) : undefined,
   });
 
   // ── How the game went ──
@@ -196,8 +198,12 @@ export interface GridBox {
   totalFont: number;
   /** Height of the rack drawn inside each frame. Zero draws none. */
   pins?: number;
-  /** Which pins each frame took down. Omitted where the game did not record. */
-  down?: number[][];
+  /**
+   * Per frame, per ball, the pins it took — so the second ball's pins can be
+   * drawn lighter the way the strip draws them. Omitted where the game did not
+   * record which pins fell.
+   */
+  down?: number[][][];
 }
 
 /**
@@ -259,7 +265,10 @@ export function drawGrid(
           context.beginPath();
           context.arc(x, y + dot, dot, 0, Math.PI * 2);
           if (pin.isDown) {
-            context.fillStyle = INK.accent;
+            // Lighter for anything the first ball did not get, the same way
+            // the strip draws it — a sheet's own diagram carries both leaves
+            // and this is the half that says which.
+            context.fillStyle = pin.ball > 0 ? INK.late : INK.accent;
             context.fill();
           } else {
             context.strokeStyle = INK.rule;

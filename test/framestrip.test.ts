@@ -139,16 +139,74 @@ describe('pinRows', () => {
     expect(pinRows([]).map((row) => row.length)).toEqual([4, 3, 2, 1]);
   });
 
-  it('flags the pins that went down', () => {
+  it('flags the pins that went down, and to which ball', () => {
+    // A flat list is a caller saying "these fell" with no per-ball record, so
+    // they all read as the first ball. A pin still up belongs to no ball.
     const rows = pinRows([7, 1]);
-    expect(rows[0][0]).toEqual({ pin: 7, isDown: true });
-    expect(rows[0][1]).toEqual({ pin: 8, isDown: false });
-    expect(rows[3][0]).toEqual({ pin: 1, isDown: true });
+    expect(rows[0][0]).toEqual({ pin: 7, isDown: true, ball: 0 });
+    expect(rows[0][1]).toEqual({ pin: 8, isDown: false, ball: -1 });
+    expect(rows[3][0]).toEqual({ pin: 1, isDown: true, ball: 0 });
   });
 });
 
 describe('rackRows', () => {
   it('lays each row out left to right as it stands on the deck', () => {
     expect(rackRows()).toEqual([[7, 8, 9, 10], [4, 5, 6], [2, 3], [1]]);
+  });
+});
+
+describe('which ball took each pin', () => {
+  // A paper sheet has carried this all along: an open ring for a pin the first
+  // ball took, a filled one for a pin standing after ball one. The flat `down`
+  // threw it away and drew a 9-spare identically to a strike.
+  const bowl = (frames: number[][]) => {
+    const FULL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const rolls: number[] = [];
+    const pinfalls: number[][] = [];
+    for (const frame of frames) {
+      let standing = [...FULL];
+      for (const count of frame) {
+        const fell = standing.slice(0, count);
+        rolls.push(count);
+        pinfalls.push(fell);
+        standing = standing.filter((pin) => !fell.includes(pin));
+        if (standing.length === 0) standing = [...FULL];
+      }
+    }
+    return frameStrip(rolls, pinfalls, [], null);
+  };
+
+  it('splits a spare into the ball that took each pin', () => {
+    const [frame] = bowl([[9, 1]]);
+    expect(frame.downBy).toEqual([[1, 2, 3, 4, 5, 6, 7, 8, 9], [10]]);
+
+    const dots = pinRows(frame.downBy).flat();
+    expect(dots.find((dot) => dot.pin === 1)!.ball).toBe(0);
+    expect(dots.find((dot) => dot.pin === 10)!.ball).toBe(1);
+  });
+
+  it('gives a strike one ball and no second', () => {
+    const [frame] = bowl([[10]]);
+    expect(frame.downBy).toHaveLength(1);
+    expect(pinRows(frame.downBy).flat().every((dot) => dot.ball === 0)).toBe(true);
+  });
+
+  it('leaves a standing pin unattributed', () => {
+    const [frame] = bowl([[8, 1]]);
+    const dots = pinRows(frame.downBy).flat();
+    const standing = dots.filter((dot) => !dot.isDown);
+    expect(standing).toHaveLength(1);
+    expect(standing[0].ball).toBe(-1);
+  });
+
+  it('reads a flat list as all first ball, for a caller with no record', () => {
+    const dots = pinRows([1, 2, 3]).flat();
+    expect(dots.filter((dot) => dot.isDown).every((dot) => dot.ball === 0)).toBe(true);
+  });
+
+  it('says nothing fell for a game with no pin data', () => {
+    const [frame] = frameStrip([9, 1], [], [], null);
+    expect(frame.downBy).toEqual([[], []]);
+    expect(pinRows(frame.downBy).flat().every((dot) => !dot.isDown)).toBe(true);
   });
 });

@@ -194,6 +194,22 @@ strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
 half that still means something beside a game of a different length. The series
 card ends on the same four over the whole night.
 
+**A pin diagram says which ball took each pin, the way the sheet does.** The
+Korona legend in `docs/SHEET_FORMAT.md` is explicit: an open ring is a pin the
+first ball took, a filled one a pin *standing after ball one*, so one diagram
+carries both leaves. Ours drew a flat "these ten went down", which made a
+9-spare identical to a strike and threw away the more interesting half.
+
+`StripFrame.downBy` is the pins per ball; `pinRows` returns which ball took
+each, and still accepts a flat list as "all first ball" for a caller with no
+per-ball record. Everything that draws a rack reads it — the play screen, the
+game record, the share screen, and the shareable image.
+
+Lightness rather than a second hue, and that is a constraint rather than a
+preference: the design system is purple and neutral with no third colour to
+spend, and at a 5px dot two neighbouring hues are indistinguishable while
+`--color-accent` against `--color-accent-200` is not.
+
 **A button is shrink-to-fit, and `.btn-quick` only looked full width by
 accident.** `.play` is a flex column, so it stretched its children — and the
 moment the frame editor drew the same button anywhere else, on the finishing

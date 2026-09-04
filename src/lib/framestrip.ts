@@ -34,6 +34,15 @@ export interface StripFrame {
   boxes: RollBox[];
   /** Pins this frame has taken down, including the ball being entered. */
   down: number[];
+  /**
+   * The same pins, split by which ball took them — index 0 is the first ball.
+   *
+   * A paper sheet has carried this all along: its legend gives an open ring to
+   * a pin the first ball took and a filled one to a pin that was *standing
+   * after ball one*, so a single diagram says both leaves. The flat `down`
+   * threw that away and drew a 9-spare identically to a strike.
+   */
+  downBy: number[][];
   isCurrent: boolean;
   isComplete: boolean;
   isStrike: boolean;
@@ -64,18 +73,27 @@ export function frameStrip(
 
     const isCurrent = frame.index === activeFrame;
     const down = new Set<number>();
+    const downBy: number[][] = [];
     for (let i = start; i < start + frame.rolls.length; i++) {
-      for (const pin of pinfalls[i] ?? []) down.add(pin);
+      const took = pinfalls[i] ?? [];
+      downBy.push([...took]);
+      for (const pin of took) down.add(pin);
     }
     // The ball being entered shows in its own frame as it is tapped, so the
-    // strip and the rack below never disagree about what has just fallen.
-    if (isCurrent) for (const pin of pending) down.add(pin);
+    // strip and the rack below never disagree about what has just fallen. It
+    // belongs to the ball it is: the next one.
+    if (isCurrent && pending.length > 0) {
+      while (downBy.length < frame.rolls.length + 1) downBy.push([]);
+      downBy[frame.rolls.length] = [...pending];
+      for (const pin of pending) down.add(pin);
+    }
 
     return {
       number: frame.index + 1,
       total: frame.score,
       boxes: boxesFor(frame.rolls, frame.index, isCurrent),
       down: FULL_RACK.filter((pin) => down.has(pin)),
+      downBy,
       isCurrent,
       isComplete: frame.isComplete,
       isStrike: frame.isStrike,
@@ -139,15 +157,38 @@ function markFor(frameRolls: number[], box: number, isTenth: boolean): string {
   return frameRolls[1] === 0 ? '-' : String(frameRolls[1]);
 }
 
+export interface PinDot {
+  pin: number;
+  isDown: boolean;
+  /** Which ball took it — 0 for the first — or -1 while it still stands. */
+  ball: number;
+}
+
 /**
  * The dot grid for a cell, back row first.
  *
- * Returns which pins are down rather than colours, because a cell in the strip
- * and the rack under it want the same fact drawn two different sizes.
+ * Returns which pins are down and to which ball, rather than colours, because
+ * a cell in the strip, the rack under it and the shareable card all want the
+ * same fact drawn three different sizes.
+ *
+ * Takes either shape: a flat list is every pin attributed to the first ball,
+ * which is what a caller that has no per-ball record can honestly say.
  */
-export function pinRows(down: number[]): { pin: number; isDown: boolean }[][] {
-  const fallen = new Set(down);
-  return PIN_ROWS.map((row) => row.map((pin) => ({ pin, isDown: fallen.has(pin) })));
+export function pinRows(down: number[] | number[][]): PinDot[][] {
+  const byPin = new Map<number, number>();
+  if (down.length > 0 && Array.isArray(down[0])) {
+    (down as number[][]).forEach((pins, ball) => {
+      // First one wins: a pin cannot fall twice, and a rack that re-racks
+      // mid-frame in the tenth starts the count again anyway.
+      for (const pin of pins) if (!byPin.has(pin)) byPin.set(pin, ball);
+    });
+  } else {
+    for (const pin of down as number[]) byPin.set(pin, 0);
+  }
+
+  return PIN_ROWS.map((row) =>
+    row.map((pin) => ({ pin, isDown: byPin.has(pin), ball: byPin.get(pin) ?? -1 })),
+  );
 }
 
 /** Left-to-right order within a rack row, for laying the buttons out. */

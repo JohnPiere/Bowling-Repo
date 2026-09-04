@@ -70,12 +70,22 @@ export function FrameStrip({
           </div>
 
           <div className="strip__pins" aria-hidden="true">
-            {pinRows(frame.down).map((row, i) => (
+            {pinRows(frame.downBy).map((row, i) => (
               <div key={i} className="strip__pinrow">
                 {row.map((pin) => (
                   <span
                     key={pin.pin}
-                    className={`strip__pin${pin.isDown ? ' strip__pin--down' : ''}`}
+                    className={[
+                      'strip__pin',
+                      pin.isDown ? 'strip__pin--down' : '',
+                      // Everything after the first ball reads as "the second
+                      // ball got it", including the tenth's third — two states
+                      // is what a 5px dot can carry, and the distinction that
+                      // matters is first-ball pinfall against the rest.
+                      pin.isDown && pin.ball > 0 ? 'strip__pin--late' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   />
                 ))}
               </div>

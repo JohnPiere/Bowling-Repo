@@ -2151,6 +2151,23 @@ body {
   background: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
+/*
+ * Pins the second ball took, drawn lighter.
+ *
+ * A paper sheet has always carried this: its legend gives an open ring to a
+ * pin the first ball took and a filled one to a pin standing after ball one,
+ * so one diagram says both leaves. Ours said only "these ten went down", which
+ * drew a 9-spare exactly like a strike.
+ *
+ * Lightness rather than a second hue, and that is a constraint rather than a
+ * preference: the design system is purple and neutral with no third colour to
+ * spend, and at a 5px dot two neighbouring hues are indistinguishable while
+ * #9184d9 against #e7e5fe is not.
+ */
+.strip__pin--late {
+  background: var(--color-accent-200);
+  box-shadow: inset 0 0 0 1px var(--color-accent-200);
+}
 
 .strip__boxes { display: flex; gap: 1.5px; width: 100%; }
 .strip__box {
