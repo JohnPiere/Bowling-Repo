@@ -10,6 +10,7 @@ import { valuesUsed } from '../lib/stats';
 import { deckFor } from '../lib/pins';
 import { setBowling } from '../lib/updates';
 import {
+  clearingIsStrike,
   FRAMES_PER_GAME,
   isGameComplete,
   nextRollCursor,
@@ -53,7 +54,7 @@ interface Props {
  * be undone without touching the database.
  */
 export function PlayScreen({ onSaved, games }: Props) {
-  const { preferences } = usePreferences();
+  const { preferences, update } = usePreferences();
   const suggestions = useMemo(
     () => ({
       houses: valuesUsed(games, (game) => game.house),
@@ -220,11 +221,28 @@ export function PlayScreen({ onSaved, games }: Props) {
         source: 'manual',
         playedAt: playedAt ?? Date.now(),
       });
+      /**
+       * The ball you just used becomes the one offered next time.
+       *
+       * `defaultBall` could only be set in Settings, so naming a ball on the
+       * finishing step was forgotten the moment the game was saved and the
+       * field came back empty every night — which is the surest way to stop it
+       * being filled in at all, and per-ball averages are worth nothing if it
+       * is not. Remembering it here is what makes Settings' value true rather
+       * than aspirational: it says what will be pre-filled, and it still says
+       * so after this writes to it.
+       *
+       * Only a ball actually named. Clearing the field is not the same as
+       * saying you have no ball, and it must not wipe the default.
+       */
+      const named = ball.trim();
+      if (named && named !== preferences.defaultBall) update({ defaultBall: named });
+
       setRolls([]);
       setPinfalls([]);
       setPending([]);
       setHouse(preferences.homeHouse);
-      setBall(preferences.defaultBall);
+      setBall(named || preferences.defaultBall);
       setLane('');
       setCondition('');
       setNote('');
@@ -459,6 +477,9 @@ export function PlayScreen({ onSaved, games }: Props) {
   }
 
   const swept = pending.length === standing.length && standing.length > 0;
+  // Whether clearing the deck is a strike or a spare. Ten pins standing is not
+  // the test — a gutter leaves ten up and the next ball is a spare attempt.
+  const clearsToStrike = clearingIsStrike(rolls);
   // The tenth's third box only exists once a mark earns it, which is not
   // obvious from an empty box. Said once, when the tenth is live — and the
   // column tightens by the line's own height so the note never costs the fold.
@@ -489,14 +510,19 @@ export function PlayScreen({ onSaved, games }: Props) {
         </div>
       </div>
 
-      <PinRack standing={standing} knocked={pending} onToggle={knockDown} />
+      <PinRack
+        standing={standing}
+        knocked={pending}
+        onToggle={knockDown}
+        clearingIsStrike={clearsToStrike}
+      />
 
       {/* The commonest ball in bowling is the one that takes everything, and
           tapping ten pins to say so is ten chances to hit the wrong one. This
           is the same action the rack performs, in one tap. */}
       <button type="button" className="btn-quick" onClick={clearTheRack}>
-        <span className="btn-quick__mark">{standing.length === 10 ? 'X' : '/'}</span>
-        {standing.length === 10 ? t('Strike — all ten') : t('Spare — everything left')}
+        <span className="btn-quick__mark">{clearsToStrike ? 'X' : '/'}</span>
+        {clearsToStrike ? t('Strike — all ten') : t('Spare — everything left')}
       </button>
 
       <div className="play__commit">
@@ -512,7 +538,7 @@ export function PlayScreen({ onSaved, games }: Props) {
             is a strike or a spare, and reading "10" back at someone who just
             struck is the app failing to notice. */}
         <button type="button" className="btn-lg btn-lg--primary grow" onClick={commitBall}>
-          {swept && standing.length === 10
+          {swept && clearsToStrike
             ? t('Strike')
             : swept
               ? t('Spare')

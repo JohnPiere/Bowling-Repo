@@ -239,6 +239,35 @@ export function frameMarks(frame: Frame): string[] {
 }
 
 /**
+ * Would clearing the deck right now be a strike, or a spare?
+ *
+ * Not the same question as "are ten pins standing", which is what the play
+ * screen asked and why a gutter ball broke it: a gutter leaves all ten up, so
+ * knocking them all down with the *second* ball of the frame was announced as
+ * a strike — on the quick button, on the commit button and in the shout under
+ * the rack, three times at once. The scorer had it right the whole time and
+ * wrote the spare down correctly; only the words were wrong, which is the kind
+ * of wrong that makes somebody distrust the score that is actually fine.
+ *
+ * The tenth is why this is not simply "first ball of the frame". It re-racks
+ * after a mark, so its second and third balls can face a fresh rack too, and
+ * clearing one of those is another strike.
+ */
+export function clearingIsStrike(rolls: number[]): boolean {
+  const cursor = nextRollCursor(rolls);
+  if (!cursor) return false;
+  if (cursor.rollInFrame === 0) return true;
+  if (cursor.frame !== FRAMES_PER_GAME - 1) return false;
+
+  const tenth = frameSlices(rolls)[FRAMES_PER_GAME - 1];
+  // Second ball: fresh only behind a strike.
+  if (cursor.rollInFrame === 1) return tenth[0] === PINS;
+  // Third: fresh when the first two cleared the rack between them, either as
+  // two strikes or as a spare.
+  return tenth[0] === PINS ? tenth[1] === PINS : tenth[0] + tenth[1] === PINS;
+}
+
+/**
  * Where each frame's balls sit in the flat roll list.
  *
  * The list is flat because that is what the scorer reads, and a frame is one

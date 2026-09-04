@@ -831,10 +831,10 @@ async function main() {
         .first()
         .locator('.strip__box')
         .allInnerTexts();
-      // The strip prints counts; "-" for a miss is the paper convention and
-      // belongs to `frameMarks`, which is what the scorecard and the card use.
+      // A gutter is "-" here as it is everywhere else in the app — the strip
+      // used to be the one place writing a bare "0" for it.
       assert(
-        seededMarks.join('') === '00',
+        seededMarks.join('') === '--',
         `the strip was not seeded from the game: ${JSON.stringify(seededMarks)}`,
       );
 

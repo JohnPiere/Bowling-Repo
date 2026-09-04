@@ -90,7 +90,12 @@ export function FrameStrip({
                   'strip__box',
                   box.isLive ? 'strip__box--live' : '',
                   box.isBonus ? 'strip__box--bonus' : '',
-                  box.mark === 'X' || box.mark === '/' ? 'strip__box--mark' : '',
+                  // Told apart rather than lumped together as "a mark": a
+                  // strike and a spare are different results and the strip is
+                  // read at a glance, from an arm's length, in a dim alley.
+                  box.mark === 'X' ? 'strip__box--strike' : '',
+                  box.mark === '/' ? 'strip__box--spare' : '',
+                  box.mark === '-' ? 'strip__box--miss' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}

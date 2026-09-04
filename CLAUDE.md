@@ -165,6 +165,49 @@ because a rack and two buttons have to fit under the strip. It falls back to the
 plain `Scorecard` for a game with no pin data, since ten empty racks read as a
 bug rather than as an absence.
 
+**"Are ten pins standing" is not "would this be a strike".** The play screen
+asked the first and meant the second, and a gutter ball is where they part: a
+gutter leaves all ten up, so clearing them with the *second* ball of the frame
+was announced as a strike — on the quick button, on the commit button and in
+the shout under the rack, three times at once. The scorer had it right the
+whole time and wrote the spare down correctly, which is the worst version of
+this: nothing is wrong with the score and the screen makes you doubt it.
+
+`clearingIsStrike` is the rule, in `lib/`, because it is not one line. The
+tenth re-racks after a mark, so its second and third balls can face a fresh
+rack too and clearing one of those *is* another strike. Six call sites asked
+`standing.length === 10`; the keypad had always got it right, which is why it
+only showed up on the rack.
+
+The strip writes `-` for a gutter now, not `0`. A test said "writes a gutter as
+its own zero rather than a blank" and the intent behind it stands — a gutter
+has to be told from a box not yet thrown — but `-` does that too, and it is
+what `frameMarks`, the scorecard, the export, the shareable card and the parser
+all use. The strip was the only place in the app with a third notation for one
+throw.
+
+**The shareable card is a scoresheet now, not a row of marks.** It carries the
+rack each frame took down (only where the game recorded it — drawing which
+pins a "7" took from the count alone would be inventing a leave), the running
+total as a line across the ten, and four rates rather than two counts. "6
+strikes" is a number; "6 strikes, 60%" is how somebody bowled, and it is the
+half that still means something beside a game of a different length. The series
+card ends on the same four over the whole night.
+
+**The ball you used is the ball offered next time.** `defaultBall` could only
+be set in Settings, so naming a ball on the finishing step was forgotten the
+moment the game saved and the field came back empty every night — which is the
+surest way to stop it being filled in at all, and per-ball averages are worth
+nothing if it is not. Saving writes it back, so the Settings value says what
+will actually be pre-filled. Only a ball actually named: clearing the field is
+not the same as saying you have no ball.
+
+**Marks are badges, not letters.** Ten small strings all the same weight meant
+reading a game rather than seeing it. A strike is a filled block and a spare is
+a block with one triangular half filled — the same distinction `markglyphs.ts`
+reads *off paper* by which corners are inked. It is all paint: the box keeps
+its pinned line box, so the scoring step does not move for it.
+
 **Three things a real phone found, and each was a different kind of wrong.**
 
 **The STRIKE shout moved the buttons.** It was its own element above the

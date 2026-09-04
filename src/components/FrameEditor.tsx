@@ -5,6 +5,7 @@ import { t, tf } from '../lib/i18n';
 import { frameStrip } from '../lib/framestrip';
 import { deckFor } from '../lib/pins';
 import {
+  clearingIsStrike,
   editableFrames,
   frameBounds,
   frameMarks,
@@ -111,6 +112,9 @@ export function FrameEditor({ rolls, pinfalls, onChange }: Props) {
   }
 
   const swept = pending.length === standing.length && standing.length > 0;
+  // The deck being full is not the same as the frame being fresh; a gutter
+  // leaves ten up. Same rule as the play screen.
+  const clearsToStrike = clearingIsStrike(prefixRolls);
 
   return (
     <>
@@ -138,6 +142,7 @@ export function FrameEditor({ rolls, pinfalls, onChange }: Props) {
       </div>
 
       <PinRack
+        clearingIsStrike={clearsToStrike}
         standing={standing}
         knocked={pending}
         onToggle={(pin) =>
@@ -148,8 +153,8 @@ export function FrameEditor({ rolls, pinfalls, onChange }: Props) {
       />
 
       <button type="button" className="btn-quick" onClick={() => put(standing.length, standing)}>
-        <span className="btn-quick__mark">{standing.length === 10 ? 'X' : '/'}</span>
-        {standing.length === 10 ? t('Strike — all ten') : t('Spare — everything left')}
+        <span className="btn-quick__mark">{clearsToStrike ? 'X' : '/'}</span>
+        {clearsToStrike ? t('Strike — all ten') : t('Spare — everything left')}
       </button>
 
       <div className="play__commit">
@@ -161,7 +166,7 @@ export function FrameEditor({ rolls, pinfalls, onChange }: Props) {
           className="btn-lg btn-lg--primary grow"
           onClick={() => put(pending.length, pending)}
         >
-          {swept && standing.length === 10
+          {swept && clearsToStrike
             ? t('Strike')
             : swept
               ? t('Spare')

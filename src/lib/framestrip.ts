@@ -119,18 +119,24 @@ function markFor(frameRolls: number[], box: number, isTenth: boolean): string {
     // a strike on a fresh rack, not a spare — only a pair on the same rack is.
     const before = frameRolls[box - 1];
     if (box > 0 && before !== PINS && before + roll === PINS) return '/';
-    return String(roll);
+    return roll === 0 ? '-' : String(roll);
   }
 
   if (box === 0) {
     if (frameRolls.length === 0) return '';
-    return frameRolls[0] === PINS ? 'X' : String(frameRolls[0]);
+    if (frameRolls[0] === PINS) return 'X';
+    // A gutter is a dash, the way `frameMarks` writes it and the way the
+    // scorecard, the export and the shareable card all print it. The strip
+    // wrote a bare `0`, which was the only place in the app using a third
+    // notation for the same throw.
+    return frameRolls[0] === 0 ? '-' : String(frameRolls[0]);
   }
 
   // The second box of a struck frame stays blank: on paper the X sits alone.
   if (frameRolls[0] === PINS) return '';
   if (frameRolls.length < 2) return '';
-  return frameRolls[0] + frameRolls[1] === PINS ? '/' : String(frameRolls[1]);
+  if (frameRolls[0] + frameRolls[1] === PINS) return '/';
+  return frameRolls[1] === 0 ? '-' : String(frameRolls[1]);
 }
 
 /**

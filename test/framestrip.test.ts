@@ -20,8 +20,14 @@ describe('frameStrip boxes', () => {
     expect(marks([7, 2])[0]).toBe('7|2');
   });
 
-  it('writes a gutter as its own zero rather than a blank', () => {
-    expect(marks([0, 0])[0]).toBe('0|0');
+  it('writes a gutter as a dash rather than a blank', () => {
+    // A gutter has to be told apart from a box not yet thrown, which was the
+    // point of writing `0` here. It still is — but `-` is what `frameMarks`
+    // writes, what the scorecard and the export print, and what the parser
+    // reads back, so the strip was the only place in the app using a third
+    // notation for one throw.
+    expect(marks([0, 0])[0]).toBe('-|-');
+    expect(marks([])[0]).toBe('|');
   });
 
   it('gives the tenth three boxes and the rest two', () => {

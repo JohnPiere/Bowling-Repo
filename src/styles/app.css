@@ -2169,7 +2169,36 @@ body {
   color: var(--color-neutral-300);
   transition: background 0.2s ease, box-shadow 0.2s ease;
 }
-.strip__box--mark { color: var(--color-accent-200); }
+/*
+ * Marks are badges, not letters.
+ *
+ * They were 9px characters in an outlined box — `X`, `/`, `8`, `1` — all the
+ * same weight and colour, so reading a game meant reading ten small strings.
+ * A sheet does not work that way: on a Japanese scoresheet a strike is a
+ * square filled corner to corner and a spare is a square with one triangular
+ * half filled, which is exactly why `markglyphs.ts` can classify them by
+ * *which corners are inked* rather than by recognising a character. The strip
+ * borrows the same idea, so the shape of a game is visible before any of it
+ * is read.
+ *
+ * All of this is paint. The box keeps its `min-height` and its pinned line
+ * box, so the scoring step — which has 16px of headroom on an SE — does not
+ * move a pixel for it.
+ */
+.strip__box--strike {
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  color: #fff;
+}
+/* Half filled on the diagonal, the way it is drawn on paper. */
+.strip__box--spare {
+  background: linear-gradient(135deg, transparent 48%, var(--color-accent-700) 48%);
+  box-shadow: inset 0 0 0 1px var(--color-accent-700);
+  color: #fff;
+}
+/* A miss is the one mark worth making quieter: it is the absence of a result,
+   and drawing it as loudly as a strike would make a bad game look busy. */
+.strip__box--miss { color: var(--color-neutral-600); }
 /* The tenth's third box only exists once a mark earns it, so it is drawn as
    waiting rather than as an ordinary empty box. */
 .strip__box--bonus {

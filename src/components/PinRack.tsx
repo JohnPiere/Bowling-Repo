@@ -10,6 +10,14 @@ interface Props {
   onToggle: (pin: number) => void;
   /** Read-only, for showing a leave that has already been bowled. */
   readOnly?: boolean;
+  /**
+   * Whether clearing this deck would be a strike rather than a spare.
+   *
+   * Passed in rather than guessed from `standing.length === 10`, which is a
+   * different question: a gutter ball leaves all ten up, and clearing them
+   * with the second ball of the frame is a spare. See `clearingIsStrike`.
+   */
+  clearingIsStrike?: boolean;
 }
 
 /**
@@ -28,7 +36,13 @@ interface Props {
  * the deck keeps its shape and the leave stays recognisable — a 7-10 should
  * look like a 7-10.
  */
-export function PinRack({ standing, knocked, onToggle, readOnly = false }: Props) {
+export function PinRack({
+  standing,
+  knocked,
+  onToggle,
+  readOnly = false,
+  clearingIsStrike = true,
+}: Props) {
   const up = new Set(standing);
   const down = new Set(knocked);
   const remaining = standing.filter((pin) => !down.has(pin));
@@ -110,7 +124,7 @@ export function PinRack({ standing, knocked, onToggle, readOnly = false }: Props
       */}
       <div className="rack__say">
         {swept ? (
-          <span className="rack__shout">{standing.length === 10 ? t('STRIKE') : t('SPARE')}</span>
+          <span className="rack__shout">{clearingIsStrike ? t('STRIKE') : t('SPARE')}</span>
         ) : down.size === 0 ? (
           <span className="rack__leave muted">{t('Tap the pins this ball took down')}</span>
         ) : (
