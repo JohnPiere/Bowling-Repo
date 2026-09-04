@@ -11,6 +11,7 @@ import { frameStrip } from '../lib/framestrip';
 import { ballsOf, valuesUsed } from '../lib/stats';
 import { deckFor } from '../lib/pins';
 import { setBowling } from '../lib/updates';
+import { clearDraft, loadDraft, saveDraft } from '../lib/draft';
 import {
   clearingIsStrike,
   frameBounds,
@@ -93,11 +94,25 @@ export function PlayScreen({ onSaved, games }: Props) {
   const [chosen] = useState(() => preferences.scoringEntry);
   const skipChooser = chosen !== 'ask';
 
-  const [started, setStarted] = useState(skipChooser);
-  const [entry, setEntry] = useState<Entry>(chosen === 'pad' ? 'pad' : 'rack');
-  const [rolls, setRolls] = useState<number[]>([]);
+  /**
+   * A game half-bowled when this screen was last on it.
+   *
+   * Read once, at mount. There are two ways to lose an in-progress game and
+   * only one of them can be argued with: a reload gets a `beforeunload`, and
+   * tapping Home to glance at an average simply unmounts this screen and takes
+   * the rolls with it. Resuming costs nothing and covers both.
+   */
+  const [resumed] = useState(loadDraft);
+
+  const [started, setStarted] = useState(skipChooser || resumed !== null);
+  const [entry, setEntry] = useState<Entry>(
+    resumed ? resumed.entry : chosen === 'pad' ? 'pad' : 'rack',
+  );
+  const [rolls, setRolls] = useState<number[]>(() => resumed?.rolls ?? []);
   /** Which pins each ball took. Only kept while scoring on the rack. */
-  const [pinfalls, setPinfalls] = useState<number[][]>([]);
+  const [pinfalls, setPinfalls] = useState<number[][]>(() => resumed?.pinfalls ?? []);
+  /** When this game began, so a resumed one keeps its own age. */
+  const startedAt = useRef(resumed?.startedAt ?? Date.now());
   /** Pins marked as down by the ball being entered, before it is committed. */
   const [pending, setPending] = useState<number[]>([]);
   // Seeded from the usual alley, and editable: most games are bowled in one
@@ -171,6 +186,21 @@ export function PlayScreen({ onSaved, games }: Props) {
   useEffect(() => {
     setBowling(rolls.length > 0 || pending.length > 0);
   }, [rolls.length, pending.length]);
+
+  /**
+   * Written on every ball, so what comes back is the game as it stood.
+   *
+   * Not `pending`: a ball being tapped out is not a ball thrown, and restoring
+   * a half-selected rack would put pins down that nobody committed.
+   */
+  useEffect(() => {
+    if (rolls.length === 0) {
+      clearDraft();
+      startedAt.current = Date.now();
+      return;
+    }
+    saveDraft({ rolls, pinfalls, entry, startedAt: startedAt.current });
+  }, [rolls, pinfalls, entry]);
 
   // Clearing on the way out matters as much as setting it: leaving the play
   // screen mid-game would otherwise hold every future update for the life of
@@ -261,6 +291,7 @@ export function PlayScreen({ onSaved, games }: Props) {
   }
 
   function discard() {
+    clearDraft();
     setRolls([]);
     setPinfalls([]);
     setPending([]);
@@ -308,6 +339,7 @@ export function PlayScreen({ onSaved, games }: Props) {
       const named = balls[0]?.trim() ?? '';
       if (named && named !== preferences.defaultBall) update({ defaultBall: named });
 
+      clearDraft();
       setRolls([]);
       setPinfalls([]);
       setPending([]);

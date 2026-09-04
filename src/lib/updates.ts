@@ -140,6 +140,37 @@ function reloadOnce(): void {
 }
 
 /**
+ * Stand in front of a reload while there is a game on the screen.
+ *
+ * Rolls are component state until the game is saved, so a reload mid-frame is
+ * the one place in the app that loses something — everywhere else it costs a
+ * scroll position. The service-worker update already waits for `bowling` to go
+ * false, but that only covers the update *we* trigger. Pull-to-refresh, the
+ * reload button, closing the tab and following a link are all the same loss and
+ * none of them ask.
+ *
+ * `beforeunload` is the only thing that can ask. The browser writes the words
+ * — every one of them has ignored a custom string for years — so this is not a
+ * message, it is a speed bump, and it is only armed while a game is actually in
+ * progress. A dialogue on the way out of an empty play screen would be the kind
+ * of prompt people learn to dismiss without reading.
+ */
+let guarded = false;
+
+function warnBeforeUnload(event: BeforeUnloadEvent): void {
+  event.preventDefault();
+  // Ancient browsers want this set; none of them show what it is set to.
+  event.returnValue = '';
+}
+
+function guardReload(active: boolean): void {
+  if (typeof window === 'undefined' || active === guarded) return;
+  guarded = active;
+  if (active) window.addEventListener('beforeunload', warnBeforeUnload);
+  else window.removeEventListener('beforeunload', warnBeforeUnload);
+}
+
+/**
  * Say whether a game is being bowled.
  *
  * When it stops being true and an update was held back, it is taken then — the
@@ -147,6 +178,9 @@ function reloadOnce(): void {
  */
 export function setBowling(active: boolean): void {
   bowling = active;
+  // Before `applyUpdate`, always: that path reloads on purpose, and it must
+  // not be stopped by the guard it has just finished needing.
+  guardReload(active);
   if (!active && waiting) applyUpdate();
 }
 

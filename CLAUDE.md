@@ -487,6 +487,31 @@ cannot fix it, reloads into the same wall, and on a phone that still had a
 working offline copy spends that copy for nothing. That case gets its own words
 and a plain reload; everything else still heals once.
 
+**There are two doors out of an in-progress game, and only one of them can be
+argued with.** Rolls are component state until a game is saved, which is the
+one thing in the app not already in IndexedDB. A reload is the obvious door and
+`setBowling` stands a `beforeunload` in front of it — armed only while a ball
+is actually down, because a prompt on the way out of an empty play screen is
+the kind people learn to dismiss without reading. The browser writes the words;
+every one of them has ignored a custom string for years, so it is a speed bump
+rather than a message.
+
+The other door is quieter and has no dialogue available at all: tapping Home to
+glance at an average unmounts the play screen and takes the rolls with it.
+Measured — three strikes in, out to Home, back, and the strip is empty.
+
+So `lib/draft.ts` keeps the game where it survives both. `localStorage` rather
+than IndexedDB on purpose: it is synchronous, so the draft is written before an
+unload can interrupt it, and an async write on every ball is a race with
+exactly the event this exists to survive.
+
+Two things it refuses rather than resumes. A draft older than `DRAFT_LIFE_MS`
+— coming back to a stale rack is worse than coming back to an empty one,
+because the empty one is obviously a fresh start. And pin data that does not
+line up with the rolls, which would put every later ball's pins against the
+wrong ball: the failure `leavesFromPinfalls` had, and the one nothing
+downstream can detect.
+
 **A version that waits for permission never arrives.** The worker is registered
 `prompt` rather than `autoUpdate` and that part is right — rolls are component
 state until a game is saved, so a reload mid-frame costs somebody the game they
